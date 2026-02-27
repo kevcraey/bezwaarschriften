@@ -25,7 +25,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       </style>
       <div id="selectie-wrapper">
         <vl-select id="project-select" placeholder="Kies een project..."></vl-select>
-        <vl-button id="verwerk-knop" disabled>Verwerk alles</vl-button>
+        <vl-button id="verwerk-knop">Verwerk alles</vl-button>
         <p id="fout-melding" hidden></p>
       </div>
       <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel" hidden></bezwaarschriften-bezwaren-tabel>
@@ -77,9 +77,12 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
     if (verwerkKnop) {
       verwerkKnop.addEventListener('vl-click', () => {
-        if (this.__geselecteerdProject && !this.__bezig) {
-          this._verwerkBezwaren(this.__geselecteerdProject);
+        if (this.__bezig) return;
+        if (!this.__geselecteerdProject) {
+          this._toonFout('Selecteer eerst een project.');
+          return;
         }
+        this._verwerkBezwaren(this.__geselecteerdProject);
       });
     }
   }
@@ -94,7 +97,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .then((data) => {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
-          this._werkKnopBij();
         })
         .catch(() => {
           this._toonFout('Bezwaren konden niet worden geladen.');
@@ -112,7 +114,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .then((data) => {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
-          this._werkKnopBij();
         })
         .catch(() => {
           this._toonFout('Verwerking kon niet worden gestart.');
@@ -127,14 +128,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (tabel) {
       tabel.bezwaren = this.__bezwaren;
       tabel.hidden = false;
-    }
-  }
-
-  _werkKnopBij() {
-    const knop = this.shadowRoot && this.shadowRoot.querySelector('#verwerk-knop');
-    if (knop) {
-      const heeftTodoItems = this.__bezwaren.some((b) => b.status === 'todo');
-      knop.disabled = !heeftTodoItems;
     }
   }
 
