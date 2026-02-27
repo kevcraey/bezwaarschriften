@@ -69,7 +69,8 @@ public class ProjectController {
 
     static BezwarenResponse van(List<BezwaarBestand> bezwaren) {
       return new BezwarenResponse(bezwaren.stream()
-          .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b.status())))
+          .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b.status()),
+              b.aantalWoorden()))
           .toList());
     }
 
@@ -84,5 +85,5 @@ public class ProjectController {
   }
 
   /** DTO voor een enkel bezwaarbestand in de response. */
-  record BezwaarBestandDto(String bestandsnaam, String status) {}
+  record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden) {}
 }
