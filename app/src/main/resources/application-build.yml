@@ -6,7 +6,7 @@ spring:
     # prevent lookup of keycloak URL on Bamboo
     exclude: org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration  
   datasource:
-    url: jdbc:postgresql://localhost:5432/juris
+    url: jdbc:postgresql://localhost:5432/bezwaarschriften
     username: postgres
     password: postgres
   cloud:
@@ -45,13 +45,13 @@ cumuli:
     enable:
       mock: true
     users:
-      - username: jurisSpringBootAdmin
-        password: "{noop}jurisSpringBootAdmin"
+      - username: bezwaarschriftenSpringBootAdmin
+        password: "{noop}bezwaarschriftenSpringBootAdmin"
         roles:
-          - JurisSpringBootAdmin
+          - BezwaarschriftenSpringBootAdmin
     systemuser:
-      name: juris
-      password: "{noop}juris"
+      name: bezwaarschriften
+      password: "{noop}bezwaarschriften"
 
 logging:
   file:

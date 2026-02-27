@@ -1,1 +1,1 @@
-import './juris-landingspagina';
+import './bezwaarschriften-landingspagina';

@@ -1,0 +1,19 @@
+# Compiled output
+target/
+build/
+dist/
+
+# Node
+node_modules/
+.npmrc
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Logs
+*.log
+
+# Temp
+tmp/

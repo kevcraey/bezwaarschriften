@@ -25,26 +25,12 @@ module.exports = {
         },
       },
       {
+        resourceQuery: /raw/,
+        type: 'asset/source',
+      },
+      {
         test: /\.css$/i,
-        use: [
-          'style-loader',
-          {
-            loader: MiniCssExtractPlugin.loader,
-            options: {
-              esModule: false,
-            },
-          },
-          'css-loader',
-        ],
-        include: [
-          path.resolve(__dirname, 'src/css/index.css'),
-        ],
-      }, {
-        test: /\.css$/i,
-        use: ['css-loader'],
-        exclude: [
-          path.resolve(__dirname, 'src/css/index.css'),
-        ],
+        use: [MiniCssExtractPlugin.loader, 'css-loader'],
       }],
   },
   devServer: {
