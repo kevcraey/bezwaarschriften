@@ -67,10 +67,12 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
     if (selectEl) {
       selectEl.addEventListener('vl-change', (e) => {
+        this._verbergFout();
         const naam = e.detail.value;
-        if (naam) {
-          this._verbergFout();
-          this.__geselecteerdProject = naam;
+        this.__geselecteerdProject = naam || null;
+        if (!naam) {
+          this.__bezwaren = [];
+          this._verbergTabel();
         }
       });
     }
@@ -113,6 +115,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       tabel.bezwaren = this.__bezwaren;
       tabel.hidden = false;
     }
+  }
+
+  _verbergTabel() {
+    const tabel = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-tabel');
+    if (tabel) tabel.hidden = true;
   }
 
   _zetBezig(bezig) {
