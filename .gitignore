@@ -17,3 +17,11 @@ node_modules/
 
 # Temp
 tmp/
+
+# Stuff
+docs/
+.agents/
+richtlijnen/
+specs/
+implementeer-project.md
+richtlijnen
