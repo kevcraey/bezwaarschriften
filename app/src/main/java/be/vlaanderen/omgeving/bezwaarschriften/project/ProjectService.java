@@ -35,15 +35,15 @@ public class ProjectService {
    *
    * @param projectPoort Port voor filesystem toegang
    * @param ingestiePoort Port voor bestandsingestie
-   * @param inputFolder Root input folder
+   * @param inputFolderString Root input folder als string-pad
    */
   public ProjectService(
       ProjectPoort projectPoort,
       IngestiePoort ingestiePoort,
-      @Value("${bezwaarschriften.input.folder}") Path inputFolder) {
+      @Value("${bezwaarschriften.input.folder}") String inputFolderString) {
     this.projectPoort = projectPoort;
     this.ingestiePoort = ingestiePoort;
-    this.inputFolder = inputFolder;
+    this.inputFolder = Path.of(inputFolderString);
   }
 
   /**
