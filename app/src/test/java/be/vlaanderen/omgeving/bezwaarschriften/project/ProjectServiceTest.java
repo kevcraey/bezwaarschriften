@@ -66,13 +66,15 @@ class ProjectServiceTest {
   void verwerkingZetStatusOpExtractieKlaarBijSucces() throws Exception {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.txt"));
+    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar-001.txt")))
+        .thenReturn(new Brondocument("dit is een test tekst", "bezwaar-001.txt",
+            "input/windmolens/bezwaren/bezwaar-001.txt", Instant.now()));
 
     var resultaat = service.verwerk("windmolens");
 
     assertThat(resultaat).hasSize(1);
     assertThat(resultaat.get(0).status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
-    verify(ingestiePoort, times(1))
-        .leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar-001.txt"));
+    assertThat(resultaat.get(0).aantalWoorden()).isEqualTo(5);
   }
 
   @Test
@@ -102,6 +104,9 @@ class ProjectServiceTest {
   void slaatNietOndersteundeBestandenOverBijVerwerking() throws Exception {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar.txt", "bijlage.pdf"));
+    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar.txt")))
+        .thenReturn(new Brondocument("inhoud", "bezwaar.txt",
+            "input/windmolens/bezwaren/bezwaar.txt", Instant.now()));
 
     var resultaat = service.verwerk("windmolens");
 
@@ -117,6 +122,9 @@ class ProjectServiceTest {
   void herverwerktNietWatAlExtractieKlaarIs() throws Exception {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar.txt"));
+    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar.txt")))
+        .thenReturn(new Brondocument("inhoud", "bezwaar.txt",
+            "input/windmolens/bezwaren/bezwaar.txt", Instant.now()));
 
     service.verwerk("windmolens"); // eerste verwerking
     service.verwerk("windmolens"); // tweede verwerking

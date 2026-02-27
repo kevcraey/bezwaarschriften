@@ -73,6 +73,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         if (!naam) {
           this.__bezwaren = [];
           this._verbergTabel();
+          this._zetBezig(false);
         }
       });
     }

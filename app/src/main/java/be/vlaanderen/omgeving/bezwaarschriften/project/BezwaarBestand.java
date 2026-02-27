@@ -6,15 +6,10 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
  * @param bestandsnaam Naam van het bezwaarbestand
  * @param status Huidige verwerkingsstatus
  */
-public record BezwaarBestand(String bestandsnaam, BezwaarBestandStatus status) {
+public record BezwaarBestand(String bestandsnaam, BezwaarBestandStatus status,
+    Integer aantalWoorden) {
 
-  /**
-   * Geeft een nieuwe instantie terug met een bijgewerkte status.
-   *
-   * @param nieuweStatus De nieuwe status
-   * @return Nieuwe BezwaarBestand instantie
-   */
-  public BezwaarBestand withStatus(BezwaarBestandStatus nieuweStatus) {
-    return new BezwaarBestand(this.bestandsnaam, nieuweStatus);
+  public BezwaarBestand(String bestandsnaam, BezwaarBestandStatus status) {
+    this(bestandsnaam, status, null);
   }
 }
