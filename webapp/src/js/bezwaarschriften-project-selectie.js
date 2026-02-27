@@ -112,12 +112,13 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .then((data) => {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
+          this._werkKnopBij();
         })
         .catch(() => {
           this._toonFout('Verwerking kon niet worden gestart.');
         })
         .finally(() => {
-          this._zetBezig(false);
+          this.__bezig = false;
         });
   }
 

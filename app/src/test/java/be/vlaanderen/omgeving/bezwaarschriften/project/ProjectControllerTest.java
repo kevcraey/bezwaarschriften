@@ -88,6 +88,7 @@ class ProjectControllerTest {
         .thenThrow(new ProjectNietGevondenException("bestaat-niet"));
 
     mockMvc.perform(post("/api/v1/projects/bestaat-niet/verwerk").with(csrf()))
-        .andExpect(status().isNotFound());
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.messages[0].code").value("project.not-found"));
   }
 }
