@@ -69,8 +69,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       selectEl.addEventListener('vl-change', (e) => {
         const naam = e.detail.value;
         if (naam) {
+          this._verbergFout();
           this.__geselecteerdProject = naam;
-          this._laadBezwaren(naam);
         }
       });
     }
@@ -85,22 +85,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         this._verwerkBezwaren(this.__geselecteerdProject);
       });
     }
-  }
-
-  _laadBezwaren(projectNaam) {
-    this._verbergFout();
-    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/bezwaren`)
-        .then((response) => {
-          if (!response.ok) throw new Error('Ophalen bezwaren mislukt');
-          return response.json();
-        })
-        .then((data) => {
-          this.__bezwaren = data.bezwaren;
-          this._werkTabelBij();
-        })
-        .catch(() => {
-          this._toonFout('Bezwaren konden niet worden geladen.');
-        });
   }
 
   _verwerkBezwaren(projectNaam) {
