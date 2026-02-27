@@ -2,11 +2,11 @@
 set -e
 
 
-. /etc/cumuli/jubel.bootstrap
+. /etc/cumuli/bezwaarschriften.bootstrap
 
 case "$1" in
   configure)
-    cat << EOF > /opt/jubel/jubel.conf
+    cat << EOF > /opt/bezwaarschriften/bezwaarschriften.conf
 
 # Java Memory Parameters
 MEM_PARAMS="${app_mem_params}"
@@ -45,11 +45,11 @@ RUN_ARGS="\$EUREKA_URL_PARAM \$CONFIGSERVER_USER_PARAM \$CONFIGSERVER_PASS_PARAM
 export environment=\"${environment}\"
 EOF
 
-  chmod 400 /opt/jubel/jubel.conf
-  chown jubel: /opt/jubel/jubel.conf
-  chmod +x /opt/jubel/jubel.jar
-  mkdir -p /var/log/jubel /var/log/gc
-  chown jubel: /var/log/jubel /var/log/gc
+  chmod 400 /opt/bezwaarschriften/bezwaarschriften.conf
+  chown bezwaarschriften: /opt/bezwaarschriften/bezwaarschriften.conf
+  chmod +x /opt/bezwaarschriften/bezwaarschriften.jar
+  mkdir -p /var/log/bezwaarschriften /var/log/gc
+  chown bezwaarschriften: /var/log/bezwaarschriften /var/log/gc
   ;;
 
   abort-upgrade|abort-remove|abort-deconfigure)

@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>juris</artifactId>
-        <groupId>be.vlaanderen.omgeving.juris</groupId>
+        <artifactId>bezwaarschriften</artifactId>
+        <groupId>be.vlaanderen.omgeving.bezwaarschriften</groupId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>juris-pkg</artifactId>
-    <name>Juris | Packaging</name>
+    <artifactId>bezwaarschriften-pkg</artifactId>
+    <name>Bezwaarschriften | Packaging</name>
 
     <properties>
-        <app.username>juris</app.username>
-        <app.appname>juris</app.appname>
-        <app.installdir>/opt/juris</app.installdir>
+        <app.username>bezwaarschriften</app.username>
+        <app.appname>bezwaarschriften</app.appname>
+        <app.installdir>/opt/bezwaarschriften</app.installdir>
         <app.installedjar>${app.installdir}/${app.appname}.jar</app.installedjar>
         <app.appconffile>${app.installdir}/${app.appname}.conf</app.appconffile>
     </properties>
@@ -21,7 +21,7 @@
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>juris-app</artifactId>
+            <artifactId>bezwaarschriften-app</artifactId>
             <version>${project.version}</version>
             <classifier>executable</classifier>
             <type>jar</type>
@@ -60,7 +60,7 @@
                     <artifactItems>
                         <artifactItem>
                             <groupId>${project.groupId}</groupId>
-                            <artifactId>juris-app</artifactId>
+                            <artifactId>bezwaarschriften-app</artifactId>
                             <version>${project.version}</version>
                             <type>jar</type>
                             <classifier>executable</classifier>

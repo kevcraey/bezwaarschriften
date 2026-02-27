@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris.config;
+package be.vlaanderen.omgeving.bezwaarschriften.config;
 
 import be.milieinfo.framework.db.DatabaseGranter;
 import be.milieinfo.framework.db.DatabaseOwnershipTransfer;

@@ -39,17 +39,17 @@ cumuli:
     enable:
       mock: true
     users:
-      - username: jurisSpringBootAdmin
-        password: "{noop}jurisSpringBootAdmin"
+      - username: bezwaarschriftenSpringBootAdmin
+        password: "{noop}bezwaarschriftenSpringBootAdmin"
         roles:
-          - JurisSpringBootAdmin
+          - BezwaarschriftenSpringBootAdmin
       - username: gebruiker
         password: "{noop}gebruiker"
         roles:
-          - JurisGebruiker
+          - BezwaarschriftenGebruiker
     systemuser:
-      name: juris
-      password: "{noop}juris"
+      name: bezwaarschriften
+      password: "{noop}bezwaarschriften"
 
 logging:
   file:

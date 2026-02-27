@@ -1,7 +1,7 @@
 {
-  "name": "juris",
+  "name": "bezwaarschriften",
   "version": "1.0.0",
-  "description": "Juris",
+  "description": "Bezwaarschriften",
   "private": true,
   "scripts": {
     "postinstall": "rm -rf build && mkdir -p build",
@@ -15,7 +15,7 @@
     "format:source:fix": "eslint src --ext .js --ext .html -c .eslintrc.json --fix"
   },
   "keywords": [
-    "juris"
+    "bezwaarschriften"
   ],
   "author": "DIDM",
   "license": "MIT",
@@ -34,16 +34,16 @@
     "webpack-dev-server": "4.15.1"
   },
   "dependencies": {
-    "@domg-wc/common-utilities": "1.9.0",
-    "@domg-wc/components": "1.9.0",
-    "@domg-wc/elements": "1.9.0",
-    "@domg-wc/map": "1.9.0",
-    "@domg-wc/sections": "1.9.0"
+    "@domg-wc/components": "2.7.0",
+    "@domg-wc/map": "2.7.0",
+    "@domg-wc/styles": "2.7.0",
+    "@lit/task": "1.0.0",
+    "lit": "3.1.0"
   },
   "engines": {
-    "node": ">=18.16.1"
+    "node": ">=24.11.1"
   },
   "volta": {
-    "node": "18.16.1"
+    "node": "24.11.1"
   }
 }

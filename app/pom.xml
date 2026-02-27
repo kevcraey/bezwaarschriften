@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<parent>
-		<artifactId>juris</artifactId>
-		<groupId>be.vlaanderen.omgeving.juris</groupId>
+		<artifactId>bezwaarschriften</artifactId>
+		<groupId>be.vlaanderen.omgeving.bezwaarschriften</groupId>
 		<version>0.0.1-SNAPSHOT</version>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
 
-	<artifactId>juris-app</artifactId>
+	<artifactId>bezwaarschriften-app</artifactId>
 	<packaging>jar</packaging>
-	<name>Juris | App</name>
+	<name>Bezwaarschriften | App</name>
 
 	<dependencies>
 		<!-- ACD -->
@@ -136,7 +136,7 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<executable>true</executable>
-					<mainClass>be.vlaanderen.omgeving.juris.Application</mainClass>
+					<mainClass>be.vlaanderen.omgeving.bezwaarschriften.Application</mainClass>
 					<jvmArguments>--illegal-access=debug</jvmArguments>
 					<classifier>executable</classifier>
 				</configuration>
@@ -172,8 +172,8 @@
 						<configuration>
 							<artifactItems>
 								<artifactItem>
-									<groupId>be.vlaanderen.omgeving.juris</groupId>
-									<artifactId>juris-webapp</artifactId>
+									<groupId>be.vlaanderen.omgeving.bezwaarschriften</groupId>
+									<artifactId>bezwaarschriften-webapp</artifactId>
 									<version>${project.version}</version>
 									<type>jar</type>
 									<overWrite>true</overWrite>

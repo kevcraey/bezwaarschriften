@@ -1,6 +1,6 @@
-package be.vlaanderen.omgeving.juris;
+package be.vlaanderen.omgeving.bezwaarschriften;
 
-import be.vlaanderen.omgeving.juris.config.Constants;
+import be.vlaanderen.omgeving.bezwaarschriften.config.Constants;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +10,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
 @ActiveProfiles(Constants.SPRING_PROFILE_DEVELOPMENT)
-public abstract class BaseJurisIntegrationTest {
+public abstract class BaseBezwaarschriftenIntegrationTest {
   @Autowired
   protected ObjectMapper objectMapper;
 

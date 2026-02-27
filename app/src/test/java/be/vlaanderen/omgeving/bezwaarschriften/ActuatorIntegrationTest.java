@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris;
+package be.vlaanderen.omgeving.bezwaarschriften;
 
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -18,7 +18,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-public class ActuatorIntegrationTest extends BaseJurisIntegrationTest {
+public class ActuatorIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
   @Autowired
   private Filter springSecurityFilterChain;
   private MockMvc mockMvcWithSecurity;
@@ -61,7 +61,7 @@ public class ActuatorIntegrationTest extends BaseJurisIntegrationTest {
   }
 
   private UserRequestPostProcessor admin() {
-    return user("admin").authorities(List.of(new SimpleGrantedAuthority("JurisSpringBootAdmin")));
+    return user("admin").authorities(List.of(new SimpleGrantedAuthority("BezwaarschriftenSpringBootAdmin")));
   }
 
   private UserRequestPostProcessor userZonderAdminRechten() {

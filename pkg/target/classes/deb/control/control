@@ -1,7 +1,7 @@
-Package: jubel-pkg
-Version: 1.2.8-SNAPSHOT
+Package: bezwaarschriften-pkg
+Version: 0.0.1-SNAPSHOT
 Architecture: all
 Priority: low
 Maintainer: Van Gulck, Tom <tom.vangulck@vlaanderen.be>
-Description: Jubel | Packaging
-Depends: openjdk-21-jre-headless, tesseract-ocr
+Description: Bezwaarschriften | Packaging
+Depends: openjdk-17-jre-headless

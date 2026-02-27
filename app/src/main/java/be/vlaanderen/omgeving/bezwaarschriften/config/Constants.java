@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris.config;
+package be.vlaanderen.omgeving.bezwaarschriften.config;
 
 public final class Constants {
 

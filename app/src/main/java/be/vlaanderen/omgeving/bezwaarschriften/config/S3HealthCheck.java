@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris.config;
+package be.vlaanderen.omgeving.bezwaarschriften.config;
 
 import com.amazonaws.services.s3.AmazonS3;
 import org.springframework.beans.factory.annotation.Autowired;

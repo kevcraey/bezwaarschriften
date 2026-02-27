@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris.config;
+package be.vlaanderen.omgeving.bezwaarschriften.config;
 
 import be.cumuli.security.api.CumuliSecurityConfigurer;
 import be.cumuli.security.boot.config.CumuliSecurityProperties;
@@ -17,7 +17,7 @@ import org.springframework.security.config.annotation.web.builders.WebSecurity;
 @Configuration
 public class SecurityConfiguration {
 
-  private static final String JURIS_GEBRUIKER = "JurisGebruiker";
+  private static final String BEZWAARSCHRIFTEN_GEBRUIKER = "BezwaarschriftenGebruiker";
 
   @Bean
   @Order(1)
@@ -45,7 +45,7 @@ public class SecurityConfiguration {
     try {
       http.csrf().disable();
       http.authorizeRequests()
-          .antMatchers("/**").hasAuthority(JURIS_GEBRUIKER);
+          .antMatchers("/**").hasAuthority(BEZWAARSCHRIFTEN_GEBRUIKER);
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }

@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris.config;
+package be.vlaanderen.omgeving.bezwaarschriften.config;
 
 import java.net.URL;
 import org.springframework.boot.context.properties.ConfigurationProperties;

@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris;
+package be.vlaanderen.omgeving.bezwaarschriften;
 
 
 import static java.util.Spliterators.spliteratorUnknownSize;
@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 
-public class HealthIntegrationTest extends BaseJurisIntegrationTest {
+public class HealthIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
 
   private MockMvc mockMvc;
 

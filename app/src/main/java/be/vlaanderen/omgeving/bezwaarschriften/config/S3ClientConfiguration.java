@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris.config;
+package be.vlaanderen.omgeving.bezwaarschriften.config;
 
 import be.cumuli.boot.actuator.autoconfigure.HealthSchedule;
 import com.amazonaws.ClientConfiguration;

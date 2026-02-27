@@ -1,4 +1,4 @@
-package be.vlaanderen.omgeving.juris.config;
+package be.vlaanderen.omgeving.bezwaarschriften.config;
 
 import be.cumuli.boot.actuator.HTTPHealthIndicator;
 import be.milieuinfo.antivirus.dienst.scanbestand.v1.MilieuAvdAntivirusWebService;
