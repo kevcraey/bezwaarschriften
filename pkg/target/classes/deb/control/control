@@ -1,0 +1,7 @@
+Package: jubel-pkg
+Version: 1.2.8-SNAPSHOT
+Architecture: all
+Priority: low
+Maintainer: Van Gulck, Tom <tom.vangulck@vlaanderen.be>
+Description: Jubel | Packaging
+Depends: openjdk-21-jre-headless, tesseract-ocr

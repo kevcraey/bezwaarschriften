@@ -1,0 +1,70 @@
+<configuration>
+ <!-- enable logging configuration over JMX -->
+ <jmxConfigurator/>
+
+ <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+ <springProperty scope="context" name="APP_NAME" source="spring.application.name"/>
+
+ <property name="LOG_FILE"
+           value="${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}}/${APP_NAME}.log"/>
+ <property name="LOGSTASH_FILE"
+           value="${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}}/${APP_NAME}.jsonlog"/>
+
+ <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+ <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+
+ <!-- Appender to log to file in a JSON format -->
+ <appender name="LOGSTASH" class="ch.qos.logback.core.rolling.RollingFileAppender">
+  <file>${LOGSTASH_FILE}</file>
+  <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+   <fileNamePattern>${LOGSTASH_FILE}.%i.gz</fileNamePattern>
+   <maxIndex>10</maxIndex>
+  </rollingPolicy>
+  <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+   <MaxFileSize>10MB</MaxFileSize>
+  </triggeringPolicy>
+  <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+   <providers>
+    <timestamp>
+     <timeZone>UTC</timeZone>
+    </timestamp>
+    <pattern>
+     <pattern>
+      {
+      "loglevel": "%level",
+      "service": "${APP_NAME:-}",
+      "trace": "%X{X-B3-TraceId:-}",
+      "span": "%X{X-B3-SpanId:-}",
+      "parent": "%X{X-B3-ParentSpanId:-}",
+      "exportable": "%X{X-Span-Export:-}",
+      "pid": "${PID:-}",
+      "thread": "%thread",
+      "category": "%logger{40}",
+      "message": "%message"
+      }
+     </pattern>
+    </pattern>
+    <stackTrace>
+     <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+      <shortenedClassNameLength>short</shortenedClassNameLength>
+      <maxDepthPerThrowable>short</maxDepthPerThrowable>
+      <maxLength>short</maxLength>
+      <rootCauseFirst>true</rootCauseFirst>
+      <exclude>sun\.reflect\..*\.invoke.*</exclude>
+     </throwableConverter>
+    </stackTrace>
+   </providers>
+  </encoder>
+ </appender>
+
+  <root level="INFO">
+   <appender-ref ref="LOGSTASH"/>
+   <appender-ref ref="FILE"/>
+  </root>
+ <springProfile name="dev,build">
+  <root level="INFO">
+   <appender-ref ref="CONSOLE"/>
+  </root>
+ </springProfile>
+</configuration>

@@ -1,0 +1,67 @@
+#!/bin/sh
+set -e
+
+
+. /etc/cumuli/jubel.bootstrap
+
+case "$1" in
+  configure)
+    cat << EOF > /opt/jubel/jubel.conf
+
+# Java Memory Parameters
+MEM_PARAMS="${app_mem_params}"
+
+# JMX parameters
+JMX="${jmx}"
+
+# GC Logging
+GC_LOGS="${gc_logs_11}"
+
+# Algemene Infra java parameters
+INFRA_SETTINGS="${infra_settings}"
+
+# Deze parameters zullen in meeste gevallen leeg zijn, maar laten het infra team gemakkelijk extra parameters te zetten.
+INFRA_JAVA_AGENTS="${infra_java_agents}"
+INFRA_JAVA_OPTS="${infra_java_opts}"
+
+# Parameters voor de configserver
+EUREKA_URL_PARAM="--eureka.client.serviceUrl.defaultZone=${eureka_client_serviceUrl_defaultZone}"
+CONFIGSERVER_USER_PARAM="--spring.cloud.config.username=${spring_cloud_config_username}"
+CONFIGSERVER_PASS_PARAM="--spring.cloud.config.password=${spring_cloud_config_password}"
+
+# HTTP Proxy
+PROXY_SETTINGS="-Dhttp.proxyHost=${http_proxy_host} -Dhttp.proxyPort=${http_proxy_port} -Dhttp.nonProxyHosts=${no_proxy_java} -Dhttps.proxyHost=${http_proxy_host} -Dhttps.proxyPort=${http_proxy_port} -Dhttps.nonProxyHosts=${no_proxy_java}"
+
+# Parameters gebruikt door Spring Boot Start Process
+
+# Jvm parameters
+JAVA_MODULES_JVM_ARGS="--add-opens=java.base/java.lang=ALL-UNNAMED"
+JAVA_OPTS="\$INFRA_JAVA_AGENTS \$INFRA_JAVA_OPTS \$MEM_PARAMS \$JMX \$GC_LOGS \$INFRA_SETTINGS \$PROXY_SETTINGS \$JAVA_MODULES_JVM_ARGS"
+
+
+# Programma parameters (String[] args)
+RUN_ARGS="\$EUREKA_URL_PARAM \$CONFIGSERVER_USER_PARAM \$CONFIGSERVER_PASS_PARAM"
+
+export environment=\"${environment}\"
+EOF
+
+  chmod 400 /opt/jubel/jubel.conf
+  chown jubel: /opt/jubel/jubel.conf
+  chmod +x /opt/jubel/jubel.jar
+  mkdir -p /var/log/jubel /var/log/gc
+  chown jubel: /var/log/jubel /var/log/gc
+  ;;
+
+  abort-upgrade|abort-remove|abort-deconfigure)
+    exit 0
+  ;;
+
+  *)
+    echo "postinst called with unknown argument \`$1'" >&2
+    exit 1
+  ;;
+
+esac
+
+
+exit 0;

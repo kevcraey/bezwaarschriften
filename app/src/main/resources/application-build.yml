@@ -1,0 +1,58 @@
+server:
+  port: 8081
+
+spring:
+  autoconfigure:
+    # prevent lookup of keycloak URL on Bamboo
+    exclude: org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/juris
+    username: postgres
+    password: postgres
+  cloud:
+    service-registry:
+      auto-registration:
+        enabled: false
+    config:
+      enabled: false
+      discovery:
+        enabled: false
+    discovery:
+      enabled: false
+  security:
+    oauth2:
+      client:
+        registration:
+          omgeving:
+            client-secret: '{noop}secret'
+
+management:
+  health:
+    elasticsearch:
+      enabled: false
+
+kc:
+  realm: Omgeving
+  base-url: https://ssov2-ontwikkel.omgeving.vlaanderen.be/auth
+  internal-base-url: http://keycloak-on.lb.cumuli.be:8080/auth
+
+eureka:
+  client:
+    enabled: false
+
+cumuli:
+  security:
+    enable:
+      mock: true
+    users:
+      - username: jurisSpringBootAdmin
+        password: "{noop}jurisSpringBootAdmin"
+        roles:
+          - JurisSpringBootAdmin
+    systemuser:
+      name: juris
+      password: "{noop}juris"
+
+logging:
+  file:
+    path: "./target"

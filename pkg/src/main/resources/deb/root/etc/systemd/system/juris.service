@@ -1,0 +1,11 @@
+[Unit]
+Description=@project.name@
+After=syslog.target
+
+[Service]
+User=@app.username@
+ExecStart=@app.installedjar@
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

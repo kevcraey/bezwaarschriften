@@ -1,0 +1,125 @@
+server:
+  forward-headers-strategy: framework
+  servlet:
+    context-path: /
+  port: 8080
+  compression:
+    enabled: true
+    mime-types: application/json
+    min-response-size: 1024
+
+spring:
+  datasource:
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 5
+      connection-test-query: SELECT 1
+    dba:
+      hikari:
+        minimum-idle: 0
+        maximum-pool-size: 2
+        connection-test-query: SELECT 1
+  application:
+    name: juris
+  liquibase:
+    change-log: classpath:/config/liquibase/master.xml
+    contexts: prod
+    drop-first: false
+    default-schema: public
+  cloud:
+    config:
+      enabled: true
+      failFast: true
+      discovery:
+        enabled: true
+        service-id: OAUTH-CONFIGSERVER
+    discovery:
+      enabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          omgeving:
+            client-id: juris
+            client-name: Juris
+            provider: keycloak
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid
+        provider:
+          keycloak:
+            token-uri: ${kc.token-uri}
+            user-info-uri: ${kc.user-info-uri}
+            jwk-set-uri: ${kc.jwk-set-uri}
+            authorization-uri: ${kc.authorization-uri}
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${kc.jwk-set-uri}
+
+eureka:
+  instance:
+    health-check-url-path: ${management.endpoints.web.base-path}/health/critical
+    status-page-url-path: ${management.endpoints.web.base-path}/info
+    home-page-url-path: /
+    prefer-ip-address: true
+    metadata-map:
+      oauth2: true
+      management:
+        context-path: ${management.endpoints.web.base-path}
+
+management:
+  endpoint:
+    health:
+      show-details: when_authorized
+      group:
+        noncritical:
+          include: ping,refreshScope,clientConfigServer,avd
+        critical:
+          include: "*"
+          exclude: ${management.endpoint.health.group.noncritical.include}
+  endpoints:
+    web:
+      base-path: /admin
+      exposure:
+        include: "*"
+
+cumuli:
+  security:
+    enable:
+      presentation: true
+      services: true
+      soap: false
+      http-invoker: false
+      rest: false
+    actuator-roles:
+      - sba-admin
+      - JurisSpringBootAdmin
+    actuator-context-path: ${management.endpoints.web.base-path}
+
+logging:
+  level:
+    ROOT: WARN
+    be:
+      vlaanderen:
+        omgeving: INFO
+  file:
+    path: /var/log/${spring.application.name}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: (!dev && !build)
+    import: "configserver:"
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+    import: "classpath:application-dev.yml"
+---
+spring:
+  config:
+    activate:
+      on-profile: build
+    import: "classpath:application-build.yml"
