@@ -25,7 +25,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       </style>
       <div id="selectie-wrapper">
         <vl-select id="project-select" placeholder="Kies een project..."></vl-select>
-        <vl-button-component id="verwerk-knop" disabled>Verwerk alles</vl-button-component>
+        <vl-button id="verwerk-knop" disabled>Verwerk alles</vl-button>
         <p id="fout-melding" hidden></p>
       </div>
       <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel" hidden></bezwaarschriften-bezwaren-tabel>
@@ -66,8 +66,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const verwerkKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerk-knop');
 
     if (selectEl) {
-      selectEl.addEventListener('change', (e) => {
-        const naam = (e.target && e.target.value) || selectEl.value;
+      selectEl.addEventListener('vl-change', (e) => {
+        const naam = e.detail.value;
         if (naam) {
           this.__geselecteerdProject = naam;
           this._laadBezwaren(naam);
@@ -76,7 +76,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     }
 
     if (verwerkKnop) {
-      verwerkKnop.addEventListener('click', () => {
+      verwerkKnop.addEventListener('vl-click', () => {
         if (this.__geselecteerdProject && !this.__bezig) {
           this._verwerkBezwaren(this.__geselecteerdProject);
         }
