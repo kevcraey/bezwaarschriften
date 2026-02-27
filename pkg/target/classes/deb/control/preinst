@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+USER='jubel'
+USER_ID=2105
+
+case "$1" in
+  install)
+
+  # Add app user if it doesn't already exists
+  if ! getent passwd ${USER} >/dev/null 2>&1
+  then
+    useradd -u ${USER_ID} -M -d /opt/${USER} -s /bin/bash ${USER}
+  fi
+esac
+
+exit 0

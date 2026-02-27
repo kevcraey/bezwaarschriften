@@ -1,0 +1,10 @@
+- type: log
+  enabled: true
+  paths:
+    - /var/log/jubel/jubel.jsonlog
+  tags: ['jubel']
+  fields:
+    '@type': applog
+  fields_under_root: true
+  json.keys_under_root: true
+  json.add_error_key: true

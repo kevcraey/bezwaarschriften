@@ -1,0 +1,49 @@
+{
+  "name": "juris",
+  "version": "1.0.0",
+  "description": "Juris",
+  "private": true,
+  "scripts": {
+    "postinstall": "rm -rf build && mkdir -p build",
+    "build": "npm run format && webpack",
+    "build:maven": "./node_modules/webpack/bin/webpack.js",
+    "prestart": "npm run build",
+    "start": "webpack-dev-server --open --port 9000",
+    "format": "npm run format:source",
+    "format:source": "eslint src --ext .js --ext .html -c .eslintrc.json",
+    "format:fix": "npm run format:source:fix",
+    "format:source:fix": "eslint src --ext .js --ext .html -c .eslintrc.json --fix"
+  },
+  "keywords": [
+    "juris"
+  ],
+  "author": "DIDM",
+  "license": "MIT",
+  "main": "src/js/app.js",
+  "devDependencies": {
+    "copy-webpack-plugin": "11.0.0",
+    "css-loader": "6.8.1",
+    "eslint": "8.43.0",
+    "eslint-config-google": "0.14.0",
+    "eslint-plugin-html": "7.1.0",
+    "html-webpack-plugin": "5.5.3",
+    "mini-css-extract-plugin": "2.7.6",
+    "style-loader": "3.3.3",
+    "webpack": "5.88.0",
+    "webpack-cli": "5.1.4",
+    "webpack-dev-server": "4.15.1"
+  },
+  "dependencies": {
+    "@domg-wc/common-utilities": "1.9.0",
+    "@domg-wc/components": "1.9.0",
+    "@domg-wc/elements": "1.9.0",
+    "@domg-wc/map": "1.9.0",
+    "@domg-wc/sections": "1.9.0"
+  },
+  "engines": {
+    "node": ">=18.16.1"
+  },
+  "volta": {
+    "node": "18.16.1"
+  }
+}

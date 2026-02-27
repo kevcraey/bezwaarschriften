@@ -1,0 +1,11 @@
+[Unit]
+Description=Jubel | Packaging
+After=syslog.target
+
+[Service]
+User=jubel
+ExecStart=/opt/jubel/jubel.jar
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

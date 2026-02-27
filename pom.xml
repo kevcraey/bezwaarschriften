@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>be.milieuinfo</groupId>
+    <artifactId>acd-springboot-parent</artifactId>
+    <version>2.7.12.0</version>
+  </parent>
+
+  <groupId>be.vlaanderen.omgeving.juris</groupId>
+  <artifactId>juris</artifactId>
+  <name>juris</name>
+  <packaging>pom</packaging>
+  <version>0.0.1-SNAPSHOT</version>
+
+  <modules>
+    <module>webapp</module>
+    <module>app</module>
+    <module>pkg</module>
+  </modules>
+
+  <scm>
+    <connection>scm:svn:https://svn.milieuinfo.be/productie/svn/juris/trunk/</connection>
+    <developerConnection>scm:svn:https://svn.milieuinfo.be/productie/svn/juris/trunk/</developerConnection>
+    <url>scm:svn:https://svn.milieuinfo.be/productie/svn/juris/trunk/</url>
+  </scm>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <!-- java -->
+    <java.version>17</java.version>
+    <maven.compiler.release>${java.version}</maven.compiler.release>
+    <java.modules.jvm.args>--add-opens=java.base/java.lang=ALL-UNNAMED</java.modules.jvm.args>
+
+
+    <!-- plugins -->
+    <frontend-maven-plugin.version>1.12.0</frontend-maven-plugin.version>
+    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+    <jdeb.version>1.8</jdeb.version>
+    <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
+    <process-exec-maven-plugin.version>0.9</process-exec-maven-plugin.version>
+    <maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
+    <maven-resources-plugin.version>3.2.0</maven-resources-plugin.version>
+
+    <!--  frontend -->
+    <node.version>v18.16.1</node.version>
+
+    <!-- backend -->
+    <acd-actuator-spring-boot-starter.version>2.7.12.0</acd-actuator-spring-boot-starter.version>
+    <spring.cloud-version>2021.0.7</spring.cloud-version>
+    <cumuli.security.version>2.1.28</cumuli.security.version>
+    <core-db.version>1.0.3</core-db.version>
+    <postgresql-jdbc-driver.version>42.3.3</postgresql-jdbc-driver.version>
+    <logstash-logback-encoder.version>7.1.1</logstash-logback-encoder.version>
+    <jersey-apache-client4.version>1.19.4</jersey-apache-client4.version>
+    <antivirusdienst-client.version>1.1.9</antivirusdienst-client.version>
+    <cxf.version>3.5.4</cxf.version>
+    <commons-lang3.version>3.12.0</commons-lang3.version>
+    <commons-collections.version>3.2.2</commons-collections.version>
+    <elasticsearch.version>7.17.7</elasticsearch.version>
+    <aws-java-sdk-s3.version>1.12.348</aws-java-sdk-s3.version>
+
+    <!--  E2E tests -->
+    <postgresql.image>postgis/postgis:14-3.2-alpine</postgresql.image>
+    <e2e.selenium-hub.image>selenium/hub:3.141.59-20210422</e2e.selenium-hub.image>
+    <e2e.selenium-chrome.image>selenium/node-chrome-debug:3.141.59-20210422</e2e.selenium-chrome.image>
+
+    <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
+    <checkstyle.version>10.0</checkstyle.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- ACD -->
+      <dependency>
+        <groupId>be.cumuli.boot</groupId>
+        <artifactId>acd-actuator-spring-boot-starter</artifactId>
+        <version>${acd-actuator-spring-boot-starter.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>net.logstash.logback</groupId>
+        <artifactId>logstash-logback-encoder</artifactId>
+        <version>${logstash-logback-encoder.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>be.milieuinfo.framework</groupId>
+        <artifactId>core-db</artifactId>
+        <version>${core-db.version}</version>
+      </dependency>
+
+      <!-- Spring -->
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring.cloud-version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgresql-jdbc-driver.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>be.cumuli.security</groupId>
+        <artifactId>cumuli-oauth2-oidc-spring-boot</artifactId>
+        <version>${cumuli.security.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.sun.jersey.contribs</groupId>
+        <artifactId>jersey-apache-client4</artifactId>
+        <version>${jersey-apache-client4.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>be.milieuinfo.acd</groupId>
+        <artifactId>avd-client</artifactId>
+        <version>${antivirusdienst-client.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.cxf</groupId>
+        <artifactId>cxf-spring-boot-starter-jaxws</artifactId>
+        <version>${cxf.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${commons-lang3.version}</version>
+      </dependency>
+
+      <!-- CVE-2017-15708 -->
+      <dependency>
+        <groupId>commons-collections</groupId>
+        <artifactId>commons-collections</artifactId>
+        <version>${commons-collections.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-s3</artifactId>
+        <version>${aws-java-sdk-s3.version}</version>
+      </dependency>
+
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-clean-plugin</artifactId>
+          <version>${maven-clean-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>com.github.eirslett</groupId>
+          <artifactId>frontend-maven-plugin</artifactId>
+          <version>${frontend-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>${maven-resources-plugin.version}</version>
+        </plugin>
+
+        <plugin>
+          <groupId>org.owasp</groupId>
+          <artifactId>dependency-check-maven</artifactId>
+          <configuration>
+            <suppressionFiles>
+              <suppressionFile>${project.basedir}/owasp-suppression.xml</suppressionFile>
+            </suppressionFiles>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+            <debuglevel>lines,vars,source</debuglevel>
+            <showDeprecation>true</showDeprecation>
+            <showWarnings>true</showWarnings>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>com.github.eirslett</groupId>
+          <artifactId>frontend-maven-plugin</artifactId>
+          <version>${frontend-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.vafer</groupId>
+          <artifactId>jdeb</artifactId>
+          <version>${jdeb.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>${maven-enforcer-plugin.version}</version>
+          <executions>
+            <execution>
+              <id>enforce</id>
+              <phase>validate</phase>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <banDuplicatePomDependencyVersions/>
+                  <reactorModuleConvergence>
+                    <message>Multi module best
+                      practices have not been
+                      followed!
+                    </message>
+                    <ignoreModuleDependencies>true</ignoreModuleDependencies>
+                  </reactorModuleConvergence>
+                  <requireJavaVersion>
+                    <version>${maven.compiler.release}</version>
+                  </requireJavaVersion>
+                  <requireMavenVersion>
+                    <version>3.8.1</version>
+                  </requireMavenVersion>
+                  <requireProfileIdsExist/>
+                  <requireProperty>
+                    <property>maven.compiler.release</property>
+                    <message>Property
+                      'maven.compiler.release'
+                      must be specified!
+                    </message>
+                  </requireProperty>
+                  <requireProperty>
+                    <property>project.build.sourceEncoding</property>
+                    <message>Property
+                      'project.build.sourceEncoding'
+                      must be
+                      specified!
+                    </message>
+                    <regex>UTF-8</regex>
+                    <regexMessage>Property
+                      'project.build.sourceEncoding'
+                      must be
+                      'UTF-8'!
+                    </regexMessage>
+                  </requireProperty>
+                </rules>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <version>${maven-checkstyle-plugin.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>com.puppycrawl.tools</groupId>
+              <artifactId>checkstyle</artifactId>
+              <version>${checkstyle.version}</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>
