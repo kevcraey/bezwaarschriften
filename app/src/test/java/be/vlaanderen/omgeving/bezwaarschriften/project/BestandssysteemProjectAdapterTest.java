@@ -96,4 +96,12 @@ class BestandssysteemProjectAdapterTest {
 
     assertThat(exception.getProjectNaam()).isEqualTo("bestaat-niet");
   }
+
+  @Test
+  void gooidExceptionBijPathTraversal() {
+    assertThrows(
+        ProjectNietGevondenException.class,
+        () -> adapter.geefBestandsnamen("../andere-folder")
+    );
+  }
 }

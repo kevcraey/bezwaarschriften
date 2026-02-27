@@ -62,7 +62,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     tbody.innerHTML = this.__bezwaren
         .map((b) => `<tr>
           <td>${this._escapeHtml(b.bestandsnaam)}</td>
-          <td>${STATUS_LABELS[b.status] || b.status}</td>
+          <td>${STATUS_LABELS[b.status] || this._escapeHtml(b.status)}</td>
         </tr>`)
         .join('');
   }

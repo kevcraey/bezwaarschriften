@@ -52,7 +52,10 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
 
   @Override
   public List<String> geefBestandsnamen(final String projectNaam) {
-    var projectPad = inputFolder.resolve(projectNaam);
+    var projectPad = inputFolder.resolve(projectNaam).normalize();
+    if (!projectPad.startsWith(inputFolder.normalize())) {
+      throw new ProjectNietGevondenException(projectNaam);
+    }
     if (!Files.isDirectory(projectPad)) {
       throw new ProjectNietGevondenException(projectNaam);
     }
