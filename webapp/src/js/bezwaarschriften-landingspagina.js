@@ -38,6 +38,7 @@ export class BezwaarschriftenLandingspagina extends BaseHTMLElement {
                         Welkom op de toepassing Bezwaarschriften. Hier kan u bezwaarschriften automatisch laten verwerken.
                     </p>
                    </vl-typography>
+                   <bezwaarschriften-project-selectie></bezwaarschriften-project-selectie>
                   </div>
                   <div class="vl-column vl-column--2 vl-column--1--s"></div>
                 </div>
