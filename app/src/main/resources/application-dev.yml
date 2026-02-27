@@ -1,4 +1,12 @@
+bezwaarschriften:
+  input:
+    folder: ../input
+
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bezwaarschriften
+    username: bezwaarschriften_user
+    password: bezwaarschriften_password
   autoconfigure:
     # prevent lookup of keycloak URL on Bamboo
     exclude: org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration  
