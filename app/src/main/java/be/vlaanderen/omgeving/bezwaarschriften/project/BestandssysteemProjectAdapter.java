@@ -30,8 +30,8 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
    * @param folder Pad naar de input-folder met projecten
    */
   public BestandssysteemProjectAdapter(
-      @Value("${bezwaarschriften.input.folder}") final Path folder) {
-    this.inputFolder = folder;
+      @Value("${bezwaarschriften.input.folder}") final String folder) {
+    this.inputFolder = Path.of(folder);
   }
 
   @Override

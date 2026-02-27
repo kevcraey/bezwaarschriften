@@ -18,7 +18,7 @@ class BestandssysteemProjectAdapterTest {
 
   @BeforeEach
   void setUp() {
-    adapter = new BestandssysteemProjectAdapter(inputFolder);
+    adapter = new BestandssysteemProjectAdapter(inputFolder.toString());
   }
 
   @Test
@@ -50,7 +50,7 @@ class BestandssysteemProjectAdapterTest {
 
   @Test
   void geeftLegeProjectenlijstAlsInputFolderNietBestaat() throws Exception {
-    var adapter = new BestandssysteemProjectAdapter(inputFolder.resolve("bestaat-niet"));
+    var adapter = new BestandssysteemProjectAdapter(inputFolder.resolve("bestaat-niet").toString());
 
     var projecten = adapter.geefProjecten();
 

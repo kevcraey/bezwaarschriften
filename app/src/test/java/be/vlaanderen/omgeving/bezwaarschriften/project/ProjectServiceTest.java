@@ -32,7 +32,7 @@ class ProjectServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new ProjectService(projectPoort, ingestiePoort, Path.of("input"));
+    service = new ProjectService(projectPoort, ingestiePoort, "input");
   }
 
   @Test
