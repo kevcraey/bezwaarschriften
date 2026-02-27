@@ -15,12 +15,16 @@ class BezwaarBestandTest {
   }
 
   @Test
-  void maaktKopieMetAndereStatus() {
-    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.TODO);
-    var bijgewerkt = bestand.withStatus(BezwaarBestandStatus.EXTRACTIE_KLAAR);
+  void maaktRecordAanMetAantalWoorden() {
+    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR, 42);
 
-    assertThat(bijgewerkt.bestandsnaam()).isEqualTo("bezwaar-001.txt");
-    assertThat(bijgewerkt.status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
-    assertThat(bestand.status()).isEqualTo(BezwaarBestandStatus.TODO); // original unchanged
+    assertThat(bestand.aantalWoorden()).isEqualTo(42);
+  }
+
+  @Test
+  void tweeArgConstructorZetAantalWoordenOpNull() {
+    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.TODO);
+
+    assertThat(bestand.aantalWoorden()).isNull();
   }
 }

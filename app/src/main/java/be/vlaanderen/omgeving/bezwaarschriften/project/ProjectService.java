@@ -26,8 +26,8 @@ public class ProjectService {
   private final IngestiePoort ingestiePoort;
   private final Path inputFolder;
 
-  /** In-memory statusregister: projectNaam → bestandsnaam → status. */
-  private final Map<String, Map<String, BezwaarBestandStatus>> statusRegister =
+  /** In-memory statusregister: projectNaam → bestandsnaam → verwerkingsresultaat. */
+  private final Map<String, Map<String, VerwerkingsResultaat>> statusRegister =
       new ConcurrentHashMap<>();
 
   /**
@@ -64,8 +64,17 @@ public class ProjectService {
    */
   public List<BezwaarBestand> geefBezwaren(String projectNaam) {
     var bestandsnamen = projectPoort.geefBestandsnamen(projectNaam);
+    var projectResultaten = statusRegister.get(projectNaam);
     return bestandsnamen.stream()
-        .map(naam -> new BezwaarBestand(naam, bepaalStatus(projectNaam, naam)))
+        .map(naam -> {
+          if (projectResultaten != null && projectResultaten.containsKey(naam)) {
+            var resultaat = projectResultaten.get(naam);
+            return new BezwaarBestand(naam, resultaat.status(), resultaat.aantalWoorden());
+          }
+          return new BezwaarBestand(naam, isTxtBestand(naam)
+              ? BezwaarBestandStatus.TODO
+              : BezwaarBestandStatus.NIET_ONDERSTEUND);
+        })
         .toList();
   }
 
@@ -88,12 +97,15 @@ public class ProjectService {
       var bestandsPad = inputFolder.resolve(projectNaam).resolve("bezwaren")
           .resolve(bestand.bestandsnaam());
       try {
-        ingestiePoort.leesBestand(bestandsPad);
-        projectStatussen.put(bestand.bestandsnaam(), BezwaarBestandStatus.EXTRACTIE_KLAAR);
-        LOGGER.info("Bestand '{}' succesvol verwerkt voor project '{}'",
-            bestand.bestandsnaam(), projectNaam);
+        var brondocument = ingestiePoort.leesBestand(bestandsPad);
+        var aantalWoorden = telWoorden(brondocument.tekst());
+        projectStatussen.put(bestand.bestandsnaam(),
+            new VerwerkingsResultaat(BezwaarBestandStatus.EXTRACTIE_KLAAR, aantalWoorden));
+        LOGGER.info("Bestand '{}' succesvol verwerkt voor project '{}' ({} woorden)",
+            bestand.bestandsnaam(), projectNaam, aantalWoorden);
       } catch (Exception e) {
-        projectStatussen.put(bestand.bestandsnaam(), BezwaarBestandStatus.FOUT);
+        projectStatussen.put(bestand.bestandsnaam(),
+            new VerwerkingsResultaat(BezwaarBestandStatus.FOUT, null));
         LOGGER.warn("Fout bij verwerking van '{}' voor project '{}': {}",
             bestand.bestandsnaam(), projectNaam, e.getMessage());
       }
@@ -102,17 +114,16 @@ public class ProjectService {
     return geefBezwaren(projectNaam);
   }
 
-  private BezwaarBestandStatus bepaalStatus(String projectNaam, String bestandsnaam) {
-    var projectStatussen = statusRegister.get(projectNaam);
-    if (projectStatussen != null && projectStatussen.containsKey(bestandsnaam)) {
-      return projectStatussen.get(bestandsnaam);
-    }
-    return isTxtBestand(bestandsnaam)
-        ? BezwaarBestandStatus.TODO
-        : BezwaarBestandStatus.NIET_ONDERSTEUND;
-  }
-
   private boolean isTxtBestand(String bestandsnaam) {
     return bestandsnaam.toLowerCase().endsWith(".txt");
   }
+
+  private int telWoorden(String tekst) {
+    if (tekst == null || tekst.isBlank()) {
+      return 0;
+    }
+    return tekst.strip().split("\\s+").length;
+  }
+
+  private record VerwerkingsResultaat(BezwaarBestandStatus status, Integer aantalWoorden) { }
 }
