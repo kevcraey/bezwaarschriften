@@ -75,6 +75,7 @@ class ProjectServiceTest {
     assertThat(resultaat).hasSize(1);
     assertThat(resultaat.get(0).status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
     assertThat(resultaat.get(0).aantalWoorden()).isEqualTo(5);
+    assertThat(resultaat.get(0).aantalBezwaren()).isNull();
   }
 
   @Test
@@ -143,5 +144,74 @@ class ProjectServiceTest {
         ProjectNietGevondenException.class,
         () -> service.geefBezwaren("bestaat-niet")
     );
+  }
+
+  @Test
+  void extraheerEersteBestandGeeft3Bezwaren() throws Exception {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.txt", "bezwaar-002.txt"));
+    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar-001.txt")))
+        .thenReturn(new Brondocument("test tekst hier", "bezwaar-001.txt",
+            "input/windmolens/bezwaren/bezwaar-001.txt", Instant.now()));
+
+    var resultaat = service.extraheer("windmolens", "bezwaar-001.txt");
+
+    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
+    assertThat(resultaat.aantalBezwaren()).isEqualTo(3);
+    assertThat(resultaat.aantalWoorden()).isEqualTo(3);
+  }
+
+  @Test
+  void extraheerDerdeBestandGeeft5Bezwaren() throws Exception {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("a.txt", "b.txt", "c.txt"));
+    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "c.txt")))
+        .thenReturn(new Brondocument("tekst", "c.txt",
+            "input/windmolens/bezwaren/c.txt", Instant.now()));
+
+    var resultaat = service.extraheer("windmolens", "c.txt");
+
+    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
+    assertThat(resultaat.aantalBezwaren()).isEqualTo(5);
+  }
+
+  @Test
+  void extraheerTweedeBestandFaaltBijEerstePoging() throws Exception {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("a.txt", "b.txt", "c.txt"));
+    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "b.txt")))
+        .thenReturn(new Brondocument("tekst", "b.txt",
+            "input/windmolens/bezwaren/b.txt", Instant.now()));
+
+    var resultaat = service.extraheer("windmolens", "b.txt");
+
+    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.FOUT);
+    assertThat(resultaat.aantalBezwaren()).isNull();
+  }
+
+  @Test
+  void extraheerTweedeBestandSlaagdBijTweedePoging() throws Exception {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("a.txt", "b.txt", "c.txt"));
+    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "b.txt")))
+        .thenReturn(new Brondocument("tekst", "b.txt",
+            "input/windmolens/bezwaren/b.txt", Instant.now()));
+
+    service.extraheer("windmolens", "b.txt"); // eerste poging faalt
+    var resultaat = service.extraheer("windmolens", "b.txt"); // tweede poging slaagt
+
+    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
+    assertThat(resultaat.aantalBezwaren()).isEqualTo(4);
+  }
+
+  @Test
+  void extraheerNietOndersteundBestandGeeftNietOndersteund() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bijlage.pdf"));
+
+    var resultaat = service.extraheer("windmolens", "bijlage.pdf");
+
+    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.NIET_ONDERSTEUND);
+    assertThat(resultaat.aantalBezwaren()).isNull();
   }
 }

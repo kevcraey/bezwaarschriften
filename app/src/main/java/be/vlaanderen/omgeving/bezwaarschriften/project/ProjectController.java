@@ -64,26 +64,43 @@ public class ProjectController {
   /** Response DTO voor projectenlijst. */
   record ProjectenResponse(List<String> projecten) {}
 
+  /**
+   * Start de extractie voor een enkel bezwaarbestand van een project.
+   *
+   * @param naam Projectnaam
+   * @param bestandsnaam Naam van het bezwaarbestand
+   * @return Bijgewerkte bezwaarbestand met status
+   */
+  @PostMapping("/{naam}/bezwaren/{bestandsnaam}/extraheer")
+  public ResponseEntity<BezwaarBestandDto> extraheer(
+      @PathVariable String naam, @PathVariable String bestandsnaam) {
+    var resultaat = projectService.extraheer(naam, bestandsnaam);
+    return ResponseEntity.ok(new BezwaarBestandDto(
+        resultaat.bestandsnaam(), statusNaarString(resultaat.status()),
+        resultaat.aantalWoorden(), resultaat.aantalBezwaren()));
+  }
+
+  private static String statusNaarString(BezwaarBestandStatus status) {
+    return switch (status) {
+      case TODO -> "todo";
+      case EXTRACTIE_KLAAR -> "extractie-klaar";
+      case FOUT -> "fout";
+      case NIET_ONDERSTEUND -> "niet ondersteund";
+    };
+  }
+
   /** Response DTO voor bezwarenlijst. */
   record BezwarenResponse(List<BezwaarBestandDto> bezwaren) {
 
     static BezwarenResponse van(List<BezwaarBestand> bezwaren) {
       return new BezwarenResponse(bezwaren.stream()
           .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b.status()),
-              b.aantalWoorden()))
+              b.aantalWoorden(), b.aantalBezwaren()))
           .toList());
-    }
-
-    private static String statusNaarString(BezwaarBestandStatus status) {
-      return switch (status) {
-        case TODO -> "todo";
-        case EXTRACTIE_KLAAR -> "extractie-klaar";
-        case FOUT -> "fout";
-        case NIET_ONDERSTEUND -> "niet ondersteund";
-      };
     }
   }
 
   /** DTO voor een enkel bezwaarbestand in de response. */
-  record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden) {}
+  record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden,
+      Integer aantalBezwaren) {}
 }
