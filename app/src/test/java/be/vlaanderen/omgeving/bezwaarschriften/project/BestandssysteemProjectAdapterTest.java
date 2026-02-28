@@ -88,6 +88,19 @@ class BestandssysteemProjectAdapterTest {
   }
 
   @Test
+  void negeertVerborgenBestandenInBezwarenMap() throws Exception {
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    Files.createDirectories(bezwarenMap);
+    Files.writeString(bezwarenMap.resolve("bezwaar-001.txt"), "inhoud");
+    Files.writeString(bezwarenMap.resolve(".DS_Store"), "verborgen");
+    Files.writeString(bezwarenMap.resolve(".hidden"), "verborgen");
+
+    var bestandsnamen = adapter.geefBestandsnamen("windmolens");
+
+    assertThat(bestandsnamen).containsExactly("bezwaar-001.txt");
+  }
+
+  @Test
   void gooidExceptionVoorOnbekendProject() {
     var exception = assertThrows(
         ProjectNietGevondenException.class,
@@ -102,6 +115,47 @@ class BestandssysteemProjectAdapterTest {
     assertThrows(
         ProjectNietGevondenException.class,
         () -> adapter.geefBestandsnamen("../andere-folder")
+    );
+  }
+
+  @Test
+  void geefBestandsPad_geeftPadVoorBestaandBestand() throws Exception {
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    Files.createDirectories(bezwarenMap);
+    Files.writeString(bezwarenMap.resolve("bezwaar1.txt"), "inhoud");
+
+    var result = adapter.geefBestandsPad("windmolens", "bezwaar1.txt");
+
+    assertThat(result).isEqualTo(bezwarenMap.resolve("bezwaar1.txt"));
+  }
+
+  @Test
+  void geefBestandsPad_gooitExceptieBijPathTraversal() throws Exception {
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    Files.createDirectories(bezwarenMap);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> adapter.geefBestandsPad("windmolens", "../etc/passwd")
+    );
+  }
+
+  @Test
+  void geefBestandsPad_gooitExceptieBijOnbekendBestand() throws Exception {
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    Files.createDirectories(bezwarenMap);
+
+    assertThrows(
+        BestandNietGevondenException.class,
+        () -> adapter.geefBestandsPad("windmolens", "bestaat-niet.txt")
+    );
+  }
+
+  @Test
+  void geefBestandsPad_gooitExceptieBijOnbekendProject() {
+    assertThrows(
+        ProjectNietGevondenException.class,
+        () -> adapter.geefBestandsPad("onbekend", "bezwaar1.txt")
     );
   }
 }
