@@ -115,6 +115,17 @@ public class ProjectService {
     return geefBezwaren(projectNaam);
   }
 
+  /**
+   * Extraheert bezwaren uit een enkel bestand van een project.
+   *
+   * @param projectNaam Naam van het project
+   * @param bestandsnaam Naam van het bezwaarbestand
+   * @return Bijgewerkt bezwaarbestand met extractieresultaat
+   */
+  public BezwaarBestand extraheer(String projectNaam, String bestandsnaam) {
+    throw new UnsupportedOperationException("Nog niet geimplementeerd");
+  }
+
   private boolean isTxtBestand(String bestandsnaam) {
     return bestandsnaam.toLowerCase().endsWith(".txt");
   }
