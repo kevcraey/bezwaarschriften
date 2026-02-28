@@ -1,10 +1,16 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,5 +72,39 @@ class ProjectControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.messages[0].code").value("project.not-found"))
         .andExpect(jsonPath("$.messages[0].parameters.naam").value("bestaat-niet"));
+  }
+
+  @Test
+  void downloadBestand_stuurtBestandAlsBijlage() throws Exception {
+    Path tempFile = Files.createTempFile("test", ".txt");
+    Files.writeString(tempFile, "testinhoud");
+    when(projectService.geefBestandsPad("windmolens", "bezwaar1.txt")).thenReturn(tempFile);
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/bezwaren/bezwaar1.txt/download"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Content-Disposition", "attachment; filename=\"bezwaar1.txt\""))
+        .andExpect(content().string("testinhoud"));
+
+    Files.deleteIfExists(tempFile);
+  }
+
+  @Test
+  void downloadBestand_geeft404VoorOnbekendBestand() throws Exception {
+    when(projectService.geefBestandsPad("windmolens", "onbekend.txt"))
+        .thenThrow(new BestandNietGevondenException("onbekend.txt"));
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/bezwaren/onbekend.txt/download"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.messages[0].code").value("bestand.not-found"));
+  }
+
+  @Test
+  void downloadBestand_geeft400BijOngeldigeBestandsnaam() throws Exception {
+    when(projectService.geefBestandsPad(eq("windmolens"), eq("kwaadaardig.txt")))
+        .thenThrow(new IllegalArgumentException("Ongeldige bestandsnaam: kwaadaardig.txt"));
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/bezwaren/kwaadaardig.txt/download"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.messages[0].code").value("invalid.argument"));
   }
 }

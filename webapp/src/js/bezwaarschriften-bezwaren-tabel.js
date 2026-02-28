@@ -40,6 +40,15 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     this.__bezwaren = [];
     this.__takenData = {};
     this.__timerInterval = null;
+    this._projectNaam = null;
+  }
+
+  set projectNaam(naam) {
+    this._projectNaam = naam;
+  }
+
+  get projectNaam() {
+    return this._projectNaam;
   }
 
   set bezwaren(waarde) {
@@ -112,7 +121,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           const aantalBezwaren = b.aantalBezwaren != null ? b.aantalBezwaren : '';
           return `<tr>
             <td><input type="checkbox" class="rij-checkbox" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" ${disabled}></td>
-            <td>${this._escapeHtml(b.bestandsnaam)}</td>
+            <td>${this._renderBestandsnaam(b.bestandsnaam)}</td>
             <td>${aantalBezwaren}</td>
             <td class="status-cel" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}">${this._formatStatus(b)}</td>
           </tr>`;
@@ -202,6 +211,15 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       bubbles: true,
       composed: true,
     }));
+  }
+
+  _renderBestandsnaam(bestandsnaam) {
+    const escaped = this._escapeHtml(bestandsnaam);
+    if (this._projectNaam) {
+      const url = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(bestandsnaam)}/download`;
+      return `<a href="${url}" download="${escaped}">${escaped}</a>`;
+    }
+    return escaped;
   }
 
   _escapeHtml(str) {
