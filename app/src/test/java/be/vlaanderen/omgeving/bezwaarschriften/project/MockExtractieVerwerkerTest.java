@@ -69,14 +69,24 @@ class MockExtractieVerwerkerTest {
   }
 
   @Test
-  void tweedeBestandSlaagdBijTweedePoging() {
+  void tweedeBestandFaaltBijTweedePoging() {
     String bestandsnaam = "bezwaar-002.txt";
-    mockBestand(bestandsnaam, "tweede poging tekst hier");
+    mockBestand(bestandsnaam, "tekst");
 
-    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 1);
+    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 1))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("bezwaar-002.txt");
+  }
+
+  @Test
+  void tweedeBestandSlaagdBijDerdePoging() {
+    String bestandsnaam = "bezwaar-002.txt";
+    mockBestand(bestandsnaam, "derde poging tekst hier nu");
+
+    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 2);
 
     assertThat(resultaat.aantalBezwaren()).isEqualTo(4);
-    assertThat(resultaat.aantalWoorden()).isEqualTo(4);
+    assertThat(resultaat.aantalWoorden()).isEqualTo(5);
   }
 
   @Test

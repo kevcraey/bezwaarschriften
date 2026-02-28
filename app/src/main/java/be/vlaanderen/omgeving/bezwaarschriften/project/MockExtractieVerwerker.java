@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * Mock-implementatie van {@link ExtractieVerwerker} die een AI-extractie simuleert.
  *
  * <p>Gebruikt configureerbare delay om realistische verwerkingstijden na te bootsen.
- * Het tweede .txt-bestand (index 1) faalt altijd bij de eerste poging.
+ * Het tweede .txt-bestand (index 1) faalt bij de eerste twee pogingen (poging 0 en 1).
  */
 @Component
 public class MockExtractieVerwerker implements ExtractieVerwerker {
@@ -101,9 +101,9 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     return switch (index) {
       case 0 -> 3;
       case 1 -> {
-        if (poging == 0) {
+        if (poging < 2) {
           throw new RuntimeException(
-              "Gesimuleerde fout bij eerste poging voor bestand '" + bestandsnaam + "'");
+              "Gesimuleerde fout bij poging " + poging + " voor bestand '" + bestandsnaam + "'");
         }
         yield 4;
       }

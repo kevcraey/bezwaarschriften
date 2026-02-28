@@ -3,7 +3,7 @@ bezwaarschriften:
     folder: input
   extractie:
     max-concurrent: 3
-    max-pogingen: 3
+    max-pogingen: 2
     mock:
       min-delay-seconden: 5
       max-delay-seconden: 30
