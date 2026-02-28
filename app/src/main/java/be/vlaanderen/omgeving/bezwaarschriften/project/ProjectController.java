@@ -1,6 +1,13 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,6 +53,32 @@ public class ProjectController {
   public ResponseEntity<BezwarenResponse> geefBezwaren(@PathVariable String naam) {
     var bezwaren = projectService.geefBezwaren(naam);
     return ResponseEntity.ok(BezwarenResponse.van(bezwaren));
+  }
+
+  /**
+   * Download een bezwaarbestand.
+   *
+   * @param naam Projectnaam
+   * @param bestandsnaam Naam van het te downloaden bestand
+   * @return Het bestand als bijlage
+   */
+  @GetMapping("/{naam}/bezwaren/{bestandsnaam}/download")
+  public ResponseEntity<Resource> downloadBestand(
+      @PathVariable String naam,
+      @PathVariable String bestandsnaam) throws IOException {
+    Path pad = projectService.geefBestandsPad(naam, bestandsnaam);
+    Resource resource = new UrlResource(pad.toUri());
+
+    String contentType = Files.probeContentType(pad);
+    if (contentType == null) {
+      contentType = "application/octet-stream";
+    }
+
+    return ResponseEntity.ok()
+        .contentType(MediaType.parseMediaType(contentType))
+        .header(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + bestandsnaam + "\"")
+        .body(resource);
   }
 
   private static String statusNaarString(BezwaarBestandStatus status) {

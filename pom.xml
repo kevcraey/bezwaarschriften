@@ -30,7 +30,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <!-- java -->
-    <java.version>24</java.version>
+    <java.version>21</java.version>
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <java.modules.jvm.args>--add-opens=java.base/java.lang=ALL-UNNAMED</java.modules.jvm.args>
 
