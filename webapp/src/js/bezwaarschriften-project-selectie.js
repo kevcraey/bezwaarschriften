@@ -251,6 +251,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const sectie = this.shadowRoot && this.shadowRoot.querySelector('#tabs-sectie');
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-tabel');
     if (tabel) {
+      tabel.projectNaam = this.__geselecteerdProject;
       tabel.bezwaren = this.__bezwaren;
     }
     if (sectie) {
