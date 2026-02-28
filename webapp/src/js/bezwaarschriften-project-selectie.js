@@ -67,8 +67,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <vl-button id="upload-verzend-knop">Uploaden</vl-button>
         </div>
       </vl-modal>
-      <vl-toaster id="succes-toaster" fade-out></vl-toaster>
-      <vl-toaster id="error-toaster"></vl-toaster>
+      <vl-toaster id="toaster"></vl-toaster>
     `);
     this.__projecten = [];
     this.__geselecteerdProject = null;
@@ -392,8 +391,21 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           }
 
           if (data.fouten && data.fouten.length > 0) {
-            this._toonToast('error',
+            const alert = document.createElement('vl-alert');
+            alert.setAttribute('type', 'error');
+            alert.setAttribute('icon', 'warning');
+            alert.setAttribute('message',
               `${data.fouten.length} bestand(en) niet opgeladen: bestand met dezelfde naam bestaat al.`);
+            alert.setAttribute('closable', '');
+            const ul = document.createElement('ul');
+            data.fouten.forEach((f) => {
+              const li = document.createElement('li');
+              li.textContent = f.bestandsnaam;
+              ul.appendChild(li);
+            });
+            alert.appendChild(ul);
+            const toaster = this.shadowRoot.querySelector('#toaster');
+            if (toaster) toaster.show(alert);
           }
 
           this._laadBezwaren(this.__geselecteerdProject);
@@ -452,15 +464,18 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   }
 
   _toonToast(type, bericht) {
-    const toasterId = type === 'success' ? '#succes-toaster' : '#error-toaster';
-    const toaster = this.shadowRoot.querySelector(toasterId);
-    if (toaster) {
-      toaster.showAlert({
-        type: type,
-        icon: type === 'success' ? 'check' : 'warning',
-        message: bericht,
-        closable: 'true',
-      });
+    const toaster = this.shadowRoot.querySelector('#toaster');
+    if (!toaster) return;
+
+    const alert = document.createElement('vl-alert');
+    alert.setAttribute('type', type);
+    alert.setAttribute('icon', type === 'success' ? 'check' : 'warning');
+    alert.setAttribute('message', bericht);
+    alert.setAttribute('closable', '');
+    toaster.show(alert);
+
+    if (type === 'success') {
+      setTimeout(() => alert.remove(), 5000);
     }
   }
 }
