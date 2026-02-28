@@ -3,7 +3,6 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +13,7 @@ import org.springframework.stereotype.Component;
  * Mock-implementatie van {@link ExtractieVerwerker} die een AI-extractie simuleert.
  *
  * <p>Gebruikt configureerbare delay om realistische verwerkingstijden na te bootsen.
- * Het tweede .txt-bestand (index 1) faalt bij de eerste twee pogingen (poging 0 en 1).
+ * Bestanden met "2" in de naam falen bij de eerste twee pogingen (poging 0 en 1).
  */
 @Component
 public class MockExtractieVerwerker implements ExtractieVerwerker {
@@ -22,7 +21,6 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private final ProjectPoort projectPoort;
   private final IngestiePoort ingestiePoort;
   private final Path inputFolder;
   private final int minDelaySeconden;
@@ -31,19 +29,16 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
   /**
    * Maakt een nieuwe MockExtractieVerwerker aan.
    *
-   * @param projectPoort Port voor projecttoegang
    * @param ingestiePoort Port voor bestandsingestie
    * @param inputFolderString Root input folder als string-pad
    * @param minDelaySeconden Minimale vertraging in seconden
    * @param maxDelaySeconden Maximale vertraging in seconden
    */
   public MockExtractieVerwerker(
-      ProjectPoort projectPoort,
       IngestiePoort ingestiePoort,
       @Value("${bezwaarschriften.input.folder}") String inputFolderString,
       @Value("${bezwaarschriften.extractie.mock.min-delay-seconden:5}") int minDelaySeconden,
       @Value("${bezwaarschriften.extractie.mock.max-delay-seconden:30}") int maxDelaySeconden) {
-    this.projectPoort = projectPoort;
     this.ingestiePoort = ingestiePoort;
     this.inputFolder = Path.of(inputFolderString);
     this.minDelaySeconden = minDelaySeconden;
@@ -58,10 +53,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
 
     simuleerDelay();
 
-    var txtBestanden = filterTxtBestanden(projectPoort.geefBestandsnamen(projectNaam));
-    int index = txtBestanden.indexOf(bestandsnaam);
-
-    int aantalBezwaren = bepaalAantalBezwaren(index, poging, bestandsnaam);
+    int aantalBezwaren = bepaalAantalBezwaren(bestandsnaam, poging);
 
     LOGGER.info("Bestand '{}' verwerkt voor project '{}' (poging {}, {} woorden, {} bezwaren)",
         bestandsnaam, projectNaam, poging, aantalWoorden, aantalBezwaren);
@@ -91,24 +83,14 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     }
   }
 
-  private List<String> filterTxtBestanden(List<String> bestandsnamen) {
-    return bestandsnamen.stream()
-        .filter(naam -> naam.toLowerCase().endsWith(".txt"))
-        .toList();
-  }
-
-  private int bepaalAantalBezwaren(int index, int poging, String bestandsnaam) {
-    return switch (index) {
-      case 0 -> 3;
-      case 1 -> {
-        if (poging < 2) {
-          throw new RuntimeException(
-              "Gesimuleerde fout bij poging " + poging + " voor bestand '" + bestandsnaam + "'");
-        }
-        yield 4;
+  private int bepaalAantalBezwaren(String bestandsnaam, int poging) {
+    if (bestandsnaam.contains("2")) {
+      if (poging < 2) {
+        throw new RuntimeException(
+            "Gesimuleerde fout bij poging " + poging + " voor bestand '" + bestandsnaam + "'");
       }
-      case 2 -> 5;
-      default -> 2;
-    };
+      return 4;
+    }
+    return ThreadLocalRandom.current().nextInt(2, 6);
   }
 }
