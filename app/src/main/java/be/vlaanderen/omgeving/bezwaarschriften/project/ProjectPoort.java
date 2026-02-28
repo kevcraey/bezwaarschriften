@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -22,4 +23,35 @@ public interface ProjectPoort {
    * @throws ProjectNietGevondenException Als het project niet bestaat
    */
   List<String> geefBestandsnamen(String projectNaam);
+
+  /**
+   * Slaat een bestand op in de bezwaren-map van een project.
+   *
+   * @param projectNaam Naam van het project
+   * @param bestandsnaam Naam van het bestand
+   * @param inhoud Inhoud van het bestand als byte-array
+   * @throws ProjectNietGevondenException Als het project niet bestaat
+   */
+  void slaBestandOp(String projectNaam, String bestandsnaam, byte[] inhoud);
+
+  /**
+   * Verwijdert een bestand uit de bezwaren-map van een project.
+   *
+   * @param projectNaam Naam van het project
+   * @param bestandsnaam Naam van het bestand
+   * @return {@code true} als het bestand verwijderd is, {@code false} als het niet gevonden is
+   * @throws ProjectNietGevondenException Als het project niet bestaat
+   */
+  boolean verwijderBestand(String projectNaam, String bestandsnaam);
+
+  /**
+   * Geeft het volledige pad naar een bestand in de bezwaren-map van een project.
+   *
+   * @param projectNaam Naam van het project
+   * @param bestandsnaam Naam van het bestand
+   * @return Het pad naar het bestand
+   * @throws ProjectNietGevondenException Als het project niet bestaat
+   * @throws BestandNietGevondenException Als het bestand niet bestaat
+   */
+  Path geefBestandsPad(String projectNaam, String bestandsnaam);
 }
