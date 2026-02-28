@@ -37,16 +37,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
             <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
             <vl-button id="verwijder-knop" disabled>Verwijder geselecteerde</vl-button>
             <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
-            <div id="upload-zone" hidden>
-              <vl-upload id="bestand-upload"
-                accepted-files=".txt"
-                max-files="100"
-                max-size="50"
-                main-title="Bezwaarbestanden toevoegen"
-                sub-title="Sleep .txt bestanden hierheen of klik om te bladeren">
-              </vl-upload>
-              <vl-button id="upload-verzend-knop">Uploaden</vl-button>
-            </div>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
           </vl-tabs-pane>
@@ -61,6 +51,20 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         </div>
         <div slot="button">
           <vl-button id="verwijder-bevestig-knop">Verwijderen</vl-button>
+        </div>
+      </vl-modal>
+      <vl-modal id="upload-modal" title="Bestanden toevoegen" closable>
+        <div slot="content">
+          <vl-upload id="bestand-upload"
+            accepted-files=".txt"
+            max-files="100"
+            max-size="50"
+            main-title="Bezwaarbestanden toevoegen"
+            sub-title="Sleep .txt bestanden hierheen of klik om te bladeren">
+          </vl-upload>
+        </div>
+        <div slot="button">
+          <vl-button id="upload-verzend-knop">Uploaden</vl-button>
         </div>
       </vl-modal>
     `);
@@ -246,8 +250,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
     if (toevoegenKnop) {
       toevoegenKnop.addEventListener('vl-click', () => {
-        const uploadZone = this.shadowRoot.querySelector('#upload-zone');
-        if (uploadZone) uploadZone.hidden = !uploadZone.hidden;
+        const modal = this.shadowRoot.querySelector('#upload-modal');
+        if (modal) modal.open();
       });
     }
 
@@ -377,8 +381,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         })
         .then((data) => {
           uploadEl.removeAllFiles();
-          const uploadZone = this.shadowRoot.querySelector('#upload-zone');
-          if (uploadZone) uploadZone.hidden = true;
+          const modal = this.shadowRoot.querySelector('#upload-modal');
+          if (modal) modal.close();
 
           if (data.fouten && data.fouten.length > 0) {
             const foutTekst = data.fouten.map((f) => `${f.bestandsnaam}: ${f.reden}`).join(', ');
