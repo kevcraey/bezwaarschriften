@@ -4,7 +4,6 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -49,45 +48,19 @@ public class ProjectController {
     return ResponseEntity.ok(BezwarenResponse.van(bezwaren));
   }
 
-  /**
-   * Start de batchverwerking voor alle openstaande bezwaren van een project.
-   *
-   * @param naam Projectnaam
-   * @return Bijgewerkte bezwarenlijst met statussen
-   */
-  @PostMapping("/{naam}/verwerk")
-  public ResponseEntity<BezwarenResponse> verwerk(@PathVariable String naam) {
-    var bezwaren = projectService.verwerk(naam);
-    return ResponseEntity.ok(BezwarenResponse.van(bezwaren));
-  }
-
-  /** Response DTO voor projectenlijst. */
-  record ProjectenResponse(List<String> projecten) {}
-
-  /**
-   * Start de extractie voor een enkel bezwaarbestand van een project.
-   *
-   * @param naam Projectnaam
-   * @param bestandsnaam Naam van het bezwaarbestand
-   * @return Bijgewerkte bezwaarbestand met status
-   */
-  @PostMapping("/{naam}/bezwaren/{bestandsnaam}/extraheer")
-  public ResponseEntity<BezwaarBestandDto> extraheer(
-      @PathVariable String naam, @PathVariable String bestandsnaam) {
-    var resultaat = projectService.extraheer(naam, bestandsnaam);
-    return ResponseEntity.ok(new BezwaarBestandDto(
-        resultaat.bestandsnaam(), statusNaarString(resultaat.status()),
-        resultaat.aantalWoorden(), resultaat.aantalBezwaren()));
-  }
-
   private static String statusNaarString(BezwaarBestandStatus status) {
     return switch (status) {
       case TODO -> "todo";
+      case WACHTEND -> "wachtend";
+      case BEZIG -> "bezig";
       case EXTRACTIE_KLAAR -> "extractie-klaar";
       case FOUT -> "fout";
       case NIET_ONDERSTEUND -> "niet ondersteund";
     };
   }
+
+  /** Response DTO voor projectenlijst. */
+  record ProjectenResponse(List<String> projecten) {}
 
   /** Response DTO voor bezwarenlijst. */
   record BezwarenResponse(List<BezwaarBestandDto> bezwaren) {
