@@ -3,16 +3,22 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * REST controller voor project- en bezwaarbeheer.
@@ -81,6 +87,58 @@ public class ProjectController {
         .body(resource);
   }
 
+  /**
+   * Uploadt bezwaarbestanden naar een project.
+   *
+   * @param naam Projectnaam
+   * @param bestanden Ge-uploade bestanden
+   * @return Upload-resultaat met geslaagde en gefaalde bestanden
+   */
+  @PostMapping("/{naam}/bezwaren/upload")
+  public ResponseEntity<UploadResponse> uploadBezwaren(
+      @PathVariable String naam,
+      @RequestParam("bestanden") MultipartFile[] bestanden) {
+    if (bestanden.length > 100) {
+      return ResponseEntity.badRequest().body(
+          new UploadResponse(List.of(),
+              List.of(new UploadFoutDto("", "Maximum 100 bestanden per upload"))));
+    }
+
+    var bestandenMap = new LinkedHashMap<String, byte[]>();
+    var fouten = new ArrayList<UploadFoutDto>();
+
+    for (var bestand : bestanden) {
+      try {
+        bestandenMap.put(bestand.getOriginalFilename(), bestand.getBytes());
+      } catch (IOException e) {
+        fouten.add(new UploadFoutDto(bestand.getOriginalFilename(),
+            "Kon bestand niet lezen"));
+      }
+    }
+
+    var resultaat = projectService.uploadBezwaren(naam, bestandenMap);
+    resultaat.fouten().forEach(f ->
+        fouten.add(new UploadFoutDto(f.bestandsnaam(), f.reden())));
+
+    return ResponseEntity.ok(new UploadResponse(resultaat.geupload(), fouten));
+  }
+
+  /**
+   * Verwijdert een bezwaarbestand en bijhorende extractie-taken.
+   *
+   * @param naam Projectnaam
+   * @param bestandsnaam Bestandsnaam
+   * @return 204 No Content bij succes, 404 als bestand niet gevonden
+   */
+  @DeleteMapping("/{naam}/bezwaren/{bestandsnaam}")
+  public ResponseEntity<Void> verwijderBezwaar(
+      @PathVariable String naam,
+      @PathVariable String bestandsnaam) {
+    boolean verwijderd = projectService.verwijderBezwaar(naam, bestandsnaam);
+    return verwijderd ? ResponseEntity.noContent().build()
+        : ResponseEntity.notFound().build();
+  }
+
   private static String statusNaarString(BezwaarBestandStatus status) {
     return switch (status) {
       case TODO -> "todo";
@@ -109,4 +167,10 @@ public class ProjectController {
   /** DTO voor een enkel bezwaarbestand in de response. */
   record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden,
       Integer aantalBezwaren) {}
+
+  /** Response DTO voor upload-resultaat. */
+  record UploadResponse(List<String> geupload, List<UploadFoutDto> fouten) {}
+
+  /** DTO voor een uploadfout per bestand. */
+  record UploadFoutDto(String bestandsnaam, String reden) {}
 }

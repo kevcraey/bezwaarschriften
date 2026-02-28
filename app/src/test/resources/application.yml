@@ -1,4 +1,14 @@
 spring:
+  liquibase:
+    change-log: classpath:/config/liquibase/master.xml
+    contexts: test
+    drop-first: false
+    default-schema: public
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
   cloud:
     config:
       enabled: false
@@ -8,6 +18,34 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
       - org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
+
+bezwaarschriften:
+  input:
+    folder: input
+
+management:
+  endpoint:
+    health:
+      show-details: when_authorized
+  endpoints:
+    web:
+      base-path: /admin
+      exposure:
+        include: "*"
+
+cumuli:
+  security:
+    enable:
+      mock: true
+    users:
+      - username: bezwaarschriftenSpringBootAdmin
+        password: "{noop}bezwaarschriftenSpringBootAdmin"
+        roles:
+          - BezwaarschriftenSpringBootAdmin
+      - username: gebruiker
+        password: "{noop}gebruiker"
+        roles:
+          - BezwaarschriftenGebruiker
 
 eureka:
   client:

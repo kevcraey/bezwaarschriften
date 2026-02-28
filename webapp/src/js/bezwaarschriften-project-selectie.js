@@ -3,10 +3,12 @@ import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.compo
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
 import {VlTabsComponent} from '@domg-wc/components/block/tabs/vl-tabs.component.js';
 import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.component.js';
+import {VlUploadComponent} from '@domg-wc/components/form/upload/vl-upload.component.js';
+import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 
-registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent]);
+registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent]);
 
 export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   static get properties() {
@@ -32,6 +34,19 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         <vl-tabs observe-title active-tab="documenten">
           <vl-tabs-pane id="documenten" title="Documenten">
             <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
+            <vl-button id="verwijder-knop" disabled>Verwijder geselecteerde</vl-button>
+            <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
+            <div id="upload-zone" hidden>
+              <vl-upload id="bestand-upload"
+                accepted-files=".txt"
+                max-files="100"
+                max-size="50"
+                main-title="Bezwaarbestanden toevoegen"
+                sub-title="Sleep .txt bestanden hierheen of klik om te bladeren"
+                disallow-duplicates>
+              </vl-upload>
+              <vl-button id="upload-verzend-knop">Uploaden</vl-button>
+            </div>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
           </vl-tabs-pane>
@@ -40,6 +55,14 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           </vl-tabs-pane>
         </vl-tabs>
       </div>
+      <vl-modal id="verwijder-modal" title="Bestanden verwijderen" closable>
+        <div slot="content">
+          <p id="verwijder-bevestiging-tekst"></p>
+        </div>
+        <div slot="button">
+          <vl-button id="verwijder-bevestig-knop">Verwijderen</vl-button>
+        </div>
+      </vl-modal>
     `);
     this.__projecten = [];
     this.__geselecteerdProject = null;
@@ -48,6 +71,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this.__fout = null;
     this._ws = null;
     this._wsReconnectDelay = 1000;
+    this._teVerwijderenBestanden = [];
   }
 
   connectedCallback() {
@@ -154,6 +178,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _koppelEventListeners() {
     const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
     const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
+    const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
+    const toevoegenKnop = this.shadowRoot && this.shadowRoot.querySelector('#toevoegen-knop');
+    const uploadVerzendKnop = this.shadowRoot && this.shadowRoot.querySelector('#upload-verzend-knop');
+    const verwijderBevestigKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-bevestig-knop');
 
     if (selectEl) {
       selectEl.addEventListener('vl-change', (e) => {
@@ -170,12 +198,16 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     }
 
     this.shadowRoot.addEventListener('selectie-gewijzigd', (e) => {
+      const aantal = e.detail.geselecteerd.length;
+      const heeftSelectie = aantal > 0;
       if (extraheerKnop) {
-        const aantal = e.detail.geselecteerd.length;
-        extraheerKnop.disabled = this.__bezig || aantal === 0;
-        extraheerKnop.textContent = aantal > 0
-          ? `Extraheer geselecteerde (${aantal})`
-          : 'Extraheer geselecteerde';
+        extraheerKnop.disabled = this.__bezig || !heeftSelectie;
+        extraheerKnop.textContent = heeftSelectie ?
+          `Extraheer geselecteerde (${aantal})` :
+          'Extraheer geselecteerde';
+      }
+      if (verwijderKnop) {
+        verwijderKnop.disabled = this.__bezig || !heeftSelectie;
       }
     });
 
@@ -187,6 +219,41 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
         if (geselecteerd.length === 0) return;
         this._dienExtractiesIn(this.__geselecteerdProject, geselecteerd);
+      });
+    }
+
+    if (verwijderKnop) {
+      verwijderKnop.addEventListener('vl-click', () => {
+        const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+        if (!tabel) return;
+        const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
+        if (geselecteerd.length === 0) return;
+        this._teVerwijderenBestanden = geselecteerd;
+        const tekst = this.shadowRoot.querySelector('#verwijder-bevestiging-tekst');
+        if (tekst) {
+          tekst.textContent = `Weet je zeker dat je ${geselecteerd.length} bestand(en) wilt verwijderen? Bestanden en bijhorende extractie-resultaten worden permanent verwijderd.`;
+        }
+        const modal = this.shadowRoot.querySelector('#verwijder-modal');
+        if (modal) modal.open();
+      });
+    }
+
+    if (verwijderBevestigKnop) {
+      verwijderBevestigKnop.addEventListener('vl-click', () => {
+        this._verwijderBestanden(this._teVerwijderenBestanden);
+      });
+    }
+
+    if (toevoegenKnop) {
+      toevoegenKnop.addEventListener('vl-click', () => {
+        const uploadZone = this.shadowRoot.querySelector('#upload-zone');
+        if (uploadZone) uploadZone.hidden = !uploadZone.hidden;
+      });
+    }
+
+    if (uploadVerzendKnop) {
+      uploadVerzendKnop.addEventListener('vl-click', () => {
+        this._verzendUpload();
       });
     }
   }
@@ -287,10 +354,77 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (sectie) sectie.hidden = true;
   }
 
+  _verzendUpload() {
+    const uploadEl = this.shadowRoot.querySelector('#bestand-upload');
+    if (!uploadEl || !this.__geselecteerdProject) return;
+
+    const bestanden = uploadEl.getFiles();
+    if (!bestanden || bestanden.length === 0) return;
+
+    const formData = new FormData();
+    bestanden.forEach((f) => formData.append('bestanden', f));
+
+    this._zetBezig(true);
+    this._verbergFout();
+
+    fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/bezwaren/upload`, {
+      method: 'POST',
+      body: formData,
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Upload mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          uploadEl.removeAllFiles();
+          const uploadZone = this.shadowRoot.querySelector('#upload-zone');
+          if (uploadZone) uploadZone.hidden = true;
+
+          if (data.fouten && data.fouten.length > 0) {
+            const foutTekst = data.fouten.map((f) => `${f.bestandsnaam}: ${f.reden}`).join(', ');
+            this._toonFout(`Sommige bestanden konden niet worden geupload: ${foutTekst}`);
+          }
+
+          this._laadBezwaren(this.__geselecteerdProject);
+        })
+        .catch(() => {
+          this._toonFout('Upload mislukt.');
+        })
+        .finally(() => {
+          this._zetBezig(false);
+        });
+  }
+
+  _verwijderBestanden(bestandsnamen) {
+    if (!bestandsnamen || bestandsnamen.length === 0 || !this.__geselecteerdProject) return;
+
+    this._zetBezig(true);
+    this._verbergFout();
+
+    const verwijderPromises = bestandsnamen.map((naam) =>
+      fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/bezwaren/${encodeURIComponent(naam)}`, {
+        method: 'DELETE',
+      }),
+    );
+
+    Promise.all(verwijderPromises)
+        .then(() => {
+          this._laadBezwaren(this.__geselecteerdProject);
+        })
+        .catch(() => {
+          this._toonFout('Verwijdering mislukt.');
+        })
+        .finally(() => {
+          this._zetBezig(false);
+        });
+  }
+
   _zetBezig(bezig) {
     this.__bezig = bezig;
     const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
+    const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
     if (extraheerKnop) extraheerKnop.disabled = bezig;
+    if (verwijderKnop) verwijderKnop.disabled = bezig;
   }
 
   _toonFout(bericht) {
