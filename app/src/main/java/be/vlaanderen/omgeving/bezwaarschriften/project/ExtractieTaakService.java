@@ -24,6 +24,7 @@ public class ExtractieTaakService {
   private final ExtractieTaakRepository repository;
   private final ExtractieNotificatie notificatie;
   private final int maxConcurrent;
+  private final int maxPogingen;
 
   /**
    * Maakt een nieuwe ExtractieTaakService aan.
@@ -31,14 +32,17 @@ public class ExtractieTaakService {
    * @param repository repository voor extractie-taken
    * @param notificatie notificatie-interface voor statuswijzigingen
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
+   * @param maxPogingen maximum aantal pogingen per taak
    */
   public ExtractieTaakService(
       ExtractieTaakRepository repository,
       ExtractieNotificatie notificatie,
-      @Value("${bezwaarschriften.extractie.max-concurrent:3}") int maxConcurrent) {
+      @Value("${bezwaarschriften.extractie.max-concurrent:3}") int maxConcurrent,
+      @Value("${bezwaarschriften.extractie.max-pogingen:3}") int maxPogingen) {
     this.repository = repository;
     this.notificatie = notificatie;
     this.maxConcurrent = maxConcurrent;
+    this.maxPogingen = maxPogingen;
   }
 
   /**
@@ -57,7 +61,7 @@ public class ExtractieTaakService {
           taak.setBestandsnaam(bestandsnaam);
           taak.setStatus(ExtractieTaakStatus.WACHTEND);
           taak.setAantalPogingen(0);
-          taak.setMaxPogingen(3);
+          taak.setMaxPogingen(maxPogingen);
           taak.setAangemaaktOp(Instant.now());
           var opgeslagen = repository.save(taak);
           var dto = ExtractieTaakDto.van(opgeslagen);

@@ -1,6 +1,12 @@
 bezwaarschriften:
   input:
-    folder: ../input
+    folder: input
+  extractie:
+    max-concurrent: 3
+    max-pogingen: 3
+    mock:
+      min-delay-seconden: 5
+      max-delay-seconden: 30
 
 spring:
   datasource:
@@ -9,7 +15,9 @@ spring:
     password: bezwaarschriften_password
   autoconfigure:
     # prevent lookup of keycloak URL on Bamboo
-    exclude: org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration  
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
   cloud:
     service-registry:
       auto-registration:

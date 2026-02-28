@@ -28,9 +28,18 @@ public record ExtractieTaakDto(
   static ExtractieTaakDto van(ExtractieTaak taak) {
     return new ExtractieTaakDto(
         taak.getId(), taak.getProjectNaam(), taak.getBestandsnaam(),
-        taak.getStatus().name().toLowerCase(), taak.getAantalPogingen(),
+        statusNaarString(taak.getStatus()), taak.getAantalPogingen(),
         taak.getAangemaaktOp().toString(),
         taak.getVerwerkingGestartOp() != null ? taak.getVerwerkingGestartOp().toString() : null,
         taak.getAantalWoorden(), taak.getAantalBezwaren(), taak.getFoutmelding());
+  }
+
+  private static String statusNaarString(ExtractieTaakStatus status) {
+    return switch (status) {
+      case WACHTEND -> "wachtend";
+      case BEZIG -> "bezig";
+      case KLAAR -> "extractie-klaar";
+      case FOUT -> "fout";
+    };
   }
 }

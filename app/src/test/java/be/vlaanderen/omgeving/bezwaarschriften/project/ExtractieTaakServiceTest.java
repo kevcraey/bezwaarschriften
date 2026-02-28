@@ -29,7 +29,7 @@ class ExtractieTaakServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new ExtractieTaakService(repository, notificatie, 3);
+    service = new ExtractieTaakService(repository, notificatie, 3, 3);
   }
 
   @Test
