@@ -34,6 +34,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         <vl-tabs observe-title active-tab="documenten">
           <vl-tabs-pane id="documenten" title="Documenten">
             <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
+            <vl-button id="retry-knop" hidden>Opnieuw proberen</vl-button>
             <vl-button id="verwijder-knop" disabled>Verwijder geselecteerde</vl-button>
             <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
             <div id="upload-zone" hidden>
@@ -132,6 +133,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       tabel.werkBijMetTaakUpdate(taak);
     }
     this._werkDocumentenTabTitelBij();
+    this._werkRetryKnopBij();
   }
 
   _syncExtracties(projectNaam) {
@@ -152,6 +154,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               tabel.werkBijMetTaakUpdate(taak);
             });
             this._werkDocumentenTabTitelBij();
+            this._werkRetryKnopBij();
           }
         })
         .catch(() => {/* stille fout bij sync */});
@@ -179,6 +182,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
     const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
     const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
+    const retryKnop = this.shadowRoot && this.shadowRoot.querySelector('#retry-knop');
     const toevoegenKnop = this.shadowRoot && this.shadowRoot.querySelector('#toevoegen-knop');
     const uploadVerzendKnop = this.shadowRoot && this.shadowRoot.querySelector('#upload-verzend-knop');
     const verwijderBevestigKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-bevestig-knop');
@@ -219,6 +223,13 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
         if (geselecteerd.length === 0) return;
         this._dienExtractiesIn(this.__geselecteerdProject, geselecteerd);
+      });
+    }
+
+    if (retryKnop) {
+      retryKnop.addEventListener('vl-click', () => {
+        if (this.__bezig || !this.__geselecteerdProject) return;
+        this._retryGefaaldeExtracties(this.__geselecteerdProject);
       });
     }
 
@@ -269,6 +280,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
           this._werkDocumentenTabTitelBij();
+          this._werkRetryKnopBij();
           this._syncExtracties(projectNaam);
         })
         .catch(() => {
@@ -304,10 +316,36 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               tabel.werkBijMetTaakUpdate(taak);
             });
             this._werkDocumentenTabTitelBij();
+            this._werkRetryKnopBij();
           }
         })
         .catch(() => {
           this._toonFout('Extracties konden niet worden ingediend.');
+        })
+        .finally(() => {
+          this._zetBezig(false);
+        });
+  }
+
+  _retryGefaaldeExtracties(projectNaam) {
+    this._verbergFout();
+    this._zetBezig(true);
+
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/retry`, {
+      method: 'POST',
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Retry mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          if (data.aantalOpnieuwIngepland > 0) {
+            this._toonToast('success',
+                `${data.aantalOpnieuwIngepland} extractie(s) opnieuw ingepland.`);
+          }
+        })
+        .catch(() => {
+          this._toonFout('Opnieuw proberen mislukt.');
         })
         .finally(() => {
           this._zetBezig(false);
@@ -346,6 +384,16 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         tabs.shadowRoot.querySelector(`slot[name="documenten-title-slot"]`);
     if (slot) {
       slot.innerHTML = titel;
+    }
+  }
+
+  _werkRetryKnopBij() {
+    const retryKnop = this.shadowRoot && this.shadowRoot.querySelector('#retry-knop');
+    if (!retryKnop) return;
+    const aantalFout = this.__bezwaren.filter((b) => b.status === 'fout').length;
+    retryKnop.hidden = aantalFout === 0;
+    if (aantalFout > 0) {
+      retryKnop.textContent = `Opnieuw proberen (${aantalFout})`;
     }
   }
 
