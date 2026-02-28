@@ -38,12 +38,71 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this.__bezwaren = [];
     this.__bezig = false;
     this.__fout = null;
+    this._ws = null;
+    this._wsReconnectDelay = 1000;
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._laadProjecten();
     this._koppelEventListeners();
+    this._verbindWebSocket();
+  }
+
+  disconnectedCallback() {
+    if (this._ws) {
+      this._ws.close();
+      this._ws = null;
+    }
+  }
+
+  _verbindWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${protocol}//${window.location.host}/ws/extracties`;
+    this._ws = new WebSocket(url);
+
+    this._ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'taak-update') {
+        this._verwerkTaakUpdate(data.taak);
+      }
+    };
+
+    this._ws.onclose = () => {
+      setTimeout(() => {
+        this._wsReconnectDelay = Math.min(this._wsReconnectDelay * 2, 30000);
+        this._verbindWebSocket();
+        if (this.__geselecteerdProject) {
+          this._syncExtracties(this.__geselecteerdProject);
+        }
+      }, this._wsReconnectDelay);
+    };
+
+    this._ws.onopen = () => {
+      this._wsReconnectDelay = 1000;
+    };
+  }
+
+  _verwerkTaakUpdate(taak) {
+    if (!this.__geselecteerdProject || taak.projectNaam !== this.__geselecteerdProject) {
+      return;
+    }
+    const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+    if (tabel) {
+      tabel.werkBijMetTaakUpdate(taak);
+    }
+  }
+
+  _syncExtracties(projectNaam) {
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties`)
+        .then((response) => response.json())
+        .then((data) => {
+          const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+          if (tabel && data.taken) {
+            data.taken.forEach((taak) => tabel.werkBijMetTaakUpdate(taak));
+          }
+        })
+        .catch(() => { /* stille fout bij sync */ });
   }
 
   _laadProjecten() {
@@ -95,7 +154,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         if (!tabel) return;
         const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
         if (geselecteerd.length === 0) return;
-        this._extraheerGeselecteerde(this.__geselecteerdProject, geselecteerd);
+        this._dienExtractiesIn(this.__geselecteerdProject, geselecteerd);
       });
     }
   }
@@ -110,42 +169,34 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .then((data) => {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
+          this._syncExtracties(projectNaam);
         })
         .catch(() => {
           this._toonFout('Bezwaren konden niet worden geladen.');
         });
   }
 
-  _extraheerGeselecteerde(projectNaam, bestandsnamen) {
+  _dienExtractiesIn(projectNaam, bestandsnamen) {
     this._verbergFout();
     this._zetBezig(true);
 
-    const beloftes = bestandsnamen.map((bestandsnaam) => {
-      const url = `/api/v1/projects/${encodeURIComponent(projectNaam)}/bezwaren/${encodeURIComponent(bestandsnaam)}/extraheer`;
-      return fetch(url, {method: 'POST'})
-          .then((response) => {
-            if (!response.ok) throw new Error('Extractie mislukt');
-            return response.json();
-          });
-    });
-
-    Promise.allSettled(beloftes)
-        .then((resultaten) => {
-          let aantalFouten = 0;
-          resultaten.forEach((resultaat) => {
-            if (resultaat.status === 'fulfilled') {
-              const bijgewerkt = resultaat.value;
-              this.__bezwaren = this.__bezwaren.map((b) =>
-                b.bestandsnaam === bijgewerkt.bestandsnaam ? bijgewerkt : b,
-              );
-            } else {
-              aantalFouten++;
-            }
-          });
-          this._werkTabelBij();
-          if (aantalFouten > 0) {
-            this._toonFout(`${aantalFouten} bestand(en) konden niet worden geëxtraheerd.`);
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bestandsnamen}),
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Indienen extracties mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+          if (tabel && data.taken) {
+            data.taken.forEach((taak) => tabel.werkBijMetTaakUpdate(taak));
           }
+        })
+        .catch(() => {
+          this._toonFout('Extracties konden niet worden ingediend.');
         })
         .finally(() => {
           this._zetBezig(false);
