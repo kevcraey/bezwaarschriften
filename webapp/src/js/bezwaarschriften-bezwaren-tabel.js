@@ -20,13 +20,28 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   constructor() {
     super(`
-      <style>${vlGlobalStyles}</style>
+      <style>
+        ${vlGlobalStyles}
+        .extractie-knop {
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-size: 1.2em;
+          padding: 4px 8px;
+        }
+        .extractie-knop:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+      </style>
       <vl-table>
         <table>
           <thead>
             <tr>
               <th>Bestandsnaam</th>
               <th>Status</th>
+              <th>Aantal bezwaren</th>
+              <th>Acties</th>
             </tr>
           </thead>
           <tbody id="tabel-body"></tbody>
@@ -55,16 +70,37 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     if (!tbody) return;
 
     if (this.__bezwaren.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="2">Geen bestanden gevonden</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4">Geen bestanden gevonden</td></tr>';
       return;
     }
 
     tbody.innerHTML = this.__bezwaren
-        .map((b) => `<tr>
-          <td>${this._escapeHtml(b.bestandsnaam)}</td>
-          <td>${this._formatStatus(b)}</td>
-        </tr>`)
+        .map((b) => {
+          const kanExtraheren = b.status === 'todo' || b.status === 'fout';
+          const disabled = kanExtraheren ? '' : 'disabled';
+          const aantalBezwaren = b.aantalBezwaren != null ? b.aantalBezwaren : '';
+          return `<tr>
+            <td>${this._escapeHtml(b.bestandsnaam)}</td>
+            <td>${this._formatStatus(b)}</td>
+            <td>${aantalBezwaren}</td>
+            <td>
+              <button class="extractie-knop" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" ${disabled}
+                title="Extraheer bezwaren">&#128269;</button>
+            </td>
+          </tr>`;
+        })
         .join('');
+
+    tbody.querySelectorAll('.extractie-knop:not([disabled])').forEach((knop) => {
+      knop.addEventListener('click', (e) => {
+        const bestandsnaam = e.target.dataset.bestandsnaam;
+        this.dispatchEvent(new CustomEvent('extraheer-bezwaar', {
+          detail: {bestandsnaam},
+          bubbles: true,
+          composed: true,
+        }));
+      });
+    });
   }
 
   _formatStatus(b) {
