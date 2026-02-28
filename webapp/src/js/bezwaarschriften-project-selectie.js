@@ -70,13 +70,19 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         this._verbergFout();
         const naam = e.detail.value;
         this.__geselecteerdProject = naam || null;
-        if (!naam) {
+        if (naam) {
+          this._laadBezwaren(naam);
+        } else {
           this.__bezwaren = [];
           this._verbergTabel();
-          this._zetBezig(false);
         }
       });
     }
+
+    this.shadowRoot.addEventListener('extraheer-bezwaar', (e) => {
+      if (!this.__geselecteerdProject) return;
+      this._extraheerBestand(this.__geselecteerdProject, e.detail.bestandsnaam);
+    });
 
     if (verwerkKnop) {
       verwerkKnop.addEventListener('vl-click', () => {
@@ -88,6 +94,41 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         this._verwerkBezwaren(this.__geselecteerdProject);
       });
     }
+  }
+
+  _laadBezwaren(projectNaam) {
+    this._verbergFout();
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/bezwaren`)
+        .then((response) => {
+          if (!response.ok) throw new Error('Ophalen bezwaren mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          this.__bezwaren = data.bezwaren;
+          this._werkTabelBij();
+        })
+        .catch(() => {
+          this._toonFout('Bezwaren konden niet worden geladen.');
+        });
+  }
+
+  _extraheerBestand(projectNaam, bestandsnaam) {
+    this._verbergFout();
+    const url = `/api/v1/projects/${encodeURIComponent(projectNaam)}/bezwaren/${encodeURIComponent(bestandsnaam)}/extraheer`;
+    fetch(url, {method: 'POST'})
+        .then((response) => {
+          if (!response.ok) throw new Error('Extractie mislukt');
+          return response.json();
+        })
+        .then((bijgewerkt) => {
+          this.__bezwaren = this.__bezwaren.map((b) =>
+            b.bestandsnaam === bijgewerkt.bestandsnaam ? bijgewerkt : b,
+          );
+          this._werkTabelBij();
+        })
+        .catch(() => {
+          this._toonFout(`Extractie van '${bestandsnaam}' is mislukt.`);
+        });
   }
 
   _verwerkBezwaren(projectNaam) {
