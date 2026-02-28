@@ -141,6 +141,45 @@ class ExtractieTaakServiceTest {
     verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));
   }
 
+  @Test
+  void herplanGefaaldeTakenZetTerugNaarWachtend() {
+    var taak1 = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.FOUT);
+    taak1.setAantalPogingen(3);
+    taak1.setMaxPogingen(3);
+    taak1.setFoutmelding("Timeout");
+    taak1.setAfgerondOp(Instant.now());
+    var taak2 = maakTaak(2L, "windmolens", "bezwaar-002.txt", ExtractieTaakStatus.FOUT);
+    taak2.setAantalPogingen(3);
+    taak2.setMaxPogingen(3);
+    taak2.setFoutmelding("Connection refused");
+    taak2.setAfgerondOp(Instant.now());
+
+    when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
+        .thenReturn(List.of(taak1, taak2));
+
+    int aantal = service.herplanGefaaldeTaken("windmolens");
+
+    assertThat(aantal).isEqualTo(2);
+    assertThat(taak1.getStatus()).isEqualTo(ExtractieTaakStatus.WACHTEND);
+    assertThat(taak1.getMaxPogingen()).isEqualTo(4);
+    assertThat(taak1.getFoutmelding()).isNull();
+    assertThat(taak1.getAfgerondOp()).isNull();
+    assertThat(taak1.getVerwerkingGestartOp()).isNull();
+    assertThat(taak2.getStatus()).isEqualTo(ExtractieTaakStatus.WACHTEND);
+    verify(notificatie, times(2)).taakGewijzigd(any(ExtractieTaakDto.class));
+  }
+
+  @Test
+  void herplanGefaaldeTakenGeeftNulAlsGeenFouten() {
+    when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
+        .thenReturn(List.of());
+
+    int aantal = service.herplanGefaaldeTaken("windmolens");
+
+    assertThat(aantal).isZero();
+    verify(notificatie, org.mockito.Mockito.never()).taakGewijzigd(any());
+  }
+
   private ExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam,
       ExtractieTaakStatus status) {
     var taak = new ExtractieTaak();

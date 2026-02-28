@@ -179,4 +179,28 @@ public class ExtractieTaakService {
     return repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
         projectNaam, bestandsnaam).orElse(null);
   }
+
+  /**
+   * Herplant alle gefaalde extractie-taken voor een project door ze terug te zetten
+   * naar WACHTEND met 1 extra poging.
+   *
+   * @param projectNaam naam van het project
+   * @return het aantal opnieuw ingeplande taken
+   */
+  @Transactional
+  public int herplanGefaaldeTaken(String projectNaam) {
+    var gefaaldeTaken = repository.findByProjectNaamAndStatus(projectNaam,
+        ExtractieTaakStatus.FOUT);
+    for (var taak : gefaaldeTaken) {
+      taak.setMaxPogingen(taak.getMaxPogingen() + 1);
+      taak.setStatus(ExtractieTaakStatus.WACHTEND);
+      taak.setFoutmelding(null);
+      taak.setVerwerkingGestartOp(null);
+      taak.setAfgerondOp(null);
+      repository.save(taak);
+      notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
+    }
+    LOGGER.info("Herplant {} gefaalde taken voor project '{}'", gefaaldeTaken.size(), projectNaam);
+    return gefaaldeTaken.size();
+  }
 }
