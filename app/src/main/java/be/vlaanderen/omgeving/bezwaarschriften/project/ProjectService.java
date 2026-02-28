@@ -1,20 +1,15 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
-import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
 import java.lang.invoke.MethodHandles;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * Service die projecten en bezwaarverwerking orkestreert.
+ * Service die projecten en bezwaarbestanden beheert.
  *
- * <p>Beheert in-memory verwerkingsstatussen per sessie.
+ * <p>Leidt de bestandsstatus af uit de meest recente extractie-taak in de database.
  */
 @Service
 public class ProjectService {
@@ -23,30 +18,18 @@ public class ProjectService {
       LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final ProjectPoort projectPoort;
-  private final IngestiePoort ingestiePoort;
-  private final Path inputFolder;
-
-  /** In-memory statusregister: projectNaam → bestandsnaam → verwerkingsresultaat. */
-  private final Map<String, Map<String, VerwerkingsResultaat>> statusRegister =
-      new ConcurrentHashMap<>();
-
-  /** Toggle voor bestand-2 mock: faalt bij false, slaagt bij true. */
-  private final Map<String, Boolean> tweedeBestandToggle = new ConcurrentHashMap<>();
+  private final ExtractieTaakRepository extractieTaakRepository;
 
   /**
    * Maakt een nieuwe ProjectService aan.
    *
    * @param projectPoort Port voor filesystem toegang
-   * @param ingestiePoort Port voor bestandsingestie
-   * @param inputFolderString Root input folder als string-pad
+   * @param extractieTaakRepository Repository voor extractie-taken
    */
-  public ProjectService(
-      ProjectPoort projectPoort,
-      IngestiePoort ingestiePoort,
-      @Value("${bezwaarschriften.input.folder}") String inputFolderString) {
+  public ProjectService(ProjectPoort projectPoort,
+      ExtractieTaakRepository extractieTaakRepository) {
     this.projectPoort = projectPoort;
-    this.ingestiePoort = ingestiePoort;
-    this.inputFolder = Path.of(inputFolderString);
+    this.extractieTaakRepository = extractieTaakRepository;
   }
 
   /**
@@ -61,137 +44,45 @@ public class ProjectService {
   /**
    * Geeft de bezwaarbestanden van een project terug met hun huidige status.
    *
+   * <p>De status wordt afgeleid uit de meest recente extractie-taak in de database.
+   * Als er geen taak bestaat, is de status {@link BezwaarBestandStatus#TODO} voor
+   * .txt-bestanden en {@link BezwaarBestandStatus#NIET_ONDERSTEUND} voor overige.
+   *
    * @param projectNaam Naam van het project
    * @return Lijst van bezwaarbestanden met status
    * @throws ProjectNietGevondenException Als het project niet bestaat
    */
   public List<BezwaarBestand> geefBezwaren(String projectNaam) {
     var bestandsnamen = projectPoort.geefBestandsnamen(projectNaam);
-    var projectResultaten = statusRegister.get(projectNaam);
     return bestandsnamen.stream()
         .map(naam -> {
-          if (projectResultaten != null && projectResultaten.containsKey(naam)) {
-            var resultaat = projectResultaten.get(naam);
-            return new BezwaarBestand(naam, resultaat.status(), resultaat.aantalWoorden(),
-                resultaat.aantalBezwaren());
+          if (!isTxtBestand(naam)) {
+            return new BezwaarBestand(naam, BezwaarBestandStatus.NIET_ONDERSTEUND);
           }
-          return new BezwaarBestand(naam, isTxtBestand(naam)
-              ? BezwaarBestandStatus.TODO
-              : BezwaarBestandStatus.NIET_ONDERSTEUND);
+          var laatsteTaak = extractieTaakRepository
+              .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
+              .orElse(null);
+          if (laatsteTaak == null) {
+            return new BezwaarBestand(naam, BezwaarBestandStatus.TODO);
+          }
+          return new BezwaarBestand(naam,
+              vanExtractieTaakStatus(laatsteTaak.getStatus()),
+              laatsteTaak.getAantalWoorden(),
+              laatsteTaak.getAantalBezwaren());
         })
         .toList();
-  }
-
-  /**
-   * Start de batchverwerking voor alle openstaande .txt-bestanden van een project.
-   *
-   * @param projectNaam Naam van het project
-   * @return Bijgewerkte lijst van bezwaarbestanden met status
-   * @throws ProjectNietGevondenException Als het project niet bestaat
-   */
-  public List<BezwaarBestand> verwerk(String projectNaam) {
-    var bezwaren = geefBezwaren(projectNaam);
-    var projectStatussen = statusRegister.computeIfAbsent(projectNaam,
-        k -> new ConcurrentHashMap<>());
-
-    for (var bestand : bezwaren) {
-      if (bestand.status() != BezwaarBestandStatus.TODO) {
-        continue;
-      }
-      var bestandsPad = inputFolder.resolve(projectNaam).resolve("bezwaren")
-          .resolve(bestand.bestandsnaam());
-      try {
-        var brondocument = ingestiePoort.leesBestand(bestandsPad);
-        var aantalWoorden = telWoorden(brondocument.tekst());
-        projectStatussen.put(bestand.bestandsnaam(),
-            new VerwerkingsResultaat(BezwaarBestandStatus.EXTRACTIE_KLAAR, aantalWoorden, null));
-        LOGGER.info("Bestand '{}' succesvol verwerkt voor project '{}' ({} woorden)",
-            bestand.bestandsnaam(), projectNaam, aantalWoorden);
-      } catch (Exception e) {
-        projectStatussen.put(bestand.bestandsnaam(),
-            new VerwerkingsResultaat(BezwaarBestandStatus.FOUT, null, null));
-        LOGGER.warn("Fout bij verwerking van '{}' voor project '{}': {}",
-            bestand.bestandsnaam(), projectNaam, e.getMessage());
-      }
-    }
-
-    return geefBezwaren(projectNaam);
-  }
-
-  /**
-   * Extraheert bezwaren uit een enkel bestand van een project.
-   *
-   * @param projectNaam Naam van het project
-   * @param bestandsnaam Naam van het bezwaarbestand
-   * @return Bijgewerkt bezwaarbestand met extractieresultaat
-   */
-  public BezwaarBestand extraheer(String projectNaam, String bestandsnaam) {
-    var alleBestandsnamen = projectPoort.geefBestandsnamen(projectNaam);
-
-    if (!isTxtBestand(bestandsnaam)) {
-      return new BezwaarBestand(bestandsnaam, BezwaarBestandStatus.NIET_ONDERSTEUND);
-    }
-
-    var txtBestanden = alleBestandsnamen.stream().filter(this::isTxtBestand).toList();
-    int index = txtBestanden.indexOf(bestandsnaam);
-
-    var projectStatussen = statusRegister.computeIfAbsent(projectNaam,
-        k -> new ConcurrentHashMap<>());
-
-    try {
-      var bestandsPad = inputFolder.resolve(projectNaam).resolve("bezwaren")
-          .resolve(bestandsnaam);
-      var brondocument = ingestiePoort.leesBestand(bestandsPad);
-      var aantalWoorden = telWoorden(brondocument.tekst());
-
-      Integer aantalBezwaren = bepaalAantalBezwaren(projectNaam, bestandsnaam, index);
-      if (aantalBezwaren == null) {
-        projectStatussen.put(bestandsnaam,
-            new VerwerkingsResultaat(BezwaarBestandStatus.FOUT, null, null));
-        return new BezwaarBestand(bestandsnaam, BezwaarBestandStatus.FOUT);
-      }
-
-      projectStatussen.put(bestandsnaam,
-          new VerwerkingsResultaat(BezwaarBestandStatus.EXTRACTIE_KLAAR, aantalWoorden,
-              aantalBezwaren));
-      LOGGER.info("Bestand '{}' geextraheerd voor project '{}' ({} woorden, {} bezwaren)",
-          bestandsnaam, projectNaam, aantalWoorden, aantalBezwaren);
-      return new BezwaarBestand(bestandsnaam, BezwaarBestandStatus.EXTRACTIE_KLAAR,
-          aantalWoorden, aantalBezwaren);
-    } catch (Exception e) {
-      projectStatussen.put(bestandsnaam,
-          new VerwerkingsResultaat(BezwaarBestandStatus.FOUT, null, null));
-      LOGGER.warn("Fout bij extractie van '{}' voor project '{}': {}",
-          bestandsnaam, projectNaam, e.getMessage());
-      return new BezwaarBestand(bestandsnaam, BezwaarBestandStatus.FOUT);
-    }
   }
 
   private boolean isTxtBestand(String bestandsnaam) {
     return bestandsnaam.toLowerCase().endsWith(".txt");
   }
 
-  private int telWoorden(String tekst) {
-    if (tekst == null || tekst.isBlank()) {
-      return 0;
-    }
-    return tekst.strip().split("\\s+").length;
-  }
-
-  private Integer bepaalAantalBezwaren(String projectNaam, String bestandsnaam, int index) {
-    return switch (index) {
-      case 0 -> 3;
-      case 1 -> {
-        String toggleKey = projectNaam + ":" + bestandsnaam;
-        boolean slaagt = tweedeBestandToggle.compute(toggleKey,
-            (k, v) -> v == null ? false : !v);
-        yield slaagt ? 4 : null;
-      }
-      case 2 -> 5;
-      default -> 2;
+  private BezwaarBestandStatus vanExtractieTaakStatus(ExtractieTaakStatus status) {
+    return switch (status) {
+      case WACHTEND -> BezwaarBestandStatus.WACHTEND;
+      case BEZIG -> BezwaarBestandStatus.BEZIG;
+      case KLAAR -> BezwaarBestandStatus.EXTRACTIE_KLAAR;
+      case FOUT -> BezwaarBestandStatus.FOUT;
     };
   }
-
-  private record VerwerkingsResultaat(BezwaarBestandStatus status, Integer aantalWoorden,
-      Integer aantalBezwaren) { }
 }
