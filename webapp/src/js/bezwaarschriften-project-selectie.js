@@ -26,6 +26,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       <div id="selectie-wrapper">
         <vl-select id="project-select" placeholder="Kies een project..."></vl-select>
         <vl-button id="verwerk-knop">Verwerk alles</vl-button>
+        <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
         <p id="fout-melding" hidden></p>
       </div>
       <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel" hidden></bezwaarschriften-bezwaren-tabel>
@@ -64,6 +65,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _koppelEventListeners() {
     const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
     const verwerkKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerk-knop');
+    const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
 
     if (selectEl) {
       selectEl.addEventListener('vl-change', (e) => {
@@ -79,10 +81,22 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       });
     }
 
-    this.shadowRoot.addEventListener('extraheer-bezwaar', (e) => {
-      if (!this.__geselecteerdProject) return;
-      this._extraheerBestand(this.__geselecteerdProject, e.detail.bestandsnaam);
+    this.shadowRoot.addEventListener('selectie-gewijzigd', (e) => {
+      if (extraheerKnop) {
+        extraheerKnop.disabled = this.__bezig || e.detail.geselecteerd.length === 0;
+      }
     });
+
+    if (extraheerKnop) {
+      extraheerKnop.addEventListener('vl-click', () => {
+        if (this.__bezig || !this.__geselecteerdProject) return;
+        const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+        if (!tabel) return;
+        const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
+        if (geselecteerd.length === 0) return;
+        this._extraheerGeselecteerde(this.__geselecteerdProject, geselecteerd);
+      });
+    }
 
     if (verwerkKnop) {
       verwerkKnop.addEventListener('vl-click', () => {
@@ -112,22 +126,39 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         });
   }
 
-  _extraheerBestand(projectNaam, bestandsnaam) {
+  _extraheerGeselecteerde(projectNaam, bestandsnamen) {
     this._verbergFout();
-    const url = `/api/v1/projects/${encodeURIComponent(projectNaam)}/bezwaren/${encodeURIComponent(bestandsnaam)}/extraheer`;
-    fetch(url, {method: 'POST'})
-        .then((response) => {
-          if (!response.ok) throw new Error('Extractie mislukt');
-          return response.json();
-        })
-        .then((bijgewerkt) => {
-          this.__bezwaren = this.__bezwaren.map((b) =>
-            b.bestandsnaam === bijgewerkt.bestandsnaam ? bijgewerkt : b,
-          );
+    this._zetBezig(true);
+
+    const beloftes = bestandsnamen.map((bestandsnaam) => {
+      const url = `/api/v1/projects/${encodeURIComponent(projectNaam)}/bezwaren/${encodeURIComponent(bestandsnaam)}/extraheer`;
+      return fetch(url, {method: 'POST'})
+          .then((response) => {
+            if (!response.ok) throw new Error('Extractie mislukt');
+            return response.json();
+          });
+    });
+
+    Promise.allSettled(beloftes)
+        .then((resultaten) => {
+          let aantalFouten = 0;
+          resultaten.forEach((resultaat) => {
+            if (resultaat.status === 'fulfilled') {
+              const bijgewerkt = resultaat.value;
+              this.__bezwaren = this.__bezwaren.map((b) =>
+                b.bestandsnaam === bijgewerkt.bestandsnaam ? bijgewerkt : b,
+              );
+            } else {
+              aantalFouten++;
+            }
+          });
           this._werkTabelBij();
+          if (aantalFouten > 0) {
+            this._toonFout(`${aantalFouten} bestand(en) konden niet worden geëxtraheerd.`);
+          }
         })
-        .catch(() => {
-          this._toonFout(`Extractie van '${bestandsnaam}' is mislukt.`);
+        .finally(() => {
+          this._zetBezig(false);
         });
   }
 
@@ -147,7 +178,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this._toonFout('Verwerking kon niet worden gestart.');
         })
         .finally(() => {
-          this.__bezig = false;
+          this._zetBezig(false);
         });
   }
 
@@ -166,8 +197,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
   _zetBezig(bezig) {
     this.__bezig = bezig;
-    const knop = this.shadowRoot && this.shadowRoot.querySelector('#verwerk-knop');
-    if (knop) knop.disabled = bezig;
+    const verwerkKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerk-knop');
+    const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
+    if (verwerkKnop) verwerkKnop.disabled = bezig;
+    if (extraheerKnop) extraheerKnop.disabled = bezig;
   }
 
   _toonFout(bericht) {
