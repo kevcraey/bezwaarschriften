@@ -91,4 +91,30 @@ class ProjectControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.messages[0].code").value("project.not-found"));
   }
+
+  @Test
+  void extraheertBezwarenVoorEnkelBestand() throws Exception {
+    when(projectService.extraheer("windmolens", "bezwaar-001.txt"))
+        .thenReturn(new BezwaarBestand("bezwaar-001.txt",
+            BezwaarBestandStatus.EXTRACTIE_KLAAR, 150, 3));
+
+    mockMvc.perform(post("/api/v1/projects/windmolens/bezwaren/bezwaar-001.txt/extraheer")
+            .with(csrf()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bestandsnaam").value("bezwaar-001.txt"))
+        .andExpect(jsonPath("$.status").value("extractie-klaar"))
+        .andExpect(jsonPath("$.aantalWoorden").value(150))
+        .andExpect(jsonPath("$.aantalBezwaren").value(3));
+  }
+
+  @Test
+  void geeft404VoorOnbekendProjectBijExtraheer() throws Exception {
+    when(projectService.extraheer("bestaat-niet", "bezwaar.txt"))
+        .thenThrow(new ProjectNietGevondenException("bestaat-niet"));
+
+    mockMvc.perform(post("/api/v1/projects/bestaat-niet/bezwaren/bezwaar.txt/extraheer")
+            .with(csrf()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.messages[0].code").value("project.not-found"));
+  }
 }
