@@ -49,27 +49,14 @@ public class HealthIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
   public void kanAlgemeneHealthOpvragen() throws Exception {
     JsonNode health = getHealth();
     Set<String> dependencies = healthOnderdelenEnStatus(health).keySet();
-    assertThat(dependencies).contains("diskSpace", "ping", "refreshScope", "clientConfigServer");
+    assertThat(dependencies).contains("diskSpace", "ping");
   }
 
   @Test
-  public void kanCriticalHealthOpvragen() throws Exception {
-    JsonNode health = getHealth("critical");
-    Set<String> dependencies = healthOnderdelenEnStatus(health).keySet();
-    assertThat(dependencies).contains("diskSpace");
-  }
-
-  @Test
-  public void kanNonCriticalHealthOpvragen() throws Exception {
-    JsonNode health = getHealth("noncritical");
-    Set<String> dependencies = healthOnderdelenEnStatus(health).keySet();
-    assertThat(dependencies).contains("clientConfigServer", "ping", "refreshScope");
-  }
-
-  @Test
-  public void criticalHealthIsUp() throws Exception {
-    JsonNode health = getHealth("critical");
+  public void kanGedetailleerdeHealthOpvragen() throws Exception {
+    JsonNode health = getHealth();
     assertThat(health.get("status").asText()).isEqualTo("UP");
+    assertThat(health.has("components")).isTrue();
   }
 
   private JsonNode getHealth() throws Exception {

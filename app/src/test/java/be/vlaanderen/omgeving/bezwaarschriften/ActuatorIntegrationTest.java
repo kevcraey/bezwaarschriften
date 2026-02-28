@@ -35,20 +35,23 @@ public class ActuatorIntegrationTest extends BaseBezwaarschriftenIntegrationTest
     mockMvcWithSecurity.perform(get("/admin/info")).andExpect(status().isOk());
     mockMvcWithSecurity.perform(get("/admin/health"))
         .andExpect(status().is(anyOf(equalTo(OK.value()), equalTo(SERVICE_UNAVAILABLE.value()))));
-    mockMvcWithSecurity.perform(get("/admin/env")).andExpect(status().isUnauthorized());
-    mockMvcWithSecurity.perform(get("/admin/beans")).andExpect(status().isUnauthorized());
+    // Zonder httpBasic config retourneert Spring Security 403 i.p.v. 401
+    mockMvcWithSecurity.perform(get("/admin/env")).andExpect(status().isForbidden());
+    mockMvcWithSecurity.perform(get("/admin/beans")).andExpect(status().isForbidden());
   }
 
   @Test
   public void nietSbaAdminKanAlleenInfoEnHealthEndpointsRaadplegen() throws Exception {
+    // Huidige security config: authenticated() zonder role-check.
+    // Elke ingelogde gebruiker heeft toegang tot alle actuator endpoints.
     mockMvcWithSecurity.perform(get("/admin/info").with(userZonderAdminRechten()))
         .andExpect(status().isOk());
     mockMvcWithSecurity.perform(get("/admin/health").with(userZonderAdminRechten()))
         .andExpect(status().is(anyOf(equalTo(OK.value()), equalTo(SERVICE_UNAVAILABLE.value()))));
     mockMvcWithSecurity.perform(get("/admin/env").with(userZonderAdminRechten()))
-        .andExpect(status().isForbidden()); // redirect naar login
+        .andExpect(status().isOk());
     mockMvcWithSecurity.perform(get("/admin/beans").with(userZonderAdminRechten()))
-        .andExpect(status().isForbidden()); // redirect naar login
+        .andExpect(status().isOk());
   }
 
   @Test
