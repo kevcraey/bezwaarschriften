@@ -53,6 +53,21 @@ public class ExtractieController {
     return ResponseEntity.ok(new ExtractieTakenResponse(taken));
   }
 
+  /**
+   * Herplant alle gefaalde extractie-taken voor het opgegeven project.
+   *
+   * @param naam projectnaam
+   * @return het aantal opnieuw ingeplande taken
+   */
+  @PostMapping("/{naam}/extracties/retry")
+  public ResponseEntity<RetryResponse> retry(@PathVariable String naam) {
+    int aantal = extractieTaakService.herplanGefaaldeTaken(naam);
+    return ResponseEntity.ok(new RetryResponse(aantal));
+  }
+
+  /** Response DTO voor het retry-endpoint. */
+  record RetryResponse(int aantalOpnieuwIngepland) {}
+
   /** Request DTO voor het indienen van extractie-taken. */
   record ExtractiesRequest(List<String> bestandsnamen) {}
 
