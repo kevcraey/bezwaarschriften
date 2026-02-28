@@ -2,8 +2,10 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -102,6 +104,17 @@ class ProjectServiceTest {
         ProjectNietGevondenException.class,
         () -> service.geefBezwaren("bestaat-niet")
     );
+  }
+
+  @Test
+  void geefBestandsPad_delegeertNaarPoort() {
+    var verwacht = Path.of("/tmp/test/bezwaren/bezwaar1.txt");
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar1.txt")).thenReturn(verwacht);
+
+    var result = service.geefBestandsPad("windmolens", "bezwaar1.txt");
+
+    assertThat(result).isEqualTo(verwacht);
+    verify(projectPoort).geefBestandsPad("windmolens", "bezwaar1.txt");
   }
 
   private ExtractieTaak maakTaak(ExtractieTaakStatus status, Integer aantalWoorden,
