@@ -5,10 +5,11 @@ import {VlTabsComponent} from '@domg-wc/components/block/tabs/vl-tabs.component.
 import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.component.js';
 import {VlUploadComponent} from '@domg-wc/components/form/upload/vl-upload.component.js';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
+import {VlToasterComponent} from '@domg-wc/components/block/toaster/vl-toaster.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 
-registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent]);
+registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent, VlToasterComponent]);
 
 export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   static get properties() {
@@ -42,8 +43,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
                 max-files="100"
                 max-size="50"
                 main-title="Bezwaarbestanden toevoegen"
-                sub-title="Sleep .txt bestanden hierheen of klik om te bladeren"
-                disallow-duplicates>
+                sub-title="Sleep .txt bestanden hierheen of klik om te bladeren">
               </vl-upload>
               <vl-button id="upload-verzend-knop">Uploaden</vl-button>
             </div>
