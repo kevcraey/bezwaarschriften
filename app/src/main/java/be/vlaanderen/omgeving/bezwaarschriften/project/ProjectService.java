@@ -30,6 +30,9 @@ public class ProjectService {
   private final Map<String, Map<String, VerwerkingsResultaat>> statusRegister =
       new ConcurrentHashMap<>();
 
+  /** Toggle voor bestand-2 mock: faalt bij false, slaagt bij true. */
+  private final Map<String, Boolean> tweedeBestandToggle = new ConcurrentHashMap<>();
+
   /**
    * Maakt een nieuwe ProjectService aan.
    *
@@ -123,7 +126,45 @@ public class ProjectService {
    * @return Bijgewerkt bezwaarbestand met extractieresultaat
    */
   public BezwaarBestand extraheer(String projectNaam, String bestandsnaam) {
-    throw new UnsupportedOperationException("Nog niet geimplementeerd");
+    var alleBestandsnamen = projectPoort.geefBestandsnamen(projectNaam);
+
+    if (!isTxtBestand(bestandsnaam)) {
+      return new BezwaarBestand(bestandsnaam, BezwaarBestandStatus.NIET_ONDERSTEUND);
+    }
+
+    var txtBestanden = alleBestandsnamen.stream().filter(this::isTxtBestand).toList();
+    int index = txtBestanden.indexOf(bestandsnaam);
+
+    var projectStatussen = statusRegister.computeIfAbsent(projectNaam,
+        k -> new ConcurrentHashMap<>());
+
+    try {
+      var bestandsPad = inputFolder.resolve(projectNaam).resolve("bezwaren")
+          .resolve(bestandsnaam);
+      var brondocument = ingestiePoort.leesBestand(bestandsPad);
+      var aantalWoorden = telWoorden(brondocument.tekst());
+
+      Integer aantalBezwaren = bepaalAantalBezwaren(projectNaam, bestandsnaam, index);
+      if (aantalBezwaren == null) {
+        projectStatussen.put(bestandsnaam,
+            new VerwerkingsResultaat(BezwaarBestandStatus.FOUT, null, null));
+        return new BezwaarBestand(bestandsnaam, BezwaarBestandStatus.FOUT);
+      }
+
+      projectStatussen.put(bestandsnaam,
+          new VerwerkingsResultaat(BezwaarBestandStatus.EXTRACTIE_KLAAR, aantalWoorden,
+              aantalBezwaren));
+      LOGGER.info("Bestand '{}' geextraheerd voor project '{}' ({} woorden, {} bezwaren)",
+          bestandsnaam, projectNaam, aantalWoorden, aantalBezwaren);
+      return new BezwaarBestand(bestandsnaam, BezwaarBestandStatus.EXTRACTIE_KLAAR,
+          aantalWoorden, aantalBezwaren);
+    } catch (Exception e) {
+      projectStatussen.put(bestandsnaam,
+          new VerwerkingsResultaat(BezwaarBestandStatus.FOUT, null, null));
+      LOGGER.warn("Fout bij extractie van '{}' voor project '{}': {}",
+          bestandsnaam, projectNaam, e.getMessage());
+      return new BezwaarBestand(bestandsnaam, BezwaarBestandStatus.FOUT);
+    }
   }
 
   private boolean isTxtBestand(String bestandsnaam) {
@@ -135,6 +176,20 @@ public class ProjectService {
       return 0;
     }
     return tekst.strip().split("\\s+").length;
+  }
+
+  private Integer bepaalAantalBezwaren(String projectNaam, String bestandsnaam, int index) {
+    return switch (index) {
+      case 0 -> 3;
+      case 1 -> {
+        String toggleKey = projectNaam + ":" + bestandsnaam;
+        boolean slaagt = tweedeBestandToggle.compute(toggleKey,
+            (k, v) -> v == null ? false : !v);
+        yield slaagt ? 4 : null;
+      }
+      case 2 -> 5;
+      default -> 2;
+    };
   }
 
   private record VerwerkingsResultaat(BezwaarBestandStatus status, Integer aantalWoorden,
