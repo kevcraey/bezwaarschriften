@@ -9,6 +9,10 @@ server:
     min-response-size: 1024
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 500MB
   datasource:
     hikari:
       minimum-idle: 1
