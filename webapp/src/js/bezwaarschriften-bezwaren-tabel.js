@@ -39,8 +39,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           <thead>
             <tr>
               <th>Bestandsnaam</th>
-              <th>Status</th>
               <th>Aantal bezwaren</th>
+              <th>Status</th>
               <th>Acties</th>
             </tr>
           </thead>
@@ -80,8 +80,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           const aantalBezwaren = b.aantalBezwaren != null ? b.aantalBezwaren : '';
           return `<tr>
             <td>${this._escapeHtml(b.bestandsnaam)}</td>
-            <td>${this._formatStatus(b)}</td>
             <td>${aantalBezwaren}</td>
+            <td>${this._formatStatus(b)}</td>
             <td>
               <button class="extractie-knop" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" ${disabled}
                 title="Extraheer bezwaren">&#128269;</button>
