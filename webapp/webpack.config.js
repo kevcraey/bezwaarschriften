@@ -36,7 +36,24 @@ module.exports = {
   devServer: {
     static: './build',
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': {
+        target: 'http://localhost:8080',
+        onError: (err, req, res) => {
+          if (err.code === 'ECONNREFUSED') {
+            console.log('\x1b[33m%s\x1b[0m', '[HPM] Backend (http://localhost:8080) not ready yet. Retrying...');
+            if (res.writeHead) {
+              res.writeHead(503, {
+                'Content-Type': 'text/plain',
+              });
+              res.end('Backend is starting up, please refresh in a few seconds.');
+            }
+          }
+        },
+      },
+      '/ws': {
+        target: 'http://localhost:8080',
+        ws: true,
+      },
     },
   },
   plugins: [

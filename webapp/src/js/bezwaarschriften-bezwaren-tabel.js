@@ -6,6 +6,8 @@ registerWebComponents([VlTableComponent]);
 
 const STATUS_LABELS = {
   'todo': 'Te verwerken',
+  'wachtend': 'Wachtend',
+  'bezig': 'Bezig',
   'extractie-klaar': 'Extractie klaar',
   'fout': 'Fout',
   'niet ondersteund': 'Niet ondersteund',
@@ -36,6 +38,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       </vl-table>
     `);
     this.__bezwaren = [];
+    this.__takenData = {};
+    this.__timerInterval = null;
   }
 
   set bezwaren(waarde) {
@@ -45,6 +49,22 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   get bezwaren() {
     return this.__bezwaren;
+  }
+
+  werkBijMetTaakUpdate(taak) {
+    this.__takenData[taak.bestandsnaam] = {
+      aangemaaktOp: taak.aangemaaktOp,
+      verwerkingGestartOp: taak.verwerkingGestartOp,
+    };
+    this.__bezwaren = this.__bezwaren.map((b) =>
+      b.bestandsnaam === taak.bestandsnaam ? {
+        bestandsnaam: taak.bestandsnaam,
+        status: taak.status,
+        aantalWoorden: taak.aantalWoorden,
+        aantalBezwaren: taak.aantalBezwaren,
+      } : b,
+    );
+    this._renderRijen();
   }
 
   geefGeselecteerdeBestandsnamen() {
@@ -68,6 +88,10 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     }
   }
 
+  disconnectedCallback() {
+    this._stopTimer();
+  }
+
   _renderRijen() {
     const tbody = this.shadowRoot && this.shadowRoot.querySelector('#tabel-body');
     if (!tbody) return;
@@ -78,18 +102,19 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     if (this.__bezwaren.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4">Geen bestanden gevonden</td></tr>';
       this._dispatchSelectieGewijzigd();
+      this._stopTimer();
       return;
     }
 
     tbody.innerHTML = this.__bezwaren
         .map((b) => {
-          const disabled = b.status === 'niet ondersteund' ? 'disabled' : '';
+          const disabled = this._isDisabled(b.status) ? 'disabled' : '';
           const aantalBezwaren = b.aantalBezwaren != null ? b.aantalBezwaren : '';
           return `<tr>
             <td><input type="checkbox" class="rij-checkbox" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" ${disabled}></td>
             <td>${this._escapeHtml(b.bestandsnaam)}</td>
             <td>${aantalBezwaren}</td>
-            <td>${this._formatStatus(b)}</td>
+            <td class="status-cel" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}">${this._formatStatus(b)}</td>
           </tr>`;
         })
         .join('');
@@ -99,6 +124,75 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     });
 
     this._dispatchSelectieGewijzigd();
+    this._beheerTimer();
+  }
+
+  _isDisabled(status) {
+    return status === 'niet ondersteund' || status === 'wachtend' || status === 'bezig';
+  }
+
+  _beheerTimer() {
+    const heeftActief = this.__bezwaren.some(
+        (b) => b.status === 'wachtend' || b.status === 'bezig',
+    );
+    if (heeftActief && !this.__timerInterval) {
+      this.__timerInterval = setInterval(() => this._updateTimers(), 1000);
+    } else if (!heeftActief && this.__timerInterval) {
+      this._stopTimer();
+    }
+  }
+
+  _stopTimer() {
+    if (this.__timerInterval) {
+      clearInterval(this.__timerInterval);
+      this.__timerInterval = null;
+    }
+  }
+
+  _updateTimers() {
+    const nu = Date.now();
+    this.__bezwaren.forEach((b) => {
+      if (b.status !== 'wachtend' && b.status !== 'bezig') return;
+      const cel = this.shadowRoot.querySelector(
+          `.status-cel[data-bestandsnaam="${CSS.escape(b.bestandsnaam)}"]`,
+      );
+      if (!cel) return;
+      cel.textContent = this._formatStatus(b, nu);
+    });
+  }
+
+  _formatStatus(b, nu) {
+    nu = nu || Date.now();
+    const taakData = this.__takenData[b.bestandsnaam];
+
+    if (b.status === 'wachtend' && taakData && taakData.aangemaaktOp) {
+      const wachtMs = nu - new Date(taakData.aangemaaktOp).getTime();
+      return `Wachtend (${this._formatTijd(wachtMs)})`;
+    }
+
+    if (b.status === 'bezig' && taakData) {
+      const wachtMs = taakData.verwerkingGestartOp && taakData.aangemaaktOp ?
+        new Date(taakData.verwerkingGestartOp).getTime() -
+            new Date(taakData.aangemaaktOp).getTime() :
+        0;
+      const verwerkMs = taakData.verwerkingGestartOp ?
+        nu - new Date(taakData.verwerkingGestartOp).getTime() :
+        0;
+      return `Bezig (${this._formatTijd(wachtMs)} + ${this._formatTijd(verwerkMs)})`;
+    }
+
+    const label = STATUS_LABELS[b.status] || this._escapeHtml(b.status);
+    if (b.status === 'extractie-klaar' && b.aantalWoorden != null) {
+      return `${label} (${b.aantalWoorden} woorden)`;
+    }
+    return label;
+  }
+
+  _formatTijd(ms) {
+    const totaalSeconden = Math.floor(ms / 1000);
+    const minuten = Math.floor(totaalSeconden / 60);
+    const seconden = totaalSeconden % 60;
+    return `${minuten}:${String(seconden).padStart(2, '0')}`;
   }
 
   _dispatchSelectieGewijzigd() {
@@ -108,14 +202,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       bubbles: true,
       composed: true,
     }));
-  }
-
-  _formatStatus(b) {
-    const label = STATUS_LABELS[b.status] || this._escapeHtml(b.status);
-    if (b.status === 'extractie-klaar' && b.aantalWoorden != null) {
-      return `${label} (${b.aantalWoorden} woorden)`;
-    }
-    return label;
   }
 
   _escapeHtml(str) {

@@ -1,9 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -68,53 +66,5 @@ class ProjectControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.messages[0].code").value("project.not-found"))
         .andExpect(jsonPath("$.messages[0].parameters.naam").value("bestaat-niet"));
-  }
-
-  @Test
-  void starktBatchverwerkingEnGeeftStatusTerug() throws Exception {
-    when(projectService.verwerk("windmolens")).thenReturn(List.of(
-        new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR)
-    ));
-
-    mockMvc.perform(post("/api/v1/projects/windmolens/verwerk").with(csrf()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.bezwaren[0].bestandsnaam").value("bezwaar-001.txt"))
-        .andExpect(jsonPath("$.bezwaren[0].status").value("extractie-klaar"));
-  }
-
-  @Test
-  void geeft404VoorOnbekendProjectBijVerwerk() throws Exception {
-    when(projectService.verwerk("bestaat-niet"))
-        .thenThrow(new ProjectNietGevondenException("bestaat-niet"));
-
-    mockMvc.perform(post("/api/v1/projects/bestaat-niet/verwerk").with(csrf()))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.messages[0].code").value("project.not-found"));
-  }
-
-  @Test
-  void extraheertBezwarenVoorEnkelBestand() throws Exception {
-    when(projectService.extraheer("windmolens", "bezwaar-001.txt"))
-        .thenReturn(new BezwaarBestand("bezwaar-001.txt",
-            BezwaarBestandStatus.EXTRACTIE_KLAAR, 150, 3));
-
-    mockMvc.perform(post("/api/v1/projects/windmolens/bezwaren/bezwaar-001.txt/extraheer")
-            .with(csrf()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.bestandsnaam").value("bezwaar-001.txt"))
-        .andExpect(jsonPath("$.status").value("extractie-klaar"))
-        .andExpect(jsonPath("$.aantalWoorden").value(150))
-        .andExpect(jsonPath("$.aantalBezwaren").value(3));
-  }
-
-  @Test
-  void geeft404VoorOnbekendProjectBijExtraheer() throws Exception {
-    when(projectService.extraheer("bestaat-niet", "bezwaar.txt"))
-        .thenThrow(new ProjectNietGevondenException("bestaat-niet"));
-
-    mockMvc.perform(post("/api/v1/projects/bestaat-niet/bezwaren/bezwaar.txt/extraheer")
-            .with(csrf()))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.messages[0].code").value("project.not-found"));
   }
 }

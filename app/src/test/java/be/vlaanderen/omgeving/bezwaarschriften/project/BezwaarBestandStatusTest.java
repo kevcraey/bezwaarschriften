@@ -7,13 +7,15 @@ import org.junit.jupiter.api.Test;
 class BezwaarBestandStatusTest {
 
   @Test
-  void heeftVierStatussen() {
-    assertThat(BezwaarBestandStatus.values()).hasSize(4);
+  void heeftZesStatussen() {
+    assertThat(BezwaarBestandStatus.values()).hasSize(6);
   }
 
   @Test
   void bevatAlleVerwachteWaarden() {
     assertThat(BezwaarBestandStatus.TODO).isNotNull();
+    assertThat(BezwaarBestandStatus.WACHTEND).isNotNull();
+    assertThat(BezwaarBestandStatus.BEZIG).isNotNull();
     assertThat(BezwaarBestandStatus.EXTRACTIE_KLAAR).isNotNull();
     assertThat(BezwaarBestandStatus.FOUT).isNotNull();
     assertThat(BezwaarBestandStatus.NIET_ONDERSTEUND).isNotNull();

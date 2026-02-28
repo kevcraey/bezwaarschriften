@@ -1,10 +1,12 @@
 import {BaseHTMLElement, defineWebComponent, registerWebComponents} from '@domg-wc/common';
 import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
+import {VlTabsComponent} from '@domg-wc/components/block/tabs/vl-tabs.component.js';
+import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 
-registerWebComponents([VlSelectComponent, VlButtonComponent]);
+registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent]);
 
 export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   static get properties() {
@@ -26,11 +28,17 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       <div id="selectie-wrapper">
         <vl-select id="project-select" placeholder="Kies een project..."></vl-select>
       </div>
-      <div id="bezwaren-sectie" hidden>
-        <h2>Bezwaarschriften</h2>
-        <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
-        <p id="fout-melding" hidden></p>
-        <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
+      <div id="tabs-sectie" hidden>
+        <vl-tabs observe-title active-tab="documenten">
+          <vl-tabs-pane id="documenten" title="Documenten">
+            <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
+            <p id="fout-melding" hidden></p>
+            <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
+          </vl-tabs-pane>
+          <vl-tabs-pane id="kernbezwaren" title="Kernbezwaren">
+            <p>Kernbezwaren worden hier getoond na verwerking.</p>
+          </vl-tabs-pane>
+        </vl-tabs>
       </div>
     `);
     this.__projecten = [];
@@ -38,12 +46,91 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this.__bezwaren = [];
     this.__bezig = false;
     this.__fout = null;
+    this._ws = null;
+    this._wsReconnectDelay = 1000;
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._laadProjecten();
     this._koppelEventListeners();
+    this._verbindWebSocket();
+  }
+
+  disconnectedCallback() {
+    if (this._ws) {
+      this._ws.close();
+      this._ws = null;
+    }
+  }
+
+  _verbindWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${protocol}//${window.location.host}/ws/extracties`;
+    this._ws = new WebSocket(url);
+
+    this._ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'taak-update') {
+        this._verwerkTaakUpdate(data.taak);
+      }
+    };
+
+    this._ws.onclose = () => {
+      setTimeout(() => {
+        this._wsReconnectDelay = Math.min(this._wsReconnectDelay * 2, 30000);
+        this._verbindWebSocket();
+        if (this.__geselecteerdProject) {
+          this._syncExtracties(this.__geselecteerdProject);
+        }
+      }, this._wsReconnectDelay);
+    };
+
+    this._ws.onopen = () => {
+      this._wsReconnectDelay = 1000;
+    };
+  }
+
+  _verwerkTaakUpdate(taak) {
+    if (!this.__geselecteerdProject || taak.projectNaam !== this.__geselecteerdProject) {
+      return;
+    }
+    this.__bezwaren = this.__bezwaren.map((b) =>
+      b.bestandsnaam === taak.bestandsnaam ? {
+        ...b,
+        status: taak.status,
+        aantalWoorden: taak.aantalWoorden,
+        aantalBezwaren: taak.aantalBezwaren,
+      } : b,
+    );
+    const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+    if (tabel) {
+      tabel.werkBijMetTaakUpdate(taak);
+    }
+    this._werkDocumentenTabTitelBij();
+  }
+
+  _syncExtracties(projectNaam) {
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties`)
+        .then((response) => response.json())
+        .then((data) => {
+          const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+          if (tabel && data.taken) {
+            data.taken.forEach((taak) => {
+              this.__bezwaren = this.__bezwaren.map((b) =>
+                b.bestandsnaam === taak.bestandsnaam ? {
+                  ...b,
+                  status: taak.status,
+                  aantalWoorden: taak.aantalWoorden,
+                  aantalBezwaren: taak.aantalBezwaren,
+                } : b,
+              );
+              tabel.werkBijMetTaakUpdate(taak);
+            });
+            this._werkDocumentenTabTitelBij();
+          }
+        })
+        .catch(() => {/* stille fout bij sync */});
   }
 
   _laadProjecten() {
@@ -77,7 +164,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this._laadBezwaren(naam);
         } else {
           this.__bezwaren = [];
-          this._verbergBezwarenSectie();
+          this._verbergTabsSectie();
         }
       });
     }
@@ -95,7 +182,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         if (!tabel) return;
         const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
         if (geselecteerd.length === 0) return;
-        this._extraheerGeselecteerde(this.__geselecteerdProject, geselecteerd);
+        this._dienExtractiesIn(this.__geselecteerdProject, geselecteerd);
       });
     }
   }
@@ -110,42 +197,46 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .then((data) => {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
+          this._werkDocumentenTabTitelBij();
+          this._syncExtracties(projectNaam);
         })
         .catch(() => {
           this._toonFout('Bezwaren konden niet worden geladen.');
         });
   }
 
-  _extraheerGeselecteerde(projectNaam, bestandsnamen) {
+  _dienExtractiesIn(projectNaam, bestandsnamen) {
     this._verbergFout();
     this._zetBezig(true);
 
-    const beloftes = bestandsnamen.map((bestandsnaam) => {
-      const url = `/api/v1/projects/${encodeURIComponent(projectNaam)}/bezwaren/${encodeURIComponent(bestandsnaam)}/extraheer`;
-      return fetch(url, {method: 'POST'})
-          .then((response) => {
-            if (!response.ok) throw new Error('Extractie mislukt');
-            return response.json();
-          });
-    });
-
-    Promise.allSettled(beloftes)
-        .then((resultaten) => {
-          let aantalFouten = 0;
-          resultaten.forEach((resultaat) => {
-            if (resultaat.status === 'fulfilled') {
-              const bijgewerkt = resultaat.value;
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bestandsnamen}),
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Indienen extracties mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+          if (tabel && data.taken) {
+            data.taken.forEach((taak) => {
               this.__bezwaren = this.__bezwaren.map((b) =>
-                b.bestandsnaam === bijgewerkt.bestandsnaam ? bijgewerkt : b,
+                b.bestandsnaam === taak.bestandsnaam ? {
+                  ...b,
+                  status: taak.status,
+                  aantalWoorden: taak.aantalWoorden,
+                  aantalBezwaren: taak.aantalBezwaren,
+                } : b,
               );
-            } else {
-              aantalFouten++;
-            }
-          });
-          this._werkTabelBij();
-          if (aantalFouten > 0) {
-            this._toonFout(`${aantalFouten} bestand(en) konden niet worden geëxtraheerd.`);
+              tabel.werkBijMetTaakUpdate(taak);
+            });
+            this._werkDocumentenTabTitelBij();
           }
+        })
+        .catch(() => {
+          this._toonFout('Extracties konden niet worden ingediend.');
         })
         .finally(() => {
           this._zetBezig(false);
@@ -153,7 +244,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   }
 
   _werkTabelBij() {
-    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-sectie');
+    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#tabs-sectie');
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-tabel');
     if (tabel) {
       tabel.bezwaren = this.__bezwaren;
@@ -163,8 +254,31 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     }
   }
 
-  _verbergBezwarenSectie() {
-    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-sectie');
+  _werkDocumentenTabTitelBij() {
+    const pane = this.shadowRoot && this.shadowRoot.querySelector('#documenten');
+    if (!pane || this.__bezwaren.length === 0) return;
+
+    const totaal = this.__bezwaren.length;
+    const aantalKlaar = this.__bezwaren.filter((b) => b.status === 'extractie-klaar').length;
+    const aantalFout = this.__bezwaren.filter((b) => b.status === 'fout').length;
+    const isBezig = this.__bezwaren.some(
+        (b) => b.status === 'wachtend' || b.status === 'bezig',
+    );
+
+    let titel = `Documenten (${aantalKlaar}/${totaal})`;
+    if (isBezig) titel += ' \u23F3';
+    if (aantalFout > 0) titel += ` \u26A0\uFE0F${aantalFout}`;
+
+    const tabs = this.shadowRoot.querySelector('vl-tabs');
+    const slot = tabs && tabs.shadowRoot &&
+        tabs.shadowRoot.querySelector(`slot[name="documenten-title-slot"]`);
+    if (slot) {
+      slot.innerHTML = titel;
+    }
+  }
+
+  _verbergTabsSectie() {
+    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#tabs-sectie');
     if (sectie) sectie.hidden = true;
   }
 
