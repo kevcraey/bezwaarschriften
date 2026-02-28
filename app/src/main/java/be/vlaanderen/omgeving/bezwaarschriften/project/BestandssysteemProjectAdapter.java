@@ -59,6 +59,7 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
     try (var stream = Files.list(bezwarenPad)) {
       return stream
           .filter(pad -> !Files.isDirectory(pad))
+          .filter(pad -> !pad.getFileName().toString().startsWith("."))
           .map(pad -> pad.getFileName().toString())
           .toList();
     } catch (IOException e) {
@@ -101,6 +102,20 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
     } catch (IOException e) {
       throw new RuntimeException("Kon bestand niet verwijderen: " + bestandsnaam, e);
     }
+  }
+
+  @Override
+  public Path geefBestandsPad(final String projectNaam, final String bestandsnaam) {
+    if (bestandsnaam.contains("..") || bestandsnaam.contains("/")
+        || bestandsnaam.contains("\\")) {
+      throw new IllegalArgumentException("Ongeldige bestandsnaam: " + bestandsnaam);
+    }
+    var bezwarenPad = resolveEnValideerBezwarenPad(projectNaam);
+    var bestandsPad = bezwarenPad.resolve(bestandsnaam).normalize();
+    if (!bestandsPad.startsWith(bezwarenPad) || !Files.exists(bestandsPad)) {
+      throw new BestandNietGevondenException(bestandsnaam);
+    }
+    return bestandsPad;
   }
 
   /**
