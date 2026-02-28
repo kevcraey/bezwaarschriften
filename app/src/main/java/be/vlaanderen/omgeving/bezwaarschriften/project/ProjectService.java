@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,17 @@ public class ProjectService {
   public boolean verwijderBezwaar(String projectNaam, String bestandsnaam) {
     extractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
     return projectPoort.verwijderBestand(projectNaam, bestandsnaam);
+  }
+
+  /**
+   * Geeft het volledige pad naar een bezwaarbestand.
+   *
+   * @param projectNaam Naam van het project
+   * @param bestandsnaam Naam van het bestand
+   * @return Het pad naar het bestand
+   */
+  public Path geefBestandsPad(String projectNaam, String bestandsnaam) {
+    return projectPoort.geefBestandsPad(projectNaam, bestandsnaam);
   }
 
   private boolean isTxtBestand(String bestandsnaam) {
