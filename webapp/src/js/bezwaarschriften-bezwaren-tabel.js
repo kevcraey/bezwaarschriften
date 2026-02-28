@@ -76,8 +76,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
     tbody.innerHTML = this.__bezwaren
         .map((b) => {
-          const kanExtraheren = b.status === 'todo' || b.status === 'fout';
-          const disabled = kanExtraheren ? '' : 'disabled';
+          const disabled = b.status === 'niet ondersteund' ? 'disabled' : '';
           const aantalBezwaren = b.aantalBezwaren != null ? b.aantalBezwaren : '';
           return `<tr>
             <td>${this._escapeHtml(b.bestandsnaam)}</td>
