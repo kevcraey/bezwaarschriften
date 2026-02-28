@@ -14,10 +14,10 @@ public class SecurityConfiguration {
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
         .csrf(csrf -> csrf.disable())
-        .authorizeHttpRequests(auth -> auth
+        .authorizeRequests(auth -> auth
             // TODO: API-authenticatie herstellen zodra OAuth opnieuw geconfigureerd is.
             // Tijdelijk permitAll voor dev-fase; vorige config vereiste BezwaarschriftenGebruiker.
-            .requestMatchers("/admin/health/**", "/admin/info", "/api/v1/**").permitAll()
+            .antMatchers("/admin/health/**", "/admin/info", "/api/v1/**", "/ws/**").permitAll()
             .anyRequest().authenticated());
     return http.build();
   }
