@@ -95,10 +95,19 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (!this.__geselecteerdProject || taak.projectNaam !== this.__geselecteerdProject) {
       return;
     }
+    this.__bezwaren = this.__bezwaren.map((b) =>
+      b.bestandsnaam === taak.bestandsnaam ? {
+        ...b,
+        status: taak.status,
+        aantalWoorden: taak.aantalWoorden,
+        aantalBezwaren: taak.aantalBezwaren,
+      } : b,
+    );
     const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
     if (tabel) {
       tabel.werkBijMetTaakUpdate(taak);
     }
+    this._werkDocumentenTabTitelBij();
   }
 
   _syncExtracties(projectNaam) {
@@ -107,7 +116,18 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .then((data) => {
           const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
           if (tabel && data.taken) {
-            data.taken.forEach((taak) => tabel.werkBijMetTaakUpdate(taak));
+            data.taken.forEach((taak) => {
+              this.__bezwaren = this.__bezwaren.map((b) =>
+                b.bestandsnaam === taak.bestandsnaam ? {
+                  ...b,
+                  status: taak.status,
+                  aantalWoorden: taak.aantalWoorden,
+                  aantalBezwaren: taak.aantalBezwaren,
+                } : b,
+              );
+              tabel.werkBijMetTaakUpdate(taak);
+            });
+            this._werkDocumentenTabTitelBij();
           }
         })
         .catch(() => {/* stille fout bij sync */});
@@ -177,6 +197,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .then((data) => {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
+          this._werkDocumentenTabTitelBij();
           this._syncExtracties(projectNaam);
         })
         .catch(() => {
@@ -200,7 +221,18 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .then((data) => {
           const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
           if (tabel && data.taken) {
-            data.taken.forEach((taak) => tabel.werkBijMetTaakUpdate(taak));
+            data.taken.forEach((taak) => {
+              this.__bezwaren = this.__bezwaren.map((b) =>
+                b.bestandsnaam === taak.bestandsnaam ? {
+                  ...b,
+                  status: taak.status,
+                  aantalWoorden: taak.aantalWoorden,
+                  aantalBezwaren: taak.aantalBezwaren,
+                } : b,
+              );
+              tabel.werkBijMetTaakUpdate(taak);
+            });
+            this._werkDocumentenTabTitelBij();
           }
         })
         .catch(() => {
@@ -220,6 +252,24 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (sectie) {
       sectie.hidden = false;
     }
+  }
+
+  _werkDocumentenTabTitelBij() {
+    const pane = this.shadowRoot && this.shadowRoot.querySelector('#documenten');
+    if (!pane || this.__bezwaren.length === 0) return;
+
+    const totaal = this.__bezwaren.length;
+    const aantalKlaar = this.__bezwaren.filter((b) => b.status === 'extractie-klaar').length;
+    const aantalFout = this.__bezwaren.filter((b) => b.status === 'fout').length;
+    const isBezig = this.__bezwaren.some(
+        (b) => b.status === 'wachtend' || b.status === 'bezig',
+    );
+
+    let titel = `Documenten (${aantalKlaar}/${totaal})`;
+    if (isBezig) titel += ' \u23F3';
+    if (aantalFout > 0) titel += ` \u26A0\uFE0F${aantalFout}`;
+
+    pane.setAttribute('title', titel);
   }
 
   _verbergTabsSectie() {
