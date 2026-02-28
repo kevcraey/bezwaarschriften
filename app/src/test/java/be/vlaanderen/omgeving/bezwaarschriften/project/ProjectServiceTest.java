@@ -2,17 +2,11 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import be.vlaanderen.omgeving.bezwaarschriften.ingestie.Brondocument;
-import be.vlaanderen.omgeving.bezwaarschriften.ingestie.FileIngestionException;
-import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,13 +20,13 @@ class ProjectServiceTest {
   private ProjectPoort projectPoort;
 
   @Mock
-  private IngestiePoort ingestiePoort;
+  private ExtractieTaakRepository extractieTaakRepository;
 
   private ProjectService service;
 
   @BeforeEach
   void setUp() {
-    service = new ProjectService(projectPoort, ingestiePoort, "input");
+    service = new ProjectService(projectPoort, extractieTaakRepository);
   }
 
   @Test
@@ -48,6 +42,9 @@ class ProjectServiceTest {
   void geeftBezwarenMetInitieleStatussen() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.txt", "bijlage.pdf"));
+    when(extractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.empty());
 
     var bezwaren = service.geefBezwaren("windmolens");
 
@@ -63,76 +60,37 @@ class ProjectServiceTest {
   }
 
   @Test
-  void verwerkingZetStatusOpExtractieKlaarBijSucces() throws Exception {
+  void leidtStatusAfUitExtractieTaak() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.txt"));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar-001.txt")))
-        .thenReturn(new Brondocument("dit is een test tekst", "bezwaar-001.txt",
-            "input/windmolens/bezwaren/bezwaar-001.txt", Instant.now()));
+    var taak = maakTaak(ExtractieTaakStatus.KLAAR, 150, 3);
+    when(extractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(taak));
 
-    var resultaat = service.verwerk("windmolens");
+    var bezwaren = service.geefBezwaren("windmolens");
 
-    assertThat(resultaat).hasSize(1);
-    assertThat(resultaat.get(0).status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
-    assertThat(resultaat.get(0).aantalWoorden()).isEqualTo(5);
-    assertThat(resultaat.get(0).aantalBezwaren()).isNull();
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
+    assertThat(bezwaren.get(0).aantalWoorden()).isEqualTo(150);
+    assertThat(bezwaren.get(0).aantalBezwaren()).isEqualTo(3);
   }
 
   @Test
-  void verwerkingGaatDoorBijFoutOpEnkelBestand() throws Exception {
+  void leidtWachtendStatusAfUitExtractieTaak() {
     when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-goed.txt", "bezwaar-kapot.txt"));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar-goed.txt")))
-        .thenReturn(new Brondocument("inhoud", "bezwaar-goed.txt",
-            "input/windmolens/bezwaren/bezwaar-goed.txt", Instant.now()));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar-kapot.txt")))
-        .thenThrow(new FileIngestionException("Kan niet lezen"));
+        .thenReturn(List.of("bezwaar-001.txt"));
+    var taak = maakTaak(ExtractieTaakStatus.WACHTEND, null, null);
+    when(extractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(taak));
 
-    var resultaat = service.verwerk("windmolens");
+    var bezwaren = service.geefBezwaren("windmolens");
 
-    assertThat(resultaat).hasSize(2);
-    assertThat(resultaat).anySatisfy(b -> {
-      assertThat(b.bestandsnaam()).isEqualTo("bezwaar-goed.txt");
-      assertThat(b.status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
-    });
-    assertThat(resultaat).anySatisfy(b -> {
-      assertThat(b.bestandsnaam()).isEqualTo("bezwaar-kapot.txt");
-      assertThat(b.status()).isEqualTo(BezwaarBestandStatus.FOUT);
-    });
-  }
-
-  @Test
-  void slaatNietOndersteundeBestandenOverBijVerwerking() throws Exception {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar.txt", "bijlage.pdf"));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar.txt")))
-        .thenReturn(new Brondocument("inhoud", "bezwaar.txt",
-            "input/windmolens/bezwaren/bezwaar.txt", Instant.now()));
-
-    var resultaat = service.verwerk("windmolens");
-
-    verify(ingestiePoort, never())
-        .leesBestand(Path.of("input", "windmolens", "bezwaren", "bijlage.pdf"));
-    assertThat(resultaat).anySatisfy(b -> {
-      assertThat(b.bestandsnaam()).isEqualTo("bijlage.pdf");
-      assertThat(b.status()).isEqualTo(BezwaarBestandStatus.NIET_ONDERSTEUND);
-    });
-  }
-
-  @Test
-  void herverwerktNietWatAlExtractieKlaarIs() throws Exception {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar.txt"));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar.txt")))
-        .thenReturn(new Brondocument("inhoud", "bezwaar.txt",
-            "input/windmolens/bezwaren/bezwaar.txt", Instant.now()));
-
-    service.verwerk("windmolens"); // eerste verwerking
-    service.verwerk("windmolens"); // tweede verwerking
-
-    // IngestiePoort slechts één keer aangeroepen
-    verify(ingestiePoort, times(1))
-        .leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar.txt"));
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.WACHTEND);
+    assertThat(bezwaren.get(0).aantalWoorden()).isNull();
+    assertThat(bezwaren.get(0).aantalBezwaren()).isNull();
   }
 
   @Test
@@ -146,72 +104,17 @@ class ProjectServiceTest {
     );
   }
 
-  @Test
-  void extraheerEersteBestandGeeft3Bezwaren() throws Exception {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.txt", "bezwaar-002.txt"));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "bezwaar-001.txt")))
-        .thenReturn(new Brondocument("test tekst hier", "bezwaar-001.txt",
-            "input/windmolens/bezwaren/bezwaar-001.txt", Instant.now()));
-
-    var resultaat = service.extraheer("windmolens", "bezwaar-001.txt");
-
-    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
-    assertThat(resultaat.aantalBezwaren()).isEqualTo(3);
-    assertThat(resultaat.aantalWoorden()).isEqualTo(3);
-  }
-
-  @Test
-  void extraheerDerdeBestandGeeft5Bezwaren() throws Exception {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("a.txt", "b.txt", "c.txt"));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "c.txt")))
-        .thenReturn(new Brondocument("tekst", "c.txt",
-            "input/windmolens/bezwaren/c.txt", Instant.now()));
-
-    var resultaat = service.extraheer("windmolens", "c.txt");
-
-    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
-    assertThat(resultaat.aantalBezwaren()).isEqualTo(5);
-  }
-
-  @Test
-  void extraheerTweedeBestandFaaltBijEerstePoging() throws Exception {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("a.txt", "b.txt", "c.txt"));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "b.txt")))
-        .thenReturn(new Brondocument("tekst", "b.txt",
-            "input/windmolens/bezwaren/b.txt", Instant.now()));
-
-    var resultaat = service.extraheer("windmolens", "b.txt");
-
-    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.FOUT);
-    assertThat(resultaat.aantalBezwaren()).isNull();
-  }
-
-  @Test
-  void extraheerTweedeBestandSlaagdBijTweedePoging() throws Exception {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("a.txt", "b.txt", "c.txt"));
-    when(ingestiePoort.leesBestand(Path.of("input", "windmolens", "bezwaren", "b.txt")))
-        .thenReturn(new Brondocument("tekst", "b.txt",
-            "input/windmolens/bezwaren/b.txt", Instant.now()));
-
-    service.extraheer("windmolens", "b.txt"); // eerste poging faalt
-    var resultaat = service.extraheer("windmolens", "b.txt"); // tweede poging slaagt
-
-    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
-    assertThat(resultaat.aantalBezwaren()).isEqualTo(4);
-  }
-
-  @Test
-  void extraheerNietOndersteundBestandGeeftNietOndersteund() {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bijlage.pdf"));
-
-    var resultaat = service.extraheer("windmolens", "bijlage.pdf");
-
-    assertThat(resultaat.status()).isEqualTo(BezwaarBestandStatus.NIET_ONDERSTEUND);
-    assertThat(resultaat.aantalBezwaren()).isNull();
+  private ExtractieTaak maakTaak(ExtractieTaakStatus status, Integer aantalWoorden,
+      Integer aantalBezwaren) {
+    var taak = new ExtractieTaak();
+    taak.setProjectNaam("windmolens");
+    taak.setBestandsnaam("bezwaar-001.txt");
+    taak.setStatus(status);
+    taak.setAantalWoorden(aantalWoorden);
+    taak.setAantalBezwaren(aantalBezwaren);
+    taak.setAangemaaktOp(Instant.now());
+    taak.setAantalPogingen(0);
+    taak.setMaxPogingen(3);
+    return taak;
   }
 }
