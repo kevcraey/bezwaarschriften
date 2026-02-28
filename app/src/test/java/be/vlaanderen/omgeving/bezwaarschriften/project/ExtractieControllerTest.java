@@ -63,4 +63,14 @@ class ExtractieControllerTest {
         .andExpect(jsonPath("$.taken[0].aantalWoorden").value(150))
         .andExpect(jsonPath("$.taken[0].aantalBezwaren").value(3));
   }
+
+  @Test
+  void retryHerplantGefaaldeTaken() throws Exception {
+    when(extractieTaakService.herplanGefaaldeTaken("windmolens")).thenReturn(3);
+
+    mockMvc.perform(post("/api/v1/projects/windmolens/extracties/retry")
+            .with(csrf()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.aantalOpnieuwIngepland").value(3));
+  }
 }
