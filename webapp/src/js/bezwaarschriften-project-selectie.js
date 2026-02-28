@@ -5,10 +5,11 @@ import {VlTabsComponent} from '@domg-wc/components/block/tabs/vl-tabs.component.
 import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.component.js';
 import {VlUploadComponent} from '@domg-wc/components/form/upload/vl-upload.component.js';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
+import {VlToasterComponent} from '@domg-wc/components/block/toaster/vl-toaster.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 
-registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent]);
+registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent, VlToasterComponent]);
 
 export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   static get properties() {
@@ -34,19 +35,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         <vl-tabs observe-title active-tab="documenten">
           <vl-tabs-pane id="documenten" title="Documenten">
             <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
-            <vl-button id="verwijder-knop" disabled>Verwijder geselecteerde</vl-button>
+            <vl-button id="verwijder-knop" disabled error>Verwijder geselecteerde</vl-button>
             <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
-            <div id="upload-zone" hidden>
-              <vl-upload id="bestand-upload"
-                accepted-files=".txt"
-                max-files="100"
-                max-size="50"
-                main-title="Bezwaarbestanden toevoegen"
-                sub-title="Sleep .txt bestanden hierheen of klik om te bladeren"
-                disallow-duplicates>
-              </vl-upload>
-              <vl-button id="upload-verzend-knop">Uploaden</vl-button>
-            </div>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
           </vl-tabs-pane>
@@ -63,6 +53,21 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <vl-button id="verwijder-bevestig-knop">Verwijderen</vl-button>
         </div>
       </vl-modal>
+      <vl-modal id="upload-modal" title="Bestanden toevoegen" closable>
+        <div slot="content">
+          <vl-upload id="bestand-upload"
+            accepted-files=".txt"
+            max-files="100"
+            max-size="50"
+            main-title="Bezwaarbestanden toevoegen"
+            sub-title="Sleep .txt bestanden hierheen of klik om te bladeren">
+          </vl-upload>
+        </div>
+        <div slot="button">
+          <vl-button id="upload-verzend-knop">Uploaden</vl-button>
+        </div>
+      </vl-modal>
+      <vl-toaster id="toaster"></vl-toaster>
     `);
     this.__projecten = [];
     this.__geselecteerdProject = null;
@@ -246,8 +251,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
     if (toevoegenKnop) {
       toevoegenKnop.addEventListener('vl-click', () => {
-        const uploadZone = this.shadowRoot.querySelector('#upload-zone');
-        if (uploadZone) uploadZone.hidden = !uploadZone.hidden;
+        const modal = this.shadowRoot.querySelector('#upload-modal');
+        if (modal) modal.open();
       });
     }
 
@@ -377,18 +382,36 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         })
         .then((data) => {
           uploadEl.removeAllFiles();
-          const uploadZone = this.shadowRoot.querySelector('#upload-zone');
-          if (uploadZone) uploadZone.hidden = true;
+          const modal = this.shadowRoot.querySelector('#upload-modal');
+          if (modal) modal.close();
+
+          if (data.geupload && data.geupload.length > 0) {
+            this._toonToast('success',
+              `${data.geupload.length} bestand(en) succesvol opgeladen.`);
+          }
 
           if (data.fouten && data.fouten.length > 0) {
-            const foutTekst = data.fouten.map((f) => `${f.bestandsnaam}: ${f.reden}`).join(', ');
-            this._toonFout(`Sommige bestanden konden niet worden geupload: ${foutTekst}`);
+            const alert = document.createElement('vl-alert');
+            alert.setAttribute('type', 'error');
+            alert.setAttribute('icon', 'warning');
+            alert.setAttribute('message',
+              `${data.fouten.length} bestand(en) niet opgeladen: bestand met dezelfde naam bestaat al.`);
+            alert.setAttribute('closable', '');
+            const ul = document.createElement('ul');
+            data.fouten.forEach((f) => {
+              const li = document.createElement('li');
+              li.textContent = f.bestandsnaam;
+              ul.appendChild(li);
+            });
+            alert.appendChild(ul);
+            const toaster = this.shadowRoot.querySelector('#toaster');
+            if (toaster) toaster.show(alert);
           }
 
           this._laadBezwaren(this.__geselecteerdProject);
         })
         .catch(() => {
-          this._toonFout('Upload mislukt.');
+          this._toonToast('error', 'Upload mislukt.');
         })
         .finally(() => {
           this._zetBezig(false);
@@ -438,6 +461,22 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _verbergFout() {
     const foutEl = this.shadowRoot && this.shadowRoot.querySelector('#fout-melding');
     if (foutEl) foutEl.hidden = true;
+  }
+
+  _toonToast(type, bericht) {
+    const toaster = this.shadowRoot.querySelector('#toaster');
+    if (!toaster) return;
+
+    const alert = document.createElement('vl-alert');
+    alert.setAttribute('type', type);
+    alert.setAttribute('icon', type === 'success' ? 'check' : 'warning');
+    alert.setAttribute('message', bericht);
+    alert.setAttribute('closable', '');
+    toaster.show(alert);
+
+    if (type === 'success') {
+      setTimeout(() => alert.remove(), 5000);
+    }
   }
 }
 
