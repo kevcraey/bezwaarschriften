@@ -25,11 +25,13 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       </style>
       <div id="selectie-wrapper">
         <vl-select id="project-select" placeholder="Kies een project..."></vl-select>
-        <vl-button id="verwerk-knop">Verwerk alles</vl-button>
+      </div>
+      <div id="bezwaren-sectie" hidden>
+        <h2>Bezwaarschriften</h2>
         <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
         <p id="fout-melding" hidden></p>
+        <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
       </div>
-      <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel" hidden></bezwaarschriften-bezwaren-tabel>
     `);
     this.__projecten = [];
     this.__geselecteerdProject = null;
@@ -64,7 +66,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
   _koppelEventListeners() {
     const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
-    const verwerkKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerk-knop');
     const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
 
     if (selectEl) {
@@ -76,7 +77,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this._laadBezwaren(naam);
         } else {
           this.__bezwaren = [];
-          this._verbergTabel();
+          this._verbergBezwarenSectie();
         }
       });
     }
@@ -95,17 +96,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
         if (geselecteerd.length === 0) return;
         this._extraheerGeselecteerde(this.__geselecteerdProject, geselecteerd);
-      });
-    }
-
-    if (verwerkKnop) {
-      verwerkKnop.addEventListener('vl-click', () => {
-        if (this.__bezig) return;
-        if (!this.__geselecteerdProject) {
-          this._toonFout('Selecteer eerst een project.');
-          return;
-        }
-        this._verwerkBezwaren(this.__geselecteerdProject);
       });
     }
   }
@@ -162,44 +152,25 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         });
   }
 
-  _verwerkBezwaren(projectNaam) {
-    this._verbergFout();
-    this._zetBezig(true);
-    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/verwerk`, {method: 'POST'})
-        .then((response) => {
-          if (!response.ok) throw new Error('Verwerking mislukt');
-          return response.json();
-        })
-        .then((data) => {
-          this.__bezwaren = data.bezwaren;
-          this._werkTabelBij();
-        })
-        .catch(() => {
-          this._toonFout('Verwerking kon niet worden gestart.');
-        })
-        .finally(() => {
-          this._zetBezig(false);
-        });
-  }
-
   _werkTabelBij() {
+    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-sectie');
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-tabel');
     if (tabel) {
       tabel.bezwaren = this.__bezwaren;
-      tabel.hidden = false;
+    }
+    if (sectie) {
+      sectie.hidden = false;
     }
   }
 
-  _verbergTabel() {
-    const tabel = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-tabel');
-    if (tabel) tabel.hidden = true;
+  _verbergBezwarenSectie() {
+    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-sectie');
+    if (sectie) sectie.hidden = true;
   }
 
   _zetBezig(bezig) {
     this.__bezig = bezig;
-    const verwerkKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerk-knop');
     const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
-    if (verwerkKnop) verwerkKnop.disabled = bezig;
     if (extraheerKnop) extraheerKnop.disabled = bezig;
   }
 
