@@ -15,16 +15,19 @@ class BezwaarBestandTest {
   }
 
   @Test
-  void maaktRecordAanMetAantalWoorden() {
-    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR, 42);
+  void maaktRecordAanMetAantalWoordenEnAantalBezwaren() {
+    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR,
+        42, 3);
 
     assertThat(bestand.aantalWoorden()).isEqualTo(42);
+    assertThat(bestand.aantalBezwaren()).isEqualTo(3);
   }
 
   @Test
-  void tweeArgConstructorZetAantalWoordenOpNull() {
+  void tweeArgConstructorZetAantalWoordenEnAantalBezwarenOpNull() {
     var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.TODO);
 
     assertThat(bestand.aantalWoorden()).isNull();
+    assertThat(bestand.aantalBezwaren()).isNull();
   }
 }

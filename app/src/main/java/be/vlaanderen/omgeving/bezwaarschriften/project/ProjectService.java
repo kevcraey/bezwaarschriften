@@ -69,7 +69,8 @@ public class ProjectService {
         .map(naam -> {
           if (projectResultaten != null && projectResultaten.containsKey(naam)) {
             var resultaat = projectResultaten.get(naam);
-            return new BezwaarBestand(naam, resultaat.status(), resultaat.aantalWoorden());
+            return new BezwaarBestand(naam, resultaat.status(), resultaat.aantalWoorden(),
+                resultaat.aantalBezwaren());
           }
           return new BezwaarBestand(naam, isTxtBestand(naam)
               ? BezwaarBestandStatus.TODO
@@ -100,12 +101,12 @@ public class ProjectService {
         var brondocument = ingestiePoort.leesBestand(bestandsPad);
         var aantalWoorden = telWoorden(brondocument.tekst());
         projectStatussen.put(bestand.bestandsnaam(),
-            new VerwerkingsResultaat(BezwaarBestandStatus.EXTRACTIE_KLAAR, aantalWoorden));
+            new VerwerkingsResultaat(BezwaarBestandStatus.EXTRACTIE_KLAAR, aantalWoorden, null));
         LOGGER.info("Bestand '{}' succesvol verwerkt voor project '{}' ({} woorden)",
             bestand.bestandsnaam(), projectNaam, aantalWoorden);
       } catch (Exception e) {
         projectStatussen.put(bestand.bestandsnaam(),
-            new VerwerkingsResultaat(BezwaarBestandStatus.FOUT, null));
+            new VerwerkingsResultaat(BezwaarBestandStatus.FOUT, null, null));
         LOGGER.warn("Fout bij verwerking van '{}' voor project '{}': {}",
             bestand.bestandsnaam(), projectNaam, e.getMessage());
       }
@@ -125,5 +126,6 @@ public class ProjectService {
     return tekst.strip().split("\\s+").length;
   }
 
-  private record VerwerkingsResultaat(BezwaarBestandStatus status, Integer aantalWoorden) { }
+  private record VerwerkingsResultaat(BezwaarBestandStatus status, Integer aantalWoorden,
+      Integer aantalBezwaren) { }
 }

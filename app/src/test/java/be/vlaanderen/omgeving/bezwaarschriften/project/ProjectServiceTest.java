@@ -75,6 +75,7 @@ class ProjectServiceTest {
     assertThat(resultaat).hasSize(1);
     assertThat(resultaat.get(0).status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
     assertThat(resultaat.get(0).aantalWoorden()).isEqualTo(5);
+    assertThat(resultaat.get(0).aantalBezwaren()).isNull();
   }
 
   @Test
