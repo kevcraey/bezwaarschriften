@@ -374,8 +374,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const isBezig = this.__bezwaren.some(
         (b) => b.status === 'wachtend' || b.status === 'bezig',
     );
+    const allesKlaar = aantalKlaar === totaal;
 
     let titel = `Documenten (${aantalKlaar}/${totaal})`;
+    if (allesKlaar) titel = `\u2714\uFE0F Documenten (${totaal}/${totaal})`;
     if (isBezig) titel += ' \u23F3';
     if (aantalFout > 0) titel += ` \u26A0\uFE0F${aantalFout}`;
 
@@ -384,6 +386,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         tabs.shadowRoot.querySelector(`slot[name="documenten-title-slot"]`);
     if (slot) {
       slot.innerHTML = titel;
+      slot.style.color = allesKlaar ? '#0e7c3a' : '';
     }
   }
 
