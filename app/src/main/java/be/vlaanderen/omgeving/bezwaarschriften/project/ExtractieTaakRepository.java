@@ -44,4 +44,12 @@ public interface ExtractieTaakRepository extends JpaRepository<ExtractieTaak, Lo
    */
   Optional<ExtractieTaak> findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
       String projectNaam, String bestandsnaam);
+
+  /**
+   * Verwijdert alle extractie-taken voor een bepaald bestand binnen een project.
+   *
+   * @param projectNaam de naam van het project
+   * @param bestandsnaam de naam van het bestand
+   */
+  void deleteByProjectNaamAndBestandsnaam(String projectNaam, String bestandsnaam);
 }
