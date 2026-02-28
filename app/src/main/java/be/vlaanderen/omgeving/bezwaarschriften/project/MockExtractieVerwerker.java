@@ -3,7 +3,9 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,7 +15,7 @@ import org.springframework.stereotype.Component;
  * Mock-implementatie van {@link ExtractieVerwerker} die een AI-extractie simuleert.
  *
  * <p>Gebruikt configureerbare delay om realistische verwerkingstijden na te bootsen.
- * Bestanden met "2" in de naam falen bij de eerste twee pogingen (poging 0 en 1).
+ * Bestanden met "2" in de naam slagen enkel bij elke 3e aanroep (aanroep 3, 6, 9, ...).
  */
 @Component
 public class MockExtractieVerwerker implements ExtractieVerwerker {
@@ -25,6 +27,8 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
   private final Path inputFolder;
   private final int minDelaySeconden;
   private final int maxDelaySeconden;
+  private final ConcurrentHashMap<String, AtomicInteger> aanroepTeller =
+      new ConcurrentHashMap<>();
 
   /**
    * Maakt een nieuwe MockExtractieVerwerker aan.
@@ -53,7 +57,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
 
     simuleerDelay();
 
-    int aantalBezwaren = bepaalAantalBezwaren(bestandsnaam, poging);
+    int aantalBezwaren = bepaalAantalBezwaren(bestandsnaam);
 
     LOGGER.info("Bestand '{}' verwerkt voor project '{}' (poging {}, {} woorden, {} bezwaren)",
         bestandsnaam, projectNaam, poging, aantalWoorden, aantalBezwaren);
@@ -83,11 +87,14 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     }
   }
 
-  private int bepaalAantalBezwaren(String bestandsnaam, int poging) {
+  private int bepaalAantalBezwaren(String bestandsnaam) {
     if (bestandsnaam.contains("2")) {
-      if (poging < 2) {
+      int aanroep = aanroepTeller
+          .computeIfAbsent(bestandsnaam, k -> new AtomicInteger(0))
+          .incrementAndGet();
+      if (aanroep % 3 != 0) {
         throw new RuntimeException(
-            "Gesimuleerde fout bij poging " + poging + " voor bestand '" + bestandsnaam + "'");
+            "Gesimuleerde fout (aanroep " + aanroep + ") voor bestand '" + bestandsnaam + "'");
       }
       return 4;
     }

@@ -41,34 +41,40 @@ class MockExtractieVerwerkerTest {
   }
 
   @Test
-  void bestandMetTweeFaaltBijEerstePoging() {
-    String bestandsnaam = "bezwaar2.txt";
-    mockBestand(bestandsnaam, "tekst");
-
-    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0))
-        .isInstanceOf(RuntimeException.class)
-        .hasMessageContaining("bezwaar2.txt");
-  }
-
-  @Test
-  void bestandMetTweeFaaltBijTweedePoging() {
-    String bestandsnaam = "bezwaar2.txt";
-    mockBestand(bestandsnaam, "tekst");
-
-    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 1))
-        .isInstanceOf(RuntimeException.class)
-        .hasMessageContaining("bezwaar2.txt");
-  }
-
-  @Test
-  void bestandMetTweeSlaagdBijDerdePoging() {
+  void bestandMetTweeFaaltBijAanroep1En2SlaagdBij3() {
     String bestandsnaam = "bezwaar2.txt";
     mockBestand(bestandsnaam, "derde poging tekst hier nu");
 
-    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 2);
+    // aanroep 1: faalt
+    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0))
+        .isInstanceOf(RuntimeException.class);
 
+    // aanroep 2: faalt
+    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 1))
+        .isInstanceOf(RuntimeException.class);
+
+    // aanroep 3: slaagt (veelvoud van 3)
+    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 2);
     assertThat(resultaat.aantalBezwaren()).isEqualTo(4);
-    assertThat(resultaat.aantalWoorden()).isEqualTo(5);
+  }
+
+  @Test
+  void bestandMetTweeFaaltOpnieuwNaSucces() {
+    String bestandsnaam = "bezwaar2.txt";
+    mockBestand(bestandsnaam, "tekst voor cyclus test");
+
+    // aanroep 1-3: faal, faal, slaag
+    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0));
+    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0));
+    verwerker.verwerk(PROJECT, bestandsnaam, 0);
+
+    // aanroep 4-6: faal, faal, slaag (cyclus herhaalt)
+    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0))
+        .isInstanceOf(RuntimeException.class);
+    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0))
+        .isInstanceOf(RuntimeException.class);
+    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 0);
+    assertThat(resultaat.aantalBezwaren()).isEqualTo(4);
   }
 
   @Test
