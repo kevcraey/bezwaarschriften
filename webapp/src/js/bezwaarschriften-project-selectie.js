@@ -171,7 +171,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
     this.shadowRoot.addEventListener('selectie-gewijzigd', (e) => {
       if (extraheerKnop) {
-        extraheerKnop.disabled = this.__bezig || e.detail.geselecteerd.length === 0;
+        const aantal = e.detail.geselecteerd.length;
+        extraheerKnop.disabled = this.__bezig || aantal === 0;
+        extraheerKnop.textContent = aantal > 0
+          ? `Extraheer geselecteerde (${aantal})`
+          : 'Extraheer geselecteerde';
       }
     });
 
