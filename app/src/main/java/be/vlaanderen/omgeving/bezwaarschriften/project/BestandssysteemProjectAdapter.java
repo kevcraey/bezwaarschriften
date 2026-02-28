@@ -52,14 +52,7 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
 
   @Override
   public List<String> geefBestandsnamen(final String projectNaam) {
-    var projectPad = inputFolder.resolve(projectNaam).normalize();
-    if (!projectPad.startsWith(inputFolder.normalize())) {
-      throw new ProjectNietGevondenException(projectNaam);
-    }
-    if (!Files.isDirectory(projectPad)) {
-      throw new ProjectNietGevondenException(projectNaam);
-    }
-    var bezwarenPad = projectPad.resolve("bezwaren");
+    var bezwarenPad = resolveEnValideerBezwarenPad(projectNaam);
     if (!Files.isDirectory(bezwarenPad)) {
       return Collections.emptyList();
     }
@@ -73,5 +66,58 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
           projectNaam, bezwarenPad, e);
       return Collections.emptyList();
     }
+  }
+
+  @Override
+  public void slaBestandOp(final String projectNaam, final String bestandsnaam,
+      final byte[] inhoud) {
+    var bezwarenPad = resolveEnValideerBezwarenPad(projectNaam);
+    var doelPad = bezwarenPad.resolve(bestandsnaam).normalize();
+    if (!doelPad.startsWith(bezwarenPad)) {
+      throw new IllegalArgumentException("Ongeldige bestandsnaam: " + bestandsnaam);
+    }
+    try {
+      Files.createDirectories(bezwarenPad);
+      Files.write(doelPad, inhoud);
+      LOGGER.info("Bestand '{}' opgeslagen voor project '{}'", bestandsnaam, projectNaam);
+    } catch (IOException e) {
+      throw new RuntimeException("Kon bestand niet opslaan: " + bestandsnaam, e);
+    }
+  }
+
+  @Override
+  public boolean verwijderBestand(final String projectNaam, final String bestandsnaam) {
+    var bezwarenPad = resolveEnValideerBezwarenPad(projectNaam);
+    var doelPad = bezwarenPad.resolve(bestandsnaam).normalize();
+    if (!doelPad.startsWith(bezwarenPad)) {
+      throw new IllegalArgumentException("Ongeldige bestandsnaam: " + bestandsnaam);
+    }
+    try {
+      boolean verwijderd = Files.deleteIfExists(doelPad);
+      if (verwijderd) {
+        LOGGER.info("Bestand '{}' verwijderd voor project '{}'", bestandsnaam, projectNaam);
+      }
+      return verwijderd;
+    } catch (IOException e) {
+      throw new RuntimeException("Kon bestand niet verwijderen: " + bestandsnaam, e);
+    }
+  }
+
+  /**
+   * Valideert de projectnaam en geeft het pad naar de bezwaren-map terug.
+   *
+   * @param projectNaam Naam van het project
+   * @return Pad naar de bezwaren-map van het project
+   * @throws ProjectNietGevondenException Als het project niet bestaat of de naam ongeldig is
+   */
+  private Path resolveEnValideerBezwarenPad(final String projectNaam) {
+    var projectPad = inputFolder.resolve(projectNaam).normalize();
+    if (!projectPad.startsWith(inputFolder.normalize())) {
+      throw new ProjectNietGevondenException(projectNaam);
+    }
+    if (!Files.isDirectory(projectPad)) {
+      throw new ProjectNietGevondenException(projectNaam);
+    }
+    return projectPad.resolve("bezwaren");
   }
 }
