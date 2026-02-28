@@ -1,10 +1,12 @@
 import {BaseHTMLElement, defineWebComponent, registerWebComponents} from '@domg-wc/common';
 import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
+import {VlTabsComponent} from '@domg-wc/components/block/tabs/vl-tabs.component.js';
+import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 
-registerWebComponents([VlSelectComponent, VlButtonComponent]);
+registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent]);
 
 export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   static get properties() {
@@ -26,11 +28,17 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       <div id="selectie-wrapper">
         <vl-select id="project-select" placeholder="Kies een project..."></vl-select>
       </div>
-      <div id="bezwaren-sectie" hidden>
-        <h2>Bezwaarschriften</h2>
-        <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
-        <p id="fout-melding" hidden></p>
-        <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
+      <div id="tabs-sectie" hidden>
+        <vl-tabs observe-title active-tab="documenten">
+          <vl-tabs-pane id="documenten" title="Documenten">
+            <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
+            <p id="fout-melding" hidden></p>
+            <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
+          </vl-tabs-pane>
+          <vl-tabs-pane id="kernbezwaren" title="Kernbezwaren">
+            <p>Kernbezwaren worden hier getoond na verwerking.</p>
+          </vl-tabs-pane>
+        </vl-tabs>
       </div>
     `);
     this.__projecten = [];
@@ -136,7 +144,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this._laadBezwaren(naam);
         } else {
           this.__bezwaren = [];
-          this._verbergBezwarenSectie();
+          this._verbergTabsSectie();
         }
       });
     }
@@ -204,7 +212,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   }
 
   _werkTabelBij() {
-    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-sectie');
+    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#tabs-sectie');
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-tabel');
     if (tabel) {
       tabel.bezwaren = this.__bezwaren;
@@ -214,8 +222,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     }
   }
 
-  _verbergBezwarenSectie() {
-    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-sectie');
+  _verbergTabsSectie() {
+    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#tabs-sectie');
     if (sectie) sectie.hidden = true;
   }
 
