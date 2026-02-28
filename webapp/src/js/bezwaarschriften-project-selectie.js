@@ -35,7 +35,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         <vl-tabs observe-title active-tab="documenten">
           <vl-tabs-pane id="documenten" title="Documenten">
             <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
-            <vl-button id="verwijder-knop" disabled>Verwijder geselecteerde</vl-button>
+            <vl-button id="verwijder-knop" disabled error>Verwijder geselecteerde</vl-button>
             <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
@@ -67,6 +67,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <vl-button id="upload-verzend-knop">Uploaden</vl-button>
         </div>
       </vl-modal>
+      <vl-toaster id="succes-toaster" fade-out></vl-toaster>
+      <vl-toaster id="error-toaster"></vl-toaster>
     `);
     this.__projecten = [];
     this.__geselecteerdProject = null;
@@ -384,15 +386,20 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           const modal = this.shadowRoot.querySelector('#upload-modal');
           if (modal) modal.close();
 
+          if (data.geupload && data.geupload.length > 0) {
+            this._toonToast('success',
+              `${data.geupload.length} bestand(en) succesvol opgeladen.`);
+          }
+
           if (data.fouten && data.fouten.length > 0) {
-            const foutTekst = data.fouten.map((f) => `${f.bestandsnaam}: ${f.reden}`).join(', ');
-            this._toonFout(`Sommige bestanden konden niet worden geupload: ${foutTekst}`);
+            this._toonToast('error',
+              `${data.fouten.length} bestand(en) niet opgeladen: bestand met dezelfde naam bestaat al.`);
           }
 
           this._laadBezwaren(this.__geselecteerdProject);
         })
         .catch(() => {
-          this._toonFout('Upload mislukt.');
+          this._toonToast('error', 'Upload mislukt.');
         })
         .finally(() => {
           this._zetBezig(false);
@@ -442,6 +449,19 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _verbergFout() {
     const foutEl = this.shadowRoot && this.shadowRoot.querySelector('#fout-melding');
     if (foutEl) foutEl.hidden = true;
+  }
+
+  _toonToast(type, bericht) {
+    const toasterId = type === 'success' ? '#succes-toaster' : '#error-toaster';
+    const toaster = this.shadowRoot.querySelector(toasterId);
+    if (toaster) {
+      toaster.showAlert({
+        type: type,
+        icon: type === 'success' ? 'check' : 'warning',
+        message: bericht,
+        closable: 'true',
+      });
+    }
   }
 }
 
