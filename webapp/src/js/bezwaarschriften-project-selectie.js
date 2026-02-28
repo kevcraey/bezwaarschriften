@@ -102,7 +102,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
             data.taken.forEach((taak) => tabel.werkBijMetTaakUpdate(taak));
           }
         })
-        .catch(() => { /* stille fout bij sync */ });
+        .catch(() => {/* stille fout bij sync */});
   }
 
   _laadProjecten() {

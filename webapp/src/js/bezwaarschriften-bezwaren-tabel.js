@@ -171,13 +171,13 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     }
 
     if (b.status === 'bezig' && taakData) {
-      const wachtMs = taakData.verwerkingGestartOp && taakData.aangemaaktOp
-        ? new Date(taakData.verwerkingGestartOp).getTime() -
-            new Date(taakData.aangemaaktOp).getTime()
-        : 0;
-      const verwerkMs = taakData.verwerkingGestartOp
-        ? nu - new Date(taakData.verwerkingGestartOp).getTime()
-        : 0;
+      const wachtMs = taakData.verwerkingGestartOp && taakData.aangemaaktOp ?
+        new Date(taakData.verwerkingGestartOp).getTime() -
+            new Date(taakData.aangemaaktOp).getTime() :
+        0;
+      const verwerkMs = taakData.verwerkingGestartOp ?
+        nu - new Date(taakData.verwerkingGestartOp).getTime() :
+        0;
       return `Bezig (${this._formatTijd(wachtMs)} + ${this._formatTijd(verwerkMs)})`;
     }
 
