@@ -269,7 +269,12 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (isBezig) titel += ' \u23F3';
     if (aantalFout > 0) titel += ` \u26A0\uFE0F${aantalFout}`;
 
-    pane.setAttribute('title', titel);
+    const tabs = this.shadowRoot.querySelector('vl-tabs');
+    const slot = tabs && tabs.shadowRoot &&
+        tabs.shadowRoot.querySelector(`slot[name="documenten-title-slot"]`);
+    if (slot) {
+      slot.innerHTML = titel;
+    }
   }
 
   _verbergTabsSectie() {
