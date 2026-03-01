@@ -62,4 +62,13 @@ public interface ProjectPoort {
    * @throws IllegalArgumentException Als het project al bestaat of de naam ongeldig is
    */
   void maakProjectAan(String naam);
+
+  /**
+   * Verwijdert een project en alle bestanden erin recursief.
+   *
+   * @param naam Naam van het project
+   * @return {@code true} als het project verwijderd is, {@code false} als het niet bestond
+   * @throws IllegalArgumentException Als de naam ongeldig is (path traversal)
+   */
+  boolean verwijderProject(String naam);
 }
