@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,6 +11,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -22,11 +24,14 @@ class KernbezwaarServiceTest {
   @Mock
   private ProjectService projectService;
 
+  @Mock
+  private KernbezwaarAntwoordRepository antwoordRepository;
+
   private KernbezwaarService service;
 
   @BeforeEach
   void setUp() {
-    service = new KernbezwaarService(kernbezwaarPoort, projectService);
+    service = new KernbezwaarService(kernbezwaarPoort, projectService, antwoordRepository);
   }
 
   @Test
@@ -68,5 +73,41 @@ class KernbezwaarServiceTest {
     var resultaat = service.geefKernbezwaren("onbekend");
 
     assertThat(resultaat).isEmpty();
+  }
+
+  @Test
+  void verrijktKernbezwarenMetAntwoorden() {
+    var kern = new Kernbezwaar(5L, "samenvatting", List.of(), null);
+    var thema = new Thema("Geluid", List.of(kern));
+    when(projectService.geefBezwaartekstenVoorGroepering("windmolens"))
+        .thenReturn(List.of(new KernbezwaarPoort.BezwaarInvoer(1L, "b.txt", "t")));
+    when(kernbezwaarPoort.groepeer(anyList())).thenReturn(List.of(thema));
+    service.groepeer("windmolens");
+
+    var antwoord = new KernbezwaarAntwoordEntiteit();
+    antwoord.setKernbezwaarId(5L);
+    antwoord.setInhoud("<p>Weerwoord</p>");
+    when(antwoordRepository.findByKernbezwaarIdIn(List.of(5L)))
+        .thenReturn(List.of(antwoord));
+
+    var resultaat = service.geefKernbezwaren("windmolens");
+
+    assertThat(resultaat).isPresent();
+    assertThat(resultaat.get().get(0).kernbezwaren().get(0).antwoord())
+        .isEqualTo("<p>Weerwoord</p>");
+  }
+
+  @Test
+  void slaatAntwoordOp() {
+    var entiteit = new KernbezwaarAntwoordEntiteit();
+    when(antwoordRepository.save(any())).thenReturn(entiteit);
+
+    service.slaAntwoordOp(42L, "<p>Het weerwoord</p>");
+
+    var captor = ArgumentCaptor.forClass(KernbezwaarAntwoordEntiteit.class);
+    verify(antwoordRepository).save(captor.capture());
+    assertThat(captor.getValue().getKernbezwaarId()).isEqualTo(42L);
+    assertThat(captor.getValue().getInhoud()).isEqualTo("<p>Het weerwoord</p>");
+    assertThat(captor.getValue().getBijgewerktOp()).isNotNull();
   }
 }
