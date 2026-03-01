@@ -157,4 +157,32 @@ class ProjectServiceTest {
     taak.setMaxPogingen(3);
     return taak;
   }
+
+  @Test
+  void maakProjectAan_delegeertNaarPoort() {
+    service.maakProjectAan("nieuw-project");
+
+    verify(projectPoort).maakProjectAan("nieuw-project");
+  }
+
+  @Test
+  void verwijderProject_verwijdertExtractieTakenEnDelegeerNaarPoort() {
+    when(projectPoort.verwijderProject("oud-project")).thenReturn(true);
+
+    boolean result = service.verwijderProject("oud-project");
+
+    assertThat(result).isTrue();
+    verify(extractieTaakRepository).deleteByProjectNaam("oud-project");
+    verify(projectPoort).verwijderProject("oud-project");
+  }
+
+  @Test
+  void verwijderProject_geeftFalseAlsProjectNietBestaat() {
+    when(projectPoort.verwijderProject("bestaat-niet")).thenReturn(false);
+
+    boolean result = service.verwijderProject("bestaat-niet");
+
+    assertThat(result).isFalse();
+    verify(extractieTaakRepository).deleteByProjectNaam("bestaat-niet");
+  }
 }

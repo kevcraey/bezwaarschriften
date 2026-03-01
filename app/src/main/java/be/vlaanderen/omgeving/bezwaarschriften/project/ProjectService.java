@@ -175,4 +175,26 @@ public class ProjectService {
       case FOUT -> BezwaarBestandStatus.FOUT;
     };
   }
+
+  /**
+   * Maakt een nieuw project aan.
+   *
+   * @param naam Naam van het project
+   * @throws IllegalArgumentException Als het project al bestaat
+   */
+  public void maakProjectAan(String naam) {
+    projectPoort.maakProjectAan(naam);
+  }
+
+  /**
+   * Verwijdert een project, inclusief alle extractie-taken.
+   *
+   * @param naam Naam van het project
+   * @return true als het project verwijderd is
+   */
+  @Transactional
+  public boolean verwijderProject(String naam) {
+    extractieTaakRepository.deleteByProjectNaam(naam);
+    return projectPoort.verwijderProject(naam);
+  }
 }
