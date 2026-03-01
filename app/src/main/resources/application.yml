@@ -20,6 +20,10 @@ spring:
       connection-test-query: SELECT 1
   application:
     name: bezwaarschriften
+  cloud:
+    config:
+      import-check:
+        enabled: false
   liquibase:
     change-log: classpath:/config/liquibase/master.xml
     contexts: prod
