@@ -188,8 +188,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     let label = this._formatStatusLabel(b, nu);
 
     const type = STATUS_PILL_TYPES[b.status] || '';
-    const typeAttr = type ? ` data-vl-type="${type}"` : '';
-    const disabledAttr = b.status === 'niet ondersteund' ? ' data-vl-disabled' : '';
+    const typeAttr = type ? ` type="${type}"` : '';
+    const disabledAttr = b.status === 'niet ondersteund' ? ' disabled' : '';
     return `<vl-pill${typeAttr}${disabledAttr}>${label}</vl-pill>`;
   }
 
