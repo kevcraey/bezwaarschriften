@@ -121,6 +121,10 @@ public class MockKernbezwaarAdapter implements KernbezwaarPoort {
       return List.of();
     }
 
+    var bestandsnamen = bezwaarTeksten.stream()
+        .map(BezwaarInvoer::bestandsnaam)
+        .toList();
+
     var idTeller = new AtomicLong(1);
     var refIdTeller = new AtomicLong(1);
     var themas = new ArrayList<Thema>();
@@ -136,10 +140,10 @@ public class MockKernbezwaarAdapter implements KernbezwaarPoort {
 
         for (int r = 0; r < aantalRefs; r++) {
           int passageIdx = (int) (refIdTeller.get() % PASSAGES.length);
-          int bestandNr = (int) (refIdTeller.get() % 50) + 1;
+          int bestandIdx = (int) (refIdTeller.get() % bestandsnamen.size());
           refs.add(new IndividueelBezwaarReferentie(
               refIdTeller.getAndIncrement(),
-              "bezwaar" + bestandNr + ".txt",
+              bestandsnamen.get(bestandIdx),
               PASSAGES[passageIdx]));
         }
 
