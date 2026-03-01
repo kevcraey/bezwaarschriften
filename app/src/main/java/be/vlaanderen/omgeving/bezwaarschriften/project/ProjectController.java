@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,8 +46,23 @@ public class ProjectController {
    */
   @GetMapping
   public ResponseEntity<ProjectenResponse> geefProjecten() {
-    var projecten = projectService.geefProjecten();
-    return ResponseEntity.ok(new ProjectenResponse(projecten));
+    var overzichten = projectService.geefProjectenMetAantalDocumenten();
+    var dtos = overzichten.stream()
+        .map(o -> new ProjectDto(o.naam(), o.aantalDocumenten()))
+        .toList();
+    return ResponseEntity.ok(new ProjectenResponse(dtos));
+  }
+
+  /**
+   * Maakt een nieuw project aan.
+   *
+   * @param request Het verzoek met de projectnaam
+   * @return 201 Created
+   */
+  @PostMapping
+  public ResponseEntity<Void> maakProjectAan(@RequestBody ProjectAanmaakRequest request) {
+    projectService.maakProjectAan(request.naam());
+    return ResponseEntity.status(201).build();
   }
 
   /**
@@ -59,6 +75,19 @@ public class ProjectController {
   public ResponseEntity<BezwarenResponse> geefBezwaren(@PathVariable String naam) {
     var bezwaren = projectService.geefBezwaren(naam);
     return ResponseEntity.ok(BezwarenResponse.van(bezwaren));
+  }
+
+  /**
+   * Verwijdert een project en alle bijhorende data.
+   *
+   * @param naam Projectnaam
+   * @return 204 No Content bij succes, 404 als project niet gevonden
+   */
+  @DeleteMapping("/{naam}")
+  public ResponseEntity<Void> verwijderProject(@PathVariable String naam) {
+    boolean verwijderd = projectService.verwijderProject(naam);
+    return verwijderd ? ResponseEntity.noContent().build()
+        : ResponseEntity.notFound().build();
   }
 
   /**
@@ -150,8 +179,14 @@ public class ProjectController {
     };
   }
 
+  /** DTO voor een enkel project in de response. */
+  record ProjectDto(String naam, int aantalDocumenten) {}
+
   /** Response DTO voor projectenlijst. */
-  record ProjectenResponse(List<String> projecten) {}
+  record ProjectenResponse(List<ProjectDto> projecten) {}
+
+  /** Request DTO voor project aanmaken. */
+  record ProjectAanmaakRequest(String naam) {}
 
   /** Response DTO voor bezwarenlijst. */
   record BezwarenResponse(List<BezwaarBestandDto> bezwaren) {
