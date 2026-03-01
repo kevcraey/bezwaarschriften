@@ -1,6 +1,8 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import java.lang.invoke.MethodHandles;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +24,7 @@ public class ExtractieWorker {
   private final ExtractieTaakService service;
   private final ExtractieVerwerker verwerker;
   private final ThreadPoolTaskExecutor executor;
+  private final ConcurrentHashMap<Long, Future<?>> lopendeTaken = new ConcurrentHashMap<>();
 
   /**
    * Maakt een nieuwe ExtractieWorker aan.
@@ -44,8 +47,24 @@ public class ExtractieWorker {
   public void verwerkTaken() {
     var taken = service.pakOpVoorVerwerking();
     for (var taak : taken) {
-      executor.submit(() -> verwerkTaak(taak));
+      var future = executor.submit(() -> verwerkTaak(taak));
+      lopendeTaken.put(taak.getId(), future);
     }
+  }
+
+  /**
+   * Annuleert een lopende taak door de bijbehorende Future te cancellen.
+   *
+   * @param taakId id van de te annuleren taak
+   * @return true als de taak gevonden en geannuleerd is, false als er geen lopende taak was
+   */
+  public boolean annuleerTaak(Long taakId) {
+    var future = lopendeTaken.remove(taakId);
+    if (future != null) {
+      LOGGER.info("Taak {} geannuleerd", taakId);
+      return future.cancel(true);
+    }
+    return false;
   }
 
   private void verwerkTaak(ExtractieTaak taak) {
@@ -54,10 +73,20 @@ public class ExtractieWorker {
           taak.getProjectNaam(),
           taak.getBestandsnaam(),
           taak.getAantalPogingen());
-      service.markeerKlaar(taak.getId(), resultaat.aantalWoorden(), resultaat.aantalBezwaren());
+      try {
+        service.markeerKlaar(taak.getId(), resultaat.aantalWoorden(), resultaat.aantalBezwaren());
+      } catch (IllegalArgumentException e) {
+        LOGGER.info("Taak {} niet meer aanwezig na voltooiing (geannuleerd?)", taak.getId());
+      }
     } catch (Exception e) {
       LOGGER.error("Fout bij verwerking van taak {}: {}", taak.getId(), e.getMessage(), e);
-      service.markeerFout(taak.getId(), e.getMessage());
+      try {
+        service.markeerFout(taak.getId(), e.getMessage());
+      } catch (IllegalArgumentException ex) {
+        LOGGER.info("Taak {} niet meer aanwezig na fout (geannuleerd?)", taak.getId());
+      }
+    } finally {
+      lopendeTaken.remove(taak.getId());
     }
   }
 }
