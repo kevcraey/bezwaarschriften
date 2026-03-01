@@ -3,9 +3,10 @@ import {VlRichDataTable} from '@domg-wc/components/block/rich-data-table/vl-rich
 import {VlRichDataField} from '@domg-wc/components/block/rich-data-table/vl-rich-data-field.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {VlSearchFilterComponent} from '@domg-wc/components/block/search-filter/vl-search-filter.component.js';
+import {VlPagerComponent} from '@domg-wc/components/block/pager/vl-pager.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
-registerWebComponents([VlRichDataTable, VlRichDataField, VlPillComponent, VlSearchFilterComponent]);
+registerWebComponents([VlRichDataTable, VlRichDataField, VlPillComponent, VlSearchFilterComponent, VlPagerComponent]);
 
 const STATUS_LABELS = {
   'todo': 'Te verwerken',
@@ -63,6 +64,19 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         <vl-rich-data-field name="bestandsnaam" label="Bestandsnaam" sortable></vl-rich-data-field>
         <vl-rich-data-field name="aantalBezwaren" label="Aantal bezwaren" sortable></vl-rich-data-field>
         <vl-rich-data-field name="status" label="Status" sortable></vl-rich-data-field>
+        <div slot="pager" id="pager-wrapper">
+          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <vl-pager id="pager" items-per-page="50" current-page="1" total-items="0"></vl-pager>
+            <label>
+              Per pagina:
+              <select id="pagina-grootte">
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="alle">Alle</option>
+              </select>
+            </label>
+          </div>
+        </div>
       </vl-rich-data-table>
     `);
     this.__bronBezwaren = [];
@@ -108,6 +122,16 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     // vl-rich-data luistert op 'vl-input', dus native elementen triggeren het
     // change-event van de tabel niet. Voeg daarom directe listeners toe.
     this._koppelFilterListeners();
+
+    const paginaGrootteSelect = this.shadowRoot.querySelector('#pagina-grootte');
+    if (paginaGrootteSelect) {
+      paginaGrootteSelect.addEventListener('change', (e) => {
+        const waarde = e.target.value;
+        this.__paginaGrootte = waarde === 'alle' ? Infinity : parseInt(waarde, 10);
+        this.__huidigePagina = 1;
+        this._herbereken();
+      });
+    }
 
     this._herbereken();
   }
@@ -205,6 +229,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       for (const [key, value] of detail.formData.entries()) {
         if (value) this.__filters[key] = value;
       }
+      // Bij filter-wijziging: reset naar pagina 1
+      this.__huidigePagina = 1;
     }
 
     // Sorting state
@@ -212,8 +238,11 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       this.__sorting = detail.sorting;
     }
 
-    // Bij filter-wijziging: reset naar pagina 1
-    this.__huidigePagina = 1;
+    // Paging state
+    if (detail.paging && detail.paging.currentPage) {
+      this.__huidigePagina = detail.paging.currentPage;
+    }
+
     this._herbereken();
   }
 
@@ -257,7 +286,30 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
     let resultaat = this._filterBezwaren(this.__bronBezwaren, this.__filters);
     resultaat = this._sorteerBezwaren(resultaat, this.__sorting);
-    tabel.data = {data: resultaat};
+
+    const totaal = resultaat.length;
+    const paginaGrootte = this.__paginaGrootte === Infinity ? totaal : this.__paginaGrootte;
+    const effectievePaginaGrootte = paginaGrootte > 0 ? paginaGrootte : totaal;
+    const totalePaginas = effectievePaginaGrootte > 0 ? Math.ceil(totaal / effectievePaginaGrootte) : 1;
+    this.__huidigePagina = Math.max(1, Math.min(this.__huidigePagina, totalePaginas));
+
+    const start = (this.__huidigePagina - 1) * effectievePaginaGrootte;
+    const pagina = this.__paginaGrootte === Infinity ? resultaat : resultaat.slice(start, start + effectievePaginaGrootte);
+
+    // Werk pager bij
+    const pager = this.shadowRoot.querySelector('#pager');
+    if (pager) {
+      pager.setAttribute('total-items', String(totaal));
+      pager.setAttribute('items-per-page', String(effectievePaginaGrootte > totaal ? totaal || 1 : effectievePaginaGrootte));
+      pager.setAttribute('current-page', String(this.__huidigePagina));
+      if (this.__paginaGrootte === Infinity) {
+        pager.setAttribute('pagination-disabled', '');
+      } else {
+        pager.removeAttribute('pagination-disabled');
+      }
+    }
+
+    tabel.data = {data: pagina};
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
   }
