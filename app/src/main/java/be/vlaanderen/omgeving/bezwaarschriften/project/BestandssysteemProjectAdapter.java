@@ -118,6 +118,23 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
     return bestandsPad;
   }
 
+  @Override
+  public void maakProjectAan(final String naam) {
+    var projectPad = inputFolder.resolve(naam).normalize();
+    if (!projectPad.startsWith(inputFolder.normalize())) {
+      throw new IllegalArgumentException("Ongeldige projectnaam: " + naam);
+    }
+    if (Files.exists(projectPad)) {
+      throw new IllegalArgumentException("Project bestaat al: " + naam);
+    }
+    try {
+      Files.createDirectories(projectPad.resolve("bezwaren"));
+      LOGGER.info("Project '{}' aangemaakt", naam);
+    } catch (IOException e) {
+      throw new RuntimeException("Kon project niet aanmaken: " + naam, e);
+    }
+  }
+
   /**
    * Valideert de projectnaam en geeft het pad naar de bezwaren-map terug.
    *
