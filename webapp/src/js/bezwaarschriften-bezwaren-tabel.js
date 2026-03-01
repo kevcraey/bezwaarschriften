@@ -2,9 +2,10 @@ import {BaseHTMLElement, defineWebComponent, registerWebComponents} from '@domg-
 import {VlRichDataTable} from '@domg-wc/components/block/rich-data-table/vl-rich-data-table.component.js';
 import {VlRichDataField} from '@domg-wc/components/block/rich-data-table/vl-rich-data-field.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
+import {VlSearchFilterComponent} from '@domg-wc/components/block/search-filter/vl-search-filter.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
-registerWebComponents([VlRichDataTable, VlRichDataField, VlPillComponent]);
+registerWebComponents([VlRichDataTable, VlRichDataField, VlPillComponent, VlSearchFilterComponent]);
 
 const STATUS_LABELS = {
   'todo': 'Te verwerken',
@@ -38,6 +39,26 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         .status-cel { min-width: 220px; }
       </style>
       <vl-rich-data-table id="tabel">
+        <vl-search-filter slot="filter" filter-title="Filters">
+          <form id="filter-form">
+            <label>
+              Bestandsnaam
+              <input type="text" name="bestandsnaam" placeholder="Zoek op bestandsnaam...">
+            </label>
+            <label>
+              Status
+              <select name="status">
+                <option value="">Alle statussen</option>
+                <option value="todo">Te verwerken</option>
+                <option value="wachtend">Wachtend</option>
+                <option value="bezig">Bezig</option>
+                <option value="extractie-klaar">Extractie klaar</option>
+                <option value="fout">Fout</option>
+                <option value="niet ondersteund">Niet ondersteund</option>
+              </select>
+            </label>
+          </form>
+        </vl-search-filter>
         <vl-rich-data-field name="selectie" label=" "></vl-rich-data-field>
         <vl-rich-data-field name="bestandsnaam" label="Bestandsnaam"></vl-rich-data-field>
         <vl-rich-data-field name="aantalBezwaren" label="Aantal bezwaren"></vl-rich-data-field>
@@ -52,6 +73,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     this.__sorting = [];
     this.__paginaGrootte = 50;
     this.__huidigePagina = 1;
+    this.__herberekenGepland = false;
   }
 
   set projectNaam(naam) {
@@ -75,6 +97,18 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   connectedCallback() {
     super.connectedCallback();
     this._configureerRenderers();
+
+    // Luister naar change-events van vl-rich-data (getriggerd door vl-input events)
+    const tabel = this.shadowRoot.querySelector('#tabel');
+    if (tabel) {
+      tabel.addEventListener('change', (e) => this._onTabelChange(e));
+    }
+
+    // Native <input> en <select> vuren 'input'/'change' events, niet 'vl-input'.
+    // vl-rich-data luistert op 'vl-input', dus native elementen triggeren het
+    // change-event van de tabel niet. Voeg daarom directe listeners toe.
+    this._koppelFilterListeners();
+
     this._herbereken();
   }
 
@@ -162,15 +196,83 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     });
   }
 
+  _onTabelChange(event) {
+    const detail = event.detail || {};
+
+    // Filter state uit formData
+    if (detail.formData) {
+      this.__filters = {};
+      for (const [key, value] of detail.formData.entries()) {
+        if (value) this.__filters[key] = value;
+      }
+    }
+
+    // Sorting state (wordt in task 3 uitgebreid)
+    if (detail.sorting) {
+      this.__sorting = detail.sorting;
+    }
+
+    // Bij filter-wijziging: reset naar pagina 1
+    this.__huidigePagina = 1;
+    this._herbereken();
+  }
+
+  _koppelFilterListeners() {
+    const form = this.shadowRoot.querySelector('#filter-form');
+    if (!form) return;
+
+    const _verzamelFilters = () => {
+      const formData = new FormData(form);
+      this.__filters = {};
+      for (const [key, value] of formData.entries()) {
+        if (value) this.__filters[key] = value;
+      }
+      this.__huidigePagina = 1;
+      this._herbereken();
+    };
+
+    const input = form.querySelector('input[name="bestandsnaam"]');
+    if (input) {
+      input.addEventListener('input', _verzamelFilters);
+    }
+
+    const select = form.querySelector('select[name="status"]');
+    if (select) {
+      select.addEventListener('change', _verzamelFilters);
+    }
+  }
+
   _herbereken() {
+    if (this.__herberekenGepland) return;
+    this.__herberekenGepland = true;
+    requestAnimationFrame(() => {
+      this.__herberekenGepland = false;
+      this._doeHerbereken();
+    });
+  }
+
+  _doeHerbereken() {
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#tabel');
     if (!tabel) return;
 
-    const resultaat = [...this.__bronBezwaren];
-    // Filter en sort worden in latere taken toegevoegd
+    const resultaat = this._filterBezwaren(this.__bronBezwaren, this.__filters);
+    // Sorting wordt in task 3 toegevoegd
     tabel.data = {data: resultaat};
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
+  }
+
+  _filterBezwaren(bezwaren, filters) {
+    return bezwaren.filter((b) => {
+      if (filters.bestandsnaam &&
+          !b.bestandsnaam.toLowerCase().includes(filters.bestandsnaam.toLowerCase())) {
+        return false;
+      }
+      if (filters.status && b.status !== filters.status) {
+        return false;
+      }
+      return true;
+    });
   }
 
   _isDisabled(status) {
