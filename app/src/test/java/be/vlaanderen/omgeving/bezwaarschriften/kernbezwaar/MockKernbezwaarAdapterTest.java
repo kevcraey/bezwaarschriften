@@ -34,14 +34,29 @@ class MockKernbezwaarAdapterTest {
   }
 
   @Test
-  void retourneertDrieThemas() {
+  void retourneertAlleThemas() {
     var invoer = List.of(
         new KernbezwaarPoort.BezwaarInvoer(1L, "b1.txt", "t1"));
 
     var themas = adapter.groepeer(invoer);
 
     var themaNamen = themas.stream().map(Thema::naam).toList();
-    assertThat(themaNamen).containsExactly("Geluid", "Mobiliteit", "Geurhinder");
+    assertThat(themaNamen).containsExactly("Geluid", "Mobiliteit", "Geurhinder",
+        "Gezondheid", "Natuur en landschap", "Waterhuishouding", "Waardevermindering");
+  }
+
+  @Test
+  void genereertHonderdenIndividueleBezwaren() {
+    var invoer = List.of(
+        new KernbezwaarPoort.BezwaarInvoer(1L, "b1.txt", "t1"));
+
+    var themas = adapter.groepeer(invoer);
+
+    var totaalRefs = themas.stream()
+        .flatMap(t -> t.kernbezwaren().stream())
+        .mapToInt(k -> k.individueleBezwaren().size())
+        .sum();
+    assertThat(totaalRefs).isGreaterThan(100);
   }
 
   @Test

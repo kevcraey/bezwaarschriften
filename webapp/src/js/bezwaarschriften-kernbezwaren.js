@@ -49,9 +49,34 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           text-align: center;
           color: #687483;
         }
+        .side-sheet-header {
+          display: flex;
+          justify-content: flex-end;
+          position: sticky;
+          top: 0;
+          background: white;
+          padding: 0.5rem 0;
+          z-index: 1;
+        }
+        .side-sheet-sluit-knop {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          padding: 0.25rem 0.5rem;
+          color: #333;
+          line-height: 1;
+        }
+        .side-sheet-sluit-knop:hover {
+          color: #000;
+        }
       </style>
       <div id="inhoud"></div>
-      <vl-side-sheet id="side-sheet" toggle-text="Sluiten">
+      <vl-side-sheet id="side-sheet" hide-toggle-button>
+        <div class="side-sheet-header">
+          <button id="side-sheet-sluit-knop" class="side-sheet-sluit-knop"
+              aria-label="Sluiten">&times;</button>
+        </div>
         <div id="side-sheet-inhoud"></div>
       </vl-side-sheet>
     `);
@@ -60,6 +85,15 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     this._extractieKlaar = false;
     this._themas = null;
     this._bezig = false;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    const sluitKnop = this.shadowRoot.querySelector('#side-sheet-sluit-knop');
+    const sideSheet = this.shadowRoot.querySelector('#side-sheet');
+    if (sluitKnop && sideSheet) {
+      sluitKnop.addEventListener('click', () => sideSheet.close());
+    }
   }
 
   // Public methods called by parent
