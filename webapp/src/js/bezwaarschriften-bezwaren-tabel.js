@@ -40,30 +40,19 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           min-width: 180px;
           display: inline-block;
         }
-        .actieve-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-        }
         .annuleer-btn {
           background: none;
-          border: 1px solid #ccc;
-          border-radius: 50%;
+          border: none;
           cursor: pointer;
           font-size: 14px;
-          color: #666;
-          width: 22px;
-          height: 22px;
+          color: inherit;
           padding: 0;
+          margin-left: 6px;
           line-height: 1;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
+          opacity: 0.6;
         }
         .annuleer-btn:hover {
-          color: #fff;
-          background: #d32f2f;
-          border-color: #d32f2f;
+          opacity: 1;
         }
       </style>
       <vl-table>
@@ -241,7 +230,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const isActief = b.status === 'wachtend' || b.status === 'bezig';
 
     if (isActief) {
-      return `<span class="actieve-pill"><vl-pill${typeAttr}><span class="timer-tekst">${label}</span></vl-pill><button class="annuleer-btn" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" title="Annuleer verwerking">&times;</button></span>`;
+      return `<vl-pill${typeAttr}><span class="timer-tekst">${label}</span><button class="annuleer-btn" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" title="Annuleer verwerking">&times;</button></vl-pill>`;
     }
     return `<vl-pill${typeAttr}${disabledAttr}>${label}</vl-pill>`;
   }

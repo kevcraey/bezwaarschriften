@@ -59,7 +59,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <p id="annuleer-bevestiging-tekst"></p>
         </div>
         <div slot="button">
-          <vl-button id="annuleer-bevestig-knop" error="">Annuleren</vl-button>
+          <vl-button id="annuleer-bevestig-knop" error="">Verwerking stoppen</vl-button>
         </div>
       </vl-modal>
       <vl-modal id="upload-modal" title="Bestanden toevoegen" closable>
