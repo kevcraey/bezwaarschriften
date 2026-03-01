@@ -54,19 +54,20 @@ public class ExtractieController {
   }
 
   /**
-   * Herplant alle gefaalde extractie-taken voor het opgegeven project.
+   * Verwerkt alle onafgeronde extractie-taken voor het opgegeven project.
+   * Herstart gefaalde taken en plant nieuwe taken in voor TODO-documenten.
    *
    * @param naam projectnaam
-   * @return het aantal opnieuw ingeplande taken
+   * @return het aantal ingeplande taken
    */
-  @PostMapping("/{naam}/extracties/retry")
-  public ResponseEntity<RetryResponse> retry(@PathVariable String naam) {
-    int aantal = extractieTaakService.herplanGefaaldeTaken(naam);
-    return ResponseEntity.ok(new RetryResponse(aantal));
+  @PostMapping("/{naam}/extracties/verwerken")
+  public ResponseEntity<VerwerkenResponse> verwerken(@PathVariable String naam) {
+    int aantal = extractieTaakService.verwerkOnafgeronde(naam);
+    return ResponseEntity.ok(new VerwerkenResponse(aantal));
   }
 
-  /** Response DTO voor het retry-endpoint. */
-  record RetryResponse(int aantalOpnieuwIngepland) {}
+  /** Response DTO voor het verwerken-endpoint. */
+  record VerwerkenResponse(int aantalIngepland) {}
 
   /** Request DTO voor het indienen van extractie-taken. */
   record ExtractiesRequest(List<String> bestandsnamen) {}
