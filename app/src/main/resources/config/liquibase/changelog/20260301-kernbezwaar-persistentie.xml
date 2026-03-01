@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <changeSet id="20260301-2" author="kenzo">
+    <createTable tableName="thema">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="project_naam" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="naam" type="varchar(500)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <createTable tableName="kernbezwaar">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="thema_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="samenvatting" type="text">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint
+        baseTableName="kernbezwaar"
+        baseColumnNames="thema_id"
+        constraintName="fk_kernbezwaar_thema"
+        referencedTableName="thema"
+        referencedColumnNames="id"
+        onDelete="CASCADE"/>
+
+    <createTable tableName="kernbezwaar_referentie">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="kernbezwaar_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="bezwaar_id" type="bigint"/>
+      <column name="bestandsnaam" type="varchar(500)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="passage" type="text">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint
+        baseTableName="kernbezwaar_referentie"
+        baseColumnNames="kernbezwaar_id"
+        constraintName="fk_kernbezwaar_referentie_kernbezwaar"
+        referencedTableName="kernbezwaar"
+        referencedColumnNames="id"
+        onDelete="CASCADE"/>
+  </changeSet>
+
+  <changeSet id="20260301-3" author="kenzo">
+    <addForeignKeyConstraint
+        baseTableName="kernbezwaar_antwoord"
+        baseColumnNames="kernbezwaar_id"
+        constraintName="fk_kernbezwaar_antwoord_kernbezwaar"
+        referencedTableName="kernbezwaar"
+        referencedColumnNames="id"
+        onDelete="CASCADE"/>
+  </changeSet>
+
+</databaseChangeLog>

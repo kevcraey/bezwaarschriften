@@ -27,11 +27,21 @@ class KernbezwaarServiceTest {
   @Mock
   private KernbezwaarAntwoordRepository antwoordRepository;
 
+  @Mock
+  private ThemaRepository themaRepository;
+
+  @Mock
+  private KernbezwaarRepository kernbezwaarRepository;
+
+  @Mock
+  private KernbezwaarReferentieRepository referentieRepository;
+
   private KernbezwaarService service;
 
   @BeforeEach
   void setUp() {
-    service = new KernbezwaarService(kernbezwaarPoort, projectService, antwoordRepository);
+    service = new KernbezwaarService(kernbezwaarPoort, projectService,
+        antwoordRepository, themaRepository, kernbezwaarRepository, referentieRepository);
   }
 
   @Test
@@ -43,33 +53,76 @@ class KernbezwaarServiceTest {
         new Kernbezwaar(1L, "samenvatting", List.of(
             new IndividueelBezwaarReferentie(1L, "bezwaar1.txt", "passage")), null)));
     when(kernbezwaarPoort.groepeer(anyList())).thenReturn(List.of(thema));
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
 
     var resultaat = service.groepeer("windmolens");
 
     assertThat(resultaat).hasSize(1);
     assertThat(resultaat.get(0).naam()).isEqualTo("Geluid");
-    verify(projectService).geefBezwaartekstenVoorGroepering("windmolens");
-    verify(kernbezwaarPoort).groepeer(anyList());
+    assertThat(resultaat.get(0).kernbezwaren().get(0).id()).isEqualTo(200L);
+    verify(themaRepository).deleteByProjectNaam("windmolens");
+    verify(themaRepository).save(any());
+    verify(kernbezwaarRepository).save(any());
+    verify(referentieRepository).save(any());
   }
 
   @Test
-  void cachetResultaatNaGroepering() {
-    when(projectService.geefBezwaartekstenVoorGroepering("windmolens"))
-        .thenReturn(List.of(
-            new KernbezwaarPoort.BezwaarInvoer(1L, "b1.txt", "t")));
-    var thema = new Thema("Mobiliteit", List.of());
-    when(kernbezwaarPoort.groepeer(anyList())).thenReturn(List.of(thema));
+  void laadtKernbezwarenUitDatabase() {
+    var themaEntiteit = new ThemaEntiteit();
+    themaEntiteit.setId(10L);
+    themaEntiteit.setProjectNaam("windmolens");
+    themaEntiteit.setNaam("Mobiliteit");
+    when(themaRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(themaEntiteit));
 
-    service.groepeer("windmolens");
+    var kernEntiteit = new KernbezwaarEntiteit();
+    kernEntiteit.setId(20L);
+    kernEntiteit.setThemaId(10L);
+    kernEntiteit.setSamenvatting("Verkeershinder");
+    when(kernbezwaarRepository.findByThemaIdIn(List.of(10L)))
+        .thenReturn(List.of(kernEntiteit));
 
-    var gecached = service.geefKernbezwaren("windmolens");
-    assertThat(gecached).isPresent();
-    assertThat(gecached.get()).hasSize(1);
-    assertThat(gecached.get().get(0).naam()).isEqualTo("Mobiliteit");
+    var refEntiteit = new KernbezwaarReferentieEntiteit();
+    refEntiteit.setId(30L);
+    refEntiteit.setKernbezwaarId(20L);
+    refEntiteit.setBezwaarId(1L);
+    refEntiteit.setBestandsnaam("b1.txt");
+    refEntiteit.setPassage("passage");
+    when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
+        .thenReturn(List.of(refEntiteit));
+
+    when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
+        .thenReturn(List.of());
+
+    var resultaat = service.geefKernbezwaren("windmolens");
+
+    assertThat(resultaat).isPresent();
+    assertThat(resultaat.get()).hasSize(1);
+    assertThat(resultaat.get().get(0).naam()).isEqualTo("Mobiliteit");
+    assertThat(resultaat.get().get(0).kernbezwaren().get(0).samenvatting())
+        .isEqualTo("Verkeershinder");
+    assertThat(resultaat.get().get(0).kernbezwaren().get(0).individueleBezwaren())
+        .hasSize(1);
   }
 
   @Test
   void geeftLeegOptionalAlsNogNietGegroepeerd() {
+    when(themaRepository.findByProjectNaam("onbekend")).thenReturn(List.of());
+
     var resultaat = service.geefKernbezwaren("onbekend");
 
     assertThat(resultaat).isEmpty();
@@ -77,12 +130,22 @@ class KernbezwaarServiceTest {
 
   @Test
   void verrijktKernbezwarenMetAntwoorden() {
-    var kern = new Kernbezwaar(5L, "samenvatting", List.of(), null);
-    var thema = new Thema("Geluid", List.of(kern));
-    when(projectService.geefBezwaartekstenVoorGroepering("windmolens"))
-        .thenReturn(List.of(new KernbezwaarPoort.BezwaarInvoer(1L, "b.txt", "t")));
-    when(kernbezwaarPoort.groepeer(anyList())).thenReturn(List.of(thema));
-    service.groepeer("windmolens");
+    var themaEntiteit = new ThemaEntiteit();
+    themaEntiteit.setId(10L);
+    themaEntiteit.setProjectNaam("windmolens");
+    themaEntiteit.setNaam("Geluid");
+    when(themaRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(themaEntiteit));
+
+    var kernEntiteit = new KernbezwaarEntiteit();
+    kernEntiteit.setId(5L);
+    kernEntiteit.setThemaId(10L);
+    kernEntiteit.setSamenvatting("samenvatting");
+    when(kernbezwaarRepository.findByThemaIdIn(List.of(10L)))
+        .thenReturn(List.of(kernEntiteit));
+
+    when(referentieRepository.findByKernbezwaarIdIn(List.of(5L)))
+        .thenReturn(List.of());
 
     var antwoord = new KernbezwaarAntwoordEntiteit();
     antwoord.setKernbezwaarId(5L);
