@@ -3,6 +3,7 @@ import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.compo
 import {VlAccordionComponent} from '@domg-wc/components/block/accordion/vl-accordion.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
+import '@domg-wc/components/form/textarea-rich';
 
 registerWebComponents([VlButtonComponent, VlAccordionComponent, VlSideSheet]);
 
@@ -89,6 +90,32 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           flex: 1;
           overflow-y: auto;
           padding: 1rem 1.5rem;
+        }
+        .antwoord-preview {
+          margin-top: 0.5rem;
+          padding: 0.5rem 0.75rem;
+          background: #f7f9fc;
+          border-left: 3px solid #0055cc;
+          font-size: 0.9rem;
+          color: #333;
+          max-height: 3.5em;
+          overflow: hidden;
+          cursor: pointer;
+        }
+        .antwoord-editor-wrapper {
+          margin-top: 0.75rem;
+          padding-top: 0.75rem;
+          border-top: 1px solid #e8ebee;
+        }
+        .antwoord-opslaan-rij {
+          margin-top: 0.5rem;
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+        .antwoord-opslaan-melding {
+          font-size: 0.85rem;
+          color: #0e7c26;
         }
       </style>
       <div id="inhoud"></div>
@@ -256,6 +283,23 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         samenvatting.className = 'kernbezwaar-samenvatting';
         samenvatting.textContent = kern.samenvatting;
 
+        // Declare penKnop early so preview click handler can reference it
+        const penKnop = document.createElement('vl-button');
+        penKnop.setAttribute('tertiary', '');
+        penKnop.setAttribute('icon', kern.antwoord ? 'close' : 'pencil');
+        if (kern.antwoord) {
+          penKnop.classList.add('heeft-antwoord');
+        }
+        penKnop.addEventListener('vl-click', () => this._toggleEditor(item, kern, penKnop));
+
+        if (kern.antwoord) {
+          const preview = document.createElement('div');
+          preview.className = 'antwoord-preview';
+          preview.innerHTML = kern.antwoord;
+          preview.addEventListener('click', () => this._toggleEditor(item, kern, penKnop));
+          samenvatting.appendChild(preview);
+        }
+
         const actie = document.createElement('div');
         actie.className = 'kernbezwaar-actie';
         const knop = document.createElement('vl-button');
@@ -265,6 +309,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         knop.addEventListener('vl-click', () => this._toonPassages(kern));
 
         actie.appendChild(knop);
+        actie.appendChild(penKnop);
         item.appendChild(samenvatting);
         item.appendChild(actie);
         wrapper.appendChild(item);
@@ -277,6 +322,103 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const knopOnder = this._maakOpnieuwKnop();
     knopOnder.style.marginTop = '1.5rem';
     inhoud.appendChild(knopOnder);
+  }
+
+  _toggleEditor(item, kern, penKnop) {
+    const bestaandeEditor = item.querySelector('.antwoord-editor-wrapper');
+    if (bestaandeEditor) {
+      // Sluit editor
+      const textarea = bestaandeEditor.querySelector('vl-textarea-rich');
+      const huidigeWaarde = textarea ? textarea.value : '';
+      const origineleWaarde = kern.antwoord || '';
+      if (huidigeWaarde !== origineleWaarde &&
+          !confirm('Je hebt onopgeslagen wijzigingen. Wil je afsluiten?')) {
+        return;
+      }
+      bestaandeEditor.remove();
+      penKnop.setAttribute('icon', 'pencil');
+      return;
+    }
+
+    // Open editor
+    penKnop.setAttribute('icon', 'close');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'antwoord-editor-wrapper';
+
+    const textarea = document.createElement('vl-textarea-rich');
+    textarea.setAttribute('block', '');
+    textarea.setAttribute('rows', '8');
+    textarea.setAttribute('label', 'Antwoord op kernbezwaar');
+    if (kern.antwoord) {
+      textarea.setAttribute('value', kern.antwoord);
+    }
+
+    const opslaanRij = document.createElement('div');
+    opslaanRij.className = 'antwoord-opslaan-rij';
+
+    const opslaanKnop = document.createElement('vl-button');
+    opslaanKnop.textContent = 'Opslaan';
+    opslaanKnop.addEventListener('vl-click', () =>
+      this._slaAntwoordOp(kern, textarea, opslaanRij, penKnop, item));
+
+    opslaanRij.appendChild(opslaanKnop);
+    wrapper.appendChild(textarea);
+    wrapper.appendChild(opslaanRij);
+    item.appendChild(wrapper);
+  }
+
+  _slaAntwoordOp(kern, textarea, opslaanRij, penKnop, item) {
+    const inhoud = textarea.value;
+    if (!inhoud || !inhoud.trim()) return;
+
+    const opslaanKnop = opslaanRij.querySelector('vl-button');
+    if (opslaanKnop) opslaanKnop.setAttribute('disabled', '');
+
+    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/kernbezwaren/${kern.id}/antwoord`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({inhoud: inhoud}),
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Opslaan mislukt');
+          kern.antwoord = inhoud;
+
+          // Toon bevestiging
+          let melding = opslaanRij.querySelector('.antwoord-opslaan-melding');
+          if (!melding) {
+            melding = document.createElement('span');
+            melding.className = 'antwoord-opslaan-melding';
+            opslaanRij.appendChild(melding);
+          }
+          melding.textContent = 'Opgeslagen';
+          setTimeout(() => melding.textContent = '', 3000);
+
+          // Update preview
+          this._updatePreview(item, kern);
+        })
+        .catch(() => {
+          alert('Het opslaan van het antwoord is mislukt. Probeer opnieuw.');
+        })
+        .finally(() => {
+          if (opslaanKnop) opslaanKnop.removeAttribute('disabled');
+        });
+  }
+
+  _updatePreview(item, kern) {
+    const samenvatting = item.querySelector('.kernbezwaar-samenvatting');
+    if (!samenvatting) return;
+    let preview = samenvatting.querySelector('.antwoord-preview');
+    if (kern.antwoord) {
+      if (!preview) {
+        preview = document.createElement('div');
+        preview.className = 'antwoord-preview';
+        samenvatting.appendChild(preview);
+      }
+      preview.innerHTML = kern.antwoord;
+    } else if (preview) {
+      preview.remove();
+    }
   }
 
   _toonPassages(kernbezwaar) {
