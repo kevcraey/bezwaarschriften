@@ -1,9 +1,10 @@
 import {BaseHTMLElement, defineWebComponent, registerWebComponents} from '@domg-wc/common';
-import {VlTableComponent} from '@domg-wc/components/block/table/vl-table.component.js';
+import {VlRichDataTable} from '@domg-wc/components/block/rich-data-table/vl-rich-data-table.component.js';
+import {VlRichDataField} from '@domg-wc/components/block/rich-data-table/vl-rich-data-field.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
-registerWebComponents([VlTableComponent, VlPillComponent]);
+registerWebComponents([VlRichDataTable, VlRichDataField, VlPillComponent]);
 
 const STATUS_LABELS = {
   'todo': 'Te verwerken',
@@ -36,24 +37,21 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         ${vlGlobalStyles}
         .status-cel { min-width: 220px; }
       </style>
-      <vl-table>
-        <table>
-          <thead>
-            <tr>
-              <th><input type="checkbox" id="selecteer-alles" title="Selecteer alles"></th>
-              <th>Bestandsnaam</th>
-              <th>Aantal bezwaren</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="tabel-body"></tbody>
-        </table>
-      </vl-table>
+      <vl-rich-data-table id="tabel">
+        <vl-rich-data-field name="selectie" label=" "></vl-rich-data-field>
+        <vl-rich-data-field name="bestandsnaam" label="Bestandsnaam"></vl-rich-data-field>
+        <vl-rich-data-field name="aantalBezwaren" label="Aantal bezwaren"></vl-rich-data-field>
+        <vl-rich-data-field name="status" label="Status"></vl-rich-data-field>
+      </vl-rich-data-table>
     `);
-    this.__bezwaren = [];
+    this.__bronBezwaren = [];
     this.__takenData = {};
     this.__timerInterval = null;
     this._projectNaam = null;
+    this.__filters = {};
+    this.__sorting = [];
+    this.__paginaGrootte = 50;
+    this.__huidigePagina = 1;
   }
 
   set projectNaam(naam) {
@@ -65,12 +63,23 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   }
 
   set bezwaren(waarde) {
-    this.__bezwaren = waarde || [];
-    this._renderRijen();
+    this.__bronBezwaren = waarde || [];
+    this.__huidigePagina = 1;
+    this._herbereken();
   }
 
   get bezwaren() {
-    return this.__bezwaren;
+    return this.__bronBezwaren;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._configureerRenderers();
+    this._herbereken();
+  }
+
+  disconnectedCallback() {
+    this._stopTimer();
   }
 
   werkBijMetTaakUpdate(taak) {
@@ -78,7 +87,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       aangemaaktOp: taak.aangemaaktOp,
       verwerkingGestartOp: taak.verwerkingGestartOp,
     };
-    this.__bezwaren = this.__bezwaren.map((b) =>
+    this.__bronBezwaren = this.__bronBezwaren.map((b) =>
       b.bestandsnaam === taak.bestandsnaam ? {
         bestandsnaam: taak.bestandsnaam,
         status: taak.status,
@@ -86,65 +95,80 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         aantalBezwaren: taak.aantalBezwaren,
       } : b,
     );
-    this._renderRijen();
+    this._herbereken();
   }
 
   geefGeselecteerdeBestandsnamen() {
-    const checkboxes = this.shadowRoot.querySelectorAll('.rij-checkbox:checked');
+    const innerTable = this._geefInnerTable();
+    if (!innerTable) return [];
+    const checkboxes = innerTable.querySelectorAll('.rij-checkbox:checked');
     return Array.from(checkboxes).map((cb) => cb.dataset.bestandsnaam);
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    this._renderRijen();
-
-    const selecteerAlles = this.shadowRoot.querySelector('#selecteer-alles');
-    if (selecteerAlles) {
-      selecteerAlles.addEventListener('change', (e) => {
-        const checked = e.target.checked;
-        this.shadowRoot.querySelectorAll('.rij-checkbox:not([disabled])').forEach((cb) => {
-          cb.checked = checked;
-        });
-        this._dispatchSelectieGewijzigd();
-      });
-    }
+  _geefInnerTable() {
+    const tabel = this.shadowRoot && this.shadowRoot.querySelector('#tabel');
+    if (!tabel) return null;
+    const vlTable = tabel.shadowRoot && tabel.shadowRoot.querySelector('vl-table');
+    if (!vlTable) return null;
+    return vlTable.querySelector('table'); // light DOM, NOT shadowRoot
   }
 
-  disconnectedCallback() {
-    this._stopTimer();
-  }
-
-  _renderRijen() {
-    const tbody = this.shadowRoot && this.shadowRoot.querySelector('#tabel-body');
-    if (!tbody) return;
-
-    const selecteerAlles = this.shadowRoot.querySelector('#selecteer-alles');
-    if (selecteerAlles) selecteerAlles.checked = false;
-
-    if (this.__bezwaren.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4">Geen bestanden gevonden</td></tr>';
-      this._dispatchSelectieGewijzigd();
-      this._stopTimer();
-      return;
-    }
-
-    tbody.innerHTML = this.__bezwaren
-        .map((b) => {
-          const disabled = this._isDisabled(b.status) ? 'disabled' : '';
-          const aantalBezwaren = b.aantalBezwaren != null ? b.aantalBezwaren : '';
-          return `<tr>
-            <td><input type="checkbox" class="rij-checkbox" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" ${disabled}></td>
-            <td>${this._renderBestandsnaam(b.bestandsnaam)}</td>
-            <td>${aantalBezwaren}</td>
-            <td class="status-cel" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}">${this._formatStatus(b)}</td>
-          </tr>`;
-        })
-        .join('');
-
-    tbody.querySelectorAll('.rij-checkbox').forEach((cb) => {
-      cb.addEventListener('change', () => this._dispatchSelectieGewijzigd());
+  _configureerRenderers() {
+    const velden = this.shadowRoot.querySelectorAll('vl-rich-data-field');
+    velden.forEach((veld) => {
+      switch (veld.getAttribute('name')) {
+        case 'selectie':
+          veld.renderer = (td, rij) => {
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'rij-checkbox';
+            cb.dataset.bestandsnaam = rij.bestandsnaam;
+            if (this._isDisabled(rij.status)) cb.disabled = true;
+            cb.addEventListener('change', () => this._dispatchSelectieGewijzigd());
+            td.appendChild(cb);
+          };
+          break;
+        case 'bestandsnaam':
+          veld.renderer = (td, rij) => {
+            if (this._projectNaam) {
+              const a = document.createElement('a');
+              a.href = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(rij.bestandsnaam)}/download`;
+              a.download = rij.bestandsnaam;
+              a.textContent = rij.bestandsnaam;
+              td.appendChild(a);
+            } else {
+              td.textContent = rij.bestandsnaam;
+            }
+          };
+          break;
+        case 'aantalBezwaren':
+          veld.renderer = (td, rij) => {
+            td.textContent = rij.aantalBezwaren != null ? rij.aantalBezwaren : '';
+          };
+          break;
+        case 'status':
+          veld.renderer = (td, rij) => {
+            td.className = 'status-cel';
+            td.dataset.bestandsnaam = rij.bestandsnaam;
+            const pill = document.createElement('vl-pill');
+            const type = STATUS_PILL_TYPES[rij.status] || '';
+            if (type) pill.setAttribute('type', type);
+            if (rij.status === 'niet ondersteund') pill.setAttribute('disabled', '');
+            pill.textContent = this._formatStatusLabel(rij);
+            td.appendChild(pill);
+          };
+          break;
+      }
     });
+  }
 
+  _herbereken() {
+    const tabel = this.shadowRoot && this.shadowRoot.querySelector('#tabel');
+    if (!tabel) return;
+
+    const resultaat = [...this.__bronBezwaren];
+    // Filter en sort worden in latere taken toegevoegd
+    tabel.data = {data: resultaat};
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
   }
@@ -154,7 +178,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   }
 
   _beheerTimer() {
-    const heeftActief = this.__bezwaren.some(
+    const heeftActief = this.__bronBezwaren.some(
         (b) => b.status === 'wachtend' || b.status === 'bezig',
     );
     if (heeftActief && !this.__timerInterval) {
@@ -173,9 +197,12 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   _updateTimers() {
     const nu = Date.now();
-    this.__bezwaren.forEach((b) => {
+    const innerTable = this._geefInnerTable();
+    if (!innerTable) return;
+
+    this.__bronBezwaren.forEach((b) => {
       if (b.status !== 'wachtend' && b.status !== 'bezig') return;
-      const cel = this.shadowRoot.querySelector(
+      const cel = innerTable.querySelector(
           `.status-cel[data-bestandsnaam="${CSS.escape(b.bestandsnaam)}"]`,
       );
       if (!cel) return;
@@ -184,16 +211,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         pill.textContent = this._formatStatusLabel(b, nu);
       }
     });
-  }
-
-  _formatStatus(b, nu) {
-    nu = nu || Date.now();
-    const label = this._formatStatusLabel(b, nu);
-
-    const type = STATUS_PILL_TYPES[b.status] || '';
-    const typeAttr = type ? ` type="${type}"` : '';
-    const disabledAttr = b.status === 'niet ondersteund' ? ' disabled' : '';
-    return `<vl-pill${typeAttr}${disabledAttr}>${label}</vl-pill>`;
   }
 
   _formatStatusLabel(b, nu) {
@@ -233,21 +250,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       bubbles: true,
       composed: true,
     }));
-  }
-
-  _renderBestandsnaam(bestandsnaam) {
-    const escaped = this._escapeHtml(bestandsnaam);
-    if (this._projectNaam) {
-      const url = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(bestandsnaam)}/download`;
-      return `<a href="${url}" download="${escaped}">${escaped}</a>`;
-    }
-    return escaped;
-  }
-
-  _escapeHtml(str) {
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
   }
 }
 
