@@ -18,6 +18,9 @@ node_modules/
 # Temp
 tmp/
 
+# Worktrees
+.worktrees/
+
 # Stuff
 docs/
 .agents/
