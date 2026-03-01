@@ -23,6 +23,7 @@ public class ExtractieTaakService {
 
   private final ExtractieTaakRepository repository;
   private final ExtractieNotificatie notificatie;
+  private final ProjectService projectService;
   private final int maxConcurrent;
   private final int maxPogingen;
 
@@ -31,16 +32,19 @@ public class ExtractieTaakService {
    *
    * @param repository repository voor extractie-taken
    * @param notificatie notificatie-interface voor statuswijzigingen
+   * @param projectService service voor projecten en bezwaarbestanden
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
    * @param maxPogingen maximum aantal pogingen per taak
    */
   public ExtractieTaakService(
       ExtractieTaakRepository repository,
       ExtractieNotificatie notificatie,
+      ProjectService projectService,
       @Value("${bezwaarschriften.extractie.max-concurrent:3}") int maxConcurrent,
       @Value("${bezwaarschriften.extractie.max-pogingen:3}") int maxPogingen) {
     this.repository = repository;
     this.notificatie = notificatie;
+    this.projectService = projectService;
     this.maxConcurrent = maxConcurrent;
     this.maxPogingen = maxPogingen;
   }
@@ -181,14 +185,18 @@ public class ExtractieTaakService {
   }
 
   /**
-   * Herplant alle gefaalde extractie-taken voor een project door ze terug te zetten
-   * naar WACHTEND met 1 extra poging.
+   * Verwerkt onafgeronde items voor een project: herstelt gefaalde taken en maakt
+   * nieuwe taken aan voor documenten die nog niet verwerkt zijn.
+   *
+   * <p>Gefaalde taken worden teruggezet naar WACHTEND met 1 extra poging.
+   * Documenten met status TODO krijgen een nieuwe extractie-taak.
    *
    * @param projectNaam naam van het project
-   * @return het aantal opnieuw ingeplande taken
+   * @return het totaal aantal herstartte en nieuwe taken
    */
   @Transactional
-  public int herplanGefaaldeTaken(String projectNaam) {
+  public int verwerkOnafgeronde(String projectNaam) {
+    // Herstel gefaalde taken
     var gefaaldeTaken = repository.findByProjectNaamAndStatus(projectNaam,
         ExtractieTaakStatus.FOUT);
     for (var taak : gefaaldeTaken) {
@@ -200,7 +208,28 @@ public class ExtractieTaakService {
       repository.save(taak);
       notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
     }
-    LOGGER.info("Herplant {} gefaalde taken voor project '{}'", gefaaldeTaken.size(), projectNaam);
-    return gefaaldeTaken.size();
+
+    // Maak taken aan voor TODO-documenten
+    var todoDocumenten = projectService.geefBezwaren(projectNaam).stream()
+        .filter(b -> b.status() == BezwaarBestandStatus.TODO)
+        .toList();
+    for (var doc : todoDocumenten) {
+      var taak = new ExtractieTaak();
+      taak.setProjectNaam(projectNaam);
+      taak.setBestandsnaam(doc.bestandsnaam());
+      taak.setStatus(ExtractieTaakStatus.WACHTEND);
+      taak.setAantalPogingen(0);
+      taak.setMaxPogingen(maxPogingen);
+      taak.setAangemaaktOp(Instant.now());
+      var opgeslagen = repository.save(taak);
+      notificatie.taakGewijzigd(ExtractieTaakDto.van(opgeslagen));
+      LOGGER.info("Nieuwe extractie-taak voor TODO-document: project='{}', bestand='{}'",
+          projectNaam, doc.bestandsnaam());
+    }
+
+    int totaal = gefaaldeTaken.size() + todoDocumenten.size();
+    LOGGER.info("Verwerkt {} onafgeronde items voor project '{}' ({} fout, {} todo)",
+        totaal, projectNaam, gefaaldeTaken.size(), todoDocumenten.size());
+    return totaal;
   }
 }
