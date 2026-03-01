@@ -8,6 +8,7 @@ import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.compone
 import {VlToasterComponent} from '@domg-wc/components/block/toaster/vl-toaster.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
+import './bezwaarschriften-kernbezwaren.js';
 
 registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent, VlToasterComponent]);
 
@@ -41,7 +42,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
           </vl-tabs-pane>
           <vl-tabs-pane id="kernbezwaren" title="Kernbezwaren">
-            <p>Kernbezwaren worden hier getoond na verwerking.</p>
+            <bezwaarschriften-kernbezwaren id="kernbezwaren-component"></bezwaarschriften-kernbezwaren>
           </vl-tabs-pane>
         </vl-tabs>
       </div>
@@ -138,6 +139,16 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     }
     this._werkDocumentenTabTitelBij();
     this._werkVerwerkenKnopBij();
+    if (taak.status === 'extractie-klaar') {
+      const kernComp = this.shadowRoot.querySelector('#kernbezwaren-component');
+      if (kernComp) {
+        const totaalBezwaren = this.__bezwaren
+            .filter((b) => b.status === 'extractie-klaar')
+            .reduce((sum, b) => sum + (b.aantalBezwaren || 0), 0);
+        kernComp.setAantalBezwaren(totaalBezwaren);
+        kernComp.setExtractieKlaar(true);
+      }
+    }
   }
 
   _syncExtracties(projectNaam) {
@@ -285,6 +296,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this._werkDocumentenTabTitelBij();
           this._werkVerwerkenKnopBij();
           this._syncExtracties(projectNaam);
+          this._werkKernbezwarenBij(projectNaam, data.bezwaren);
         })
         .catch(() => {
           this._toonFout('Bezwaren konden niet worden geladen.');
@@ -402,6 +414,18 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         verwerkenKnop.textContent = `Verwerken (${aantalTeVerwerken})`;
       }
     }
+  }
+
+  _werkKernbezwarenBij(projectNaam, bezwaren) {
+    const kernComp = this.shadowRoot.querySelector('#kernbezwaren-component');
+    if (!kernComp) return;
+    const aantalKlaar = bezwaren.filter((b) => b.status === 'extractie-klaar').length;
+    const totaalBezwaren = bezwaren
+        .filter((b) => b.status === 'extractie-klaar')
+        .reduce((sum, b) => sum + (b.aantalBezwaren || 0), 0);
+    kernComp.setAantalBezwaren(totaalBezwaren);
+    kernComp.setExtractieKlaar(aantalKlaar > 0);
+    kernComp.laadKernbezwaren(projectNaam);
   }
 
   _verbergTabsSectie() {
