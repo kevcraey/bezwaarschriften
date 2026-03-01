@@ -2,8 +2,13 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,22 +36,60 @@ class ProjectControllerTest {
   private ProjectService projectService;
 
   @Test
-  void geeftProjectenTerug() throws Exception {
-    when(projectService.geefProjecten()).thenReturn(List.of("windmolens", "zonnepanelen"));
+  void geeftProjectenMetAantalDocumentenTerug() throws Exception {
+    when(projectService.geefProjectenMetAantalDocumenten()).thenReturn(List.of(
+        new ProjectService.ProjectOverzicht("windmolens", 42),
+        new ProjectService.ProjectOverzicht("zonnepanelen", 7)
+    ));
 
     mockMvc.perform(get("/api/v1/projects"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.projecten[0]").value("windmolens"))
-        .andExpect(jsonPath("$.projecten[1]").value("zonnepanelen"));
+        .andExpect(jsonPath("$.projecten[0].naam").value("windmolens"))
+        .andExpect(jsonPath("$.projecten[0].aantalDocumenten").value(42))
+        .andExpect(jsonPath("$.projecten[1].naam").value("zonnepanelen"))
+        .andExpect(jsonPath("$.projecten[1].aantalDocumenten").value(7));
   }
 
   @Test
-  void geeftLegeProjectenLijstTerug() throws Exception {
-    when(projectService.geefProjecten()).thenReturn(List.of());
+  void maaktProjectAan() throws Exception {
+    mockMvc.perform(post("/api/v1/projects")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"naam\": \"nieuw-project\"}"))
+        .andExpect(status().isCreated());
 
-    mockMvc.perform(get("/api/v1/projects"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.projecten").isEmpty());
+    verify(projectService).maakProjectAan("nieuw-project");
+  }
+
+  @Test
+  void maakProjectAan_geeft400AlsProjectAlBestaat() throws Exception {
+    doThrow(new IllegalArgumentException("Project bestaat al: bestaand"))
+        .when(projectService).maakProjectAan("bestaand");
+
+    mockMvc.perform(post("/api/v1/projects")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"naam\": \"bestaand\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.messages[0].code").value("invalid.argument"));
+  }
+
+  @Test
+  void verwijdertProject() throws Exception {
+    when(projectService.verwijderProject("oud-project")).thenReturn(true);
+
+    mockMvc.perform(delete("/api/v1/projects/oud-project")
+            .with(csrf()))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void verwijderProject_geeft404AlsProjectNietBestaat() throws Exception {
+    when(projectService.verwijderProject("bestaat-niet")).thenReturn(false);
+
+    mockMvc.perform(delete("/api/v1/projects/bestaat-niet")
+            .with(csrf()))
+        .andExpect(status().isNotFound());
   }
 
   @Test
