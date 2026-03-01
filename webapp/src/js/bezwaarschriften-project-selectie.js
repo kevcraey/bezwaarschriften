@@ -138,7 +138,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       tabel.werkBijMetTaakUpdate(taak);
     }
     this._werkDocumentenTabTitelBij();
-    this._werkRetryKnopBij();
+    this._werkVerwerkenKnopBij();
   }
 
   _syncExtracties(projectNaam) {
@@ -159,7 +159,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               tabel.werkBijMetTaakUpdate(taak);
             });
             this._werkDocumentenTabTitelBij();
-            this._werkRetryKnopBij();
+            this._werkVerwerkenKnopBij();
           }
         })
         .catch(() => {/* stille fout bij sync */});
@@ -298,7 +298,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
           this._werkDocumentenTabTitelBij();
-          this._werkRetryKnopBij();
+          this._werkVerwerkenKnopBij();
           this._syncExtracties(projectNaam);
         })
         .catch(() => {
@@ -334,7 +334,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               tabel.werkBijMetTaakUpdate(taak);
             });
             this._werkDocumentenTabTitelBij();
-            this._werkRetryKnopBij();
+            this._werkVerwerkenKnopBij();
           }
         })
         .catch(() => {
@@ -345,25 +345,25 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         });
   }
 
-  _retryGefaaldeExtracties(projectNaam) {
+  _verwerkOnafgeronde(projectNaam) {
     this._verbergFout();
     this._zetBezig(true);
 
-    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/retry`, {
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/verwerken`, {
       method: 'POST',
     })
         .then((response) => {
-          if (!response.ok) throw new Error('Retry mislukt');
+          if (!response.ok) throw new Error('Verwerken mislukt');
           return response.json();
         })
         .then((data) => {
-          if (data.aantalOpnieuwIngepland > 0) {
+          if (data.aantalIngepland > 0) {
             this._toonToast('success',
-                `${data.aantalOpnieuwIngepland} extractie(s) opnieuw ingepland.`);
+                `${data.aantalIngepland} extractie(s) ingepland.`);
           }
         })
         .catch(() => {
-          this._toonFout('Opnieuw proberen mislukt.');
+          this._toonFout('Verwerken mislukt.');
         })
         .finally(() => {
           this._zetBezig(false);
@@ -408,13 +408,14 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     }
   }
 
-  _werkRetryKnopBij() {
-    const retryKnop = this.shadowRoot && this.shadowRoot.querySelector('#retry-knop');
-    if (!retryKnop) return;
-    const aantalFout = this.__bezwaren.filter((b) => b.status === 'fout').length;
-    retryKnop.hidden = aantalFout === 0;
-    if (aantalFout > 0) {
-      retryKnop.textContent = `Opnieuw proberen (${aantalFout})`;
+  _werkVerwerkenKnopBij() {
+    const verwerkenKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerken-knop');
+    if (!verwerkenKnop) return;
+    const aantalTeVerwerken = this.__bezwaren.filter(
+        (b) => b.status === 'fout' || b.status === 'todo').length;
+    verwerkenKnop.hidden = aantalTeVerwerken === 0;
+    if (aantalTeVerwerken > 0) {
+      verwerkenKnop.textContent = `Verwerken (${aantalTeVerwerken})`;
     }
   }
 
