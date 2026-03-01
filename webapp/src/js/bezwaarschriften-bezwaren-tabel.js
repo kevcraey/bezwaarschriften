@@ -310,6 +310,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     }
 
     tabel.data = {data: pagina};
+    requestAnimationFrame(() => this._configureerSelecteerAlles());
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
   }
@@ -421,6 +422,38 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const minuten = Math.floor(totaalSeconden / 60);
     const seconden = totaalSeconden % 60;
     return `${minuten}:${String(seconden).padStart(2, '0')}`;
+  }
+
+  _configureerSelecteerAlles() {
+    const innerTable = this._geefInnerTable();
+    if (!innerTable) return;
+
+    const firstTh = innerTable.querySelector('thead th');
+    if (!firstTh) return;
+
+    let cb = firstTh.querySelector('#selecteer-alles');
+    if (cb) {
+      // Reset bestaande checkbox bij her-render
+      cb.checked = false;
+      return;
+    }
+
+    // Maak nieuwe checkbox aan
+    cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'selecteer-alles';
+    cb.title = 'Selecteer alles';
+    cb.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const table = this._geefInnerTable();
+      if (!table) return;
+      table.querySelectorAll('.rij-checkbox:not([disabled])').forEach((rijCb) => {
+        rijCb.checked = checked;
+      });
+      this._dispatchSelectieGewijzigd();
+    });
+    firstTh.textContent = '';
+    firstTh.appendChild(cb);
   }
 
   _dispatchSelectieGewijzigd() {
