@@ -23,12 +23,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .kernbezwaar-item:last-child { border-bottom: none; }
         .kernbezwaar-samenvatting { flex: 1; margin-right: 1rem; }
         .kernbezwaar-actie { white-space: nowrap; }
-        .side-sheet-kern-titel {
-          font-weight: bold;
-          margin-bottom: 1.5rem;
-          padding-bottom: 1rem;
-          border-bottom: 2px solid #e8ebee;
-        }
         .passage-item {
           margin-bottom: 1.5rem;
           padding-bottom: 1rem;
@@ -51,21 +45,30 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         }
         .side-sheet-header {
           display: flex;
-          justify-content: flex-end;
+          justify-content: space-between;
+          align-items: flex-start;
           position: sticky;
           top: 0;
           background: white;
-          padding: 0.5rem 0;
+          padding: 0.75rem 0;
           z-index: 1;
+          border-bottom: 2px solid #e8ebee;
+          margin-bottom: 1rem;
+        }
+        .side-sheet-titel {
+          font-weight: bold;
+          flex: 1;
+          margin-right: 1rem;
         }
         .side-sheet-sluit-knop {
           background: none;
           border: none;
           font-size: 1.5rem;
           cursor: pointer;
-          padding: 0.25rem 0.5rem;
+          padding: 0;
           color: #333;
           line-height: 1;
+          flex-shrink: 0;
         }
         .side-sheet-sluit-knop:hover {
           color: #000;
@@ -74,6 +77,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       <div id="inhoud"></div>
       <vl-side-sheet id="side-sheet" hide-toggle-button>
         <div class="side-sheet-header">
+          <div id="side-sheet-titel" class="side-sheet-titel"></div>
           <button id="side-sheet-sluit-knop" class="side-sheet-sluit-knop"
               aria-label="Sluiten">&times;</button>
         </div>
@@ -238,14 +242,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   _toonPassages(kernbezwaar) {
     const sideSheet = this.shadowRoot.querySelector('#side-sheet');
     const inhoud = this.shadowRoot.querySelector('#side-sheet-inhoud');
+    const titelEl = this.shadowRoot.querySelector('#side-sheet-titel');
     if (!sideSheet || !inhoud) return;
 
     inhoud.innerHTML = '';
-
-    const titel = document.createElement('div');
-    titel.className = 'side-sheet-kern-titel';
-    titel.textContent = kernbezwaar.samenvatting;
-    inhoud.appendChild(titel);
+    if (titelEl) titelEl.textContent = kernbezwaar.samenvatting;
 
     const aantalLabel = document.createElement('p');
     const n = kernbezwaar.individueleBezwaren.length;
