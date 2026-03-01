@@ -17,6 +17,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         :host(.side-sheet-open) { margin-right: 33.3%; }
         .kernbezwaar-item {
           display: flex;
+          flex-wrap: wrap;
           justify-content: space-between;
           align-items: flex-start;
           padding: 1rem 0;
@@ -92,6 +93,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           padding: 1rem 1.5rem;
         }
         .antwoord-editor-wrapper {
+          width: 100%;
           margin-top: 0.75rem;
           padding-top: 0.75rem;
           border-top: 1px solid #e8ebee;
