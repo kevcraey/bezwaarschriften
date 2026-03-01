@@ -1,5 +1,4 @@
 import {BaseHTMLElement, defineWebComponent, registerWebComponents} from '@domg-wc/common';
-import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
 import {VlTabsComponent} from '@domg-wc/components/block/tabs/vl-tabs.component.js';
 import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.component.js';
@@ -10,17 +9,27 @@ import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 import './bezwaarschriften-kernbezwaren.js';
 
-registerWebComponents([VlSelectComponent, VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent, VlToasterComponent]);
+registerWebComponents([VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent, VlToasterComponent]);
 
 export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   static get properties() {
     return {
-      __projecten: {state: true},
       __geselecteerdProject: {state: true},
       __bezwaren: {state: true},
       __bezig: {state: true},
       __fout: {state: true},
     };
+  }
+
+  set projectNaam(naam) {
+    this.__geselecteerdProject = naam;
+    if (naam && this.isConnected) {
+      this._laadBezwaren(naam);
+    }
+  }
+
+  get projectNaam() {
+    return this.__geselecteerdProject;
   }
 
   constructor() {
@@ -29,10 +38,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         ${vlGlobalStyles}
         ${vlGridStyles}
       </style>
-      <div id="selectie-wrapper">
-        <vl-select id="project-select" placeholder="Kies een project..."></vl-select>
-      </div>
-      <div id="tabs-sectie" hidden>
+      <div id="tabs-sectie">
         <vl-tabs observe-title active-tab="documenten">
           <vl-tabs-pane id="documenten" title="Documenten">
             <vl-button id="verwerken-knop" hidden>Verwerken</vl-button>
@@ -78,8 +84,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       </vl-modal>
       <vl-toaster id="toaster"></vl-toaster>
     `);
-    this.__projecten = [];
-    this.__geselecteerdProject = null;
     this.__bezwaren = [];
     this.__bezig = false;
     this.__fout = null;
@@ -91,7 +95,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this._laadProjecten();
+    if (this.__geselecteerdProject) {
+      this._laadBezwaren(this.__geselecteerdProject);
+    }
     this._koppelEventListeners();
     this._verbindWebSocket();
   }
@@ -184,45 +190,12 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         .catch(() => {/* stille fout bij sync */});
   }
 
-  _laadProjecten() {
-    fetch('/api/v1/projects')
-        .then((response) => {
-          if (!response.ok) throw new Error('Ophalen projecten mislukt');
-          return response.json();
-        })
-        .then((data) => {
-          this.__projecten = data.projecten;
-          const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
-          if (selectEl) {
-            selectEl.options = this.__projecten.map((naam) => ({value: naam, label: naam}));
-          }
-        })
-        .catch(() => {
-          this._toonFout('Projecten konden niet worden geladen.');
-        });
-  }
-
   _koppelEventListeners() {
-    const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
     const verwerkenKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerken-knop');
     const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
     const toevoegenKnop = this.shadowRoot && this.shadowRoot.querySelector('#toevoegen-knop');
     const uploadVerzendKnop = this.shadowRoot && this.shadowRoot.querySelector('#upload-verzend-knop');
     const verwijderBevestigKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-bevestig-knop');
-
-    if (selectEl) {
-      selectEl.addEventListener('vl-change', (e) => {
-        this._verbergFout();
-        const naam = e.detail.value;
-        this.__geselecteerdProject = naam || null;
-        if (naam) {
-          this._laadBezwaren(naam);
-        } else {
-          this.__bezwaren = [];
-          this._verbergTabsSectie();
-        }
-      });
-    }
 
     this.shadowRoot.addEventListener('annuleer-taak', (e) => {
       const {bestandsnaam, taakId} = e.detail;
@@ -482,11 +455,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     kernComp.setAantalBezwaren(totaalBezwaren);
     kernComp.setExtractieKlaar(aantalKlaar > 0);
     kernComp.laadKernbezwaren(projectNaam);
-  }
-
-  _verbergTabsSectie() {
-    const sectie = this.shadowRoot && this.shadowRoot.querySelector('#tabs-sectie');
-    if (sectie) sectie.hidden = true;
   }
 
   _verzendUpload() {
