@@ -60,9 +60,9 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           </form>
         </vl-search-filter>
         <vl-rich-data-field name="selectie" label=" "></vl-rich-data-field>
-        <vl-rich-data-field name="bestandsnaam" label="Bestandsnaam"></vl-rich-data-field>
-        <vl-rich-data-field name="aantalBezwaren" label="Aantal bezwaren"></vl-rich-data-field>
-        <vl-rich-data-field name="status" label="Status"></vl-rich-data-field>
+        <vl-rich-data-field name="bestandsnaam" label="Bestandsnaam" sortable></vl-rich-data-field>
+        <vl-rich-data-field name="aantalBezwaren" label="Aantal bezwaren" sortable></vl-rich-data-field>
+        <vl-rich-data-field name="status" label="Status" sortable></vl-rich-data-field>
       </vl-rich-data-table>
     `);
     this.__bronBezwaren = [];
@@ -207,7 +207,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       }
     }
 
-    // Sorting state (wordt in task 3 uitgebreid)
+    // Sorting state
     if (detail.sorting) {
       this.__sorting = detail.sorting;
     }
@@ -255,8 +255,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#tabel');
     if (!tabel) return;
 
-    const resultaat = this._filterBezwaren(this.__bronBezwaren, this.__filters);
-    // Sorting wordt in task 3 toegevoegd
+    let resultaat = this._filterBezwaren(this.__bronBezwaren, this.__filters);
+    resultaat = this._sorteerBezwaren(resultaat, this.__sorting);
     tabel.data = {data: resultaat};
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
@@ -272,6 +272,32 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         return false;
       }
       return true;
+    });
+  }
+
+  _sorteerBezwaren(bezwaren, sorting) {
+    if (!sorting || sorting.length === 0) return bezwaren;
+
+    const statusVolgorde = {
+      'todo': 0, 'wachtend': 1, 'bezig': 2,
+      'extractie-klaar': 3, 'fout': 4, 'niet ondersteund': 5,
+    };
+
+    return [...bezwaren].sort((a, b) => {
+      for (const sort of sorting) {
+        let cmp = 0;
+        if (sort.name === 'status') {
+          cmp = (statusVolgorde[a.status] ?? 99) - (statusVolgorde[b.status] ?? 99);
+        } else if (sort.name === 'aantalBezwaren') {
+          cmp = (a.aantalBezwaren ?? 0) - (b.aantalBezwaren ?? 0);
+        } else {
+          const valA = a[sort.name] ?? '';
+          const valB = b[sort.name] ?? '';
+          cmp = String(valA).localeCompare(String(valB), 'nl');
+        }
+        if (cmp !== 0) return sort.direction === 'asc' ? cmp : -cmp;
+      }
+      return 0;
     });
   }
 
