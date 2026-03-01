@@ -34,9 +34,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       <div id="tabs-sectie" hidden>
         <vl-tabs observe-title active-tab="documenten">
           <vl-tabs-pane id="documenten" title="Documenten">
-            <vl-button id="extraheer-knop" hidden>Extraheer geselecteerde</vl-button>
-            <vl-button id="verwijder-knop" type="error" hidden>Verwijder geselecteerde</vl-button>
             <vl-button id="verwerken-knop" hidden>Verwerken</vl-button>
+            <vl-button id="verwijder-knop" type="error" hidden>Verwijder geselecteerde</vl-button>
             <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
@@ -185,9 +184,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
   _koppelEventListeners() {
     const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
-    const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
-    const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
     const verwerkenKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerken-knop');
+    const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
     const toevoegenKnop = this.shadowRoot && this.shadowRoot.querySelector('#toevoegen-knop');
     const uploadVerzendKnop = this.shadowRoot && this.shadowRoot.querySelector('#upload-verzend-knop');
     const verwijderBevestigKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-bevestig-knop');
@@ -209,38 +207,25 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this.shadowRoot.addEventListener('selectie-gewijzigd', (e) => {
       const aantal = e.detail.geselecteerd.length;
       const heeftSelectie = aantal > 0;
-      if (extraheerKnop) {
-        extraheerKnop.hidden = !heeftSelectie;
-        extraheerKnop.textContent = `Extraheer geselecteerde (${aantal})`;
-      }
       if (verwijderKnop) {
         verwijderKnop.hidden = !heeftSelectie;
       }
       if (toevoegenKnop) {
         toevoegenKnop.hidden = heeftSelectie;
       }
-      if (verwerkenKnop) {
-        const aantalTeVerwerken = this.__bezwaren.filter(
-            (b) => b.status === 'fout' || b.status === 'todo').length;
-        verwerkenKnop.hidden = heeftSelectie || aantalTeVerwerken === 0;
-      }
+      this._werkVerwerkenKnopBij();
     });
-
-    if (extraheerKnop) {
-      extraheerKnop.addEventListener('vl-click', () => {
-        if (this.__bezig || !this.__geselecteerdProject) return;
-        const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
-        if (!tabel) return;
-        const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
-        if (geselecteerd.length === 0) return;
-        this._dienExtractiesIn(this.__geselecteerdProject, geselecteerd);
-      });
-    }
 
     if (verwerkenKnop) {
       verwerkenKnop.addEventListener('vl-click', () => {
         if (this.__bezig || !this.__geselecteerdProject) return;
-        this._verwerkOnafgeronde(this.__geselecteerdProject);
+        const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+        const geselecteerd = tabel ? tabel.geefGeselecteerdeBestandsnamen() : [];
+        if (geselecteerd.length > 0) {
+          this._dienExtractiesIn(this.__geselecteerdProject, geselecteerd);
+        } else {
+          this._verwerkOnafgeronde(this.__geselecteerdProject);
+        }
       });
     }
 
@@ -411,11 +396,18 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _werkVerwerkenKnopBij() {
     const verwerkenKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerken-knop');
     if (!verwerkenKnop) return;
-    const aantalTeVerwerken = this.__bezwaren.filter(
-        (b) => b.status === 'fout' || b.status === 'todo').length;
-    verwerkenKnop.hidden = aantalTeVerwerken === 0;
-    if (aantalTeVerwerken > 0) {
-      verwerkenKnop.textContent = `Verwerken (${aantalTeVerwerken})`;
+    const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+    const geselecteerd = tabel ? tabel.geefGeselecteerdeBestandsnamen() : [];
+    if (geselecteerd.length > 0) {
+      verwerkenKnop.hidden = false;
+      verwerkenKnop.textContent = `Verwerken (${geselecteerd.length})`;
+    } else {
+      const aantalTeVerwerken = this.__bezwaren.filter(
+          (b) => b.status === 'fout' || b.status === 'todo').length;
+      verwerkenKnop.hidden = aantalTeVerwerken === 0;
+      if (aantalTeVerwerken > 0) {
+        verwerkenKnop.textContent = `Verwerken (${aantalTeVerwerken})`;
+      }
     }
   }
 
