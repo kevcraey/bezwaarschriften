@@ -339,13 +339,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     })
         .then((response) => {
           if (!response.ok) throw new Error('Verwerken mislukt');
-          return response.json();
-        })
-        .then((data) => {
-          if (data.aantalIngepland > 0) {
-            this._toonToast('success',
-                `${data.aantalIngepland} extractie(s) ingepland.`);
-          }
         })
         .catch(() => {
           this._toonFout('Verwerken mislukt.');
