@@ -82,6 +82,10 @@ public class KernbezwaarService {
    * @param inhoud HTML-inhoud van het antwoord
    */
   public void slaAntwoordOp(Long kernbezwaarId, String inhoud) {
+    if (inhoud == null || inhoud.isBlank()) {
+      antwoordRepository.deleteById(kernbezwaarId);
+      return;
+    }
     var entiteit = new KernbezwaarAntwoordEntiteit();
     entiteit.setKernbezwaarId(kernbezwaarId);
     entiteit.setInhoud(inhoud);
