@@ -52,4 +52,13 @@ public interface ExtractieTaakRepository extends JpaRepository<ExtractieTaak, Lo
    * @param bestandsnaam de naam van het bestand
    */
   void deleteByProjectNaamAndBestandsnaam(String projectNaam, String bestandsnaam);
+
+  /**
+   * Vindt alle extractie-taken voor een project met een bepaalde status.
+   *
+   * @param projectNaam de naam van het project
+   * @param status de gewenste status
+   * @return lijst van extractie-taken die aan beide criteria voldoen
+   */
+  List<ExtractieTaak> findByProjectNaamAndStatus(String projectNaam, ExtractieTaakStatus status);
 }

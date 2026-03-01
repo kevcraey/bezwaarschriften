@@ -1,8 +1,9 @@
 import {BaseHTMLElement, defineWebComponent, registerWebComponents} from '@domg-wc/common';
 import {VlTableComponent} from '@domg-wc/components/block/table/vl-table.component.js';
+import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
-registerWebComponents([VlTableComponent]);
+registerWebComponents([VlTableComponent, VlPillComponent]);
 
 const STATUS_LABELS = {
   'todo': 'Te verwerken',
@@ -11,6 +12,15 @@ const STATUS_LABELS = {
   'extractie-klaar': 'Extractie klaar',
   'fout': 'Fout',
   'niet ondersteund': 'Niet ondersteund',
+};
+
+const STATUS_PILL_TYPES = {
+  'todo': '',
+  'wachtend': 'warning',
+  'bezig': 'warning',
+  'extractie-klaar': 'success',
+  'fout': 'error',
+  'niet ondersteund': '',
 };
 
 export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
@@ -166,11 +176,24 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           `.status-cel[data-bestandsnaam="${CSS.escape(b.bestandsnaam)}"]`,
       );
       if (!cel) return;
-      cel.textContent = this._formatStatus(b, nu);
+      const pill = cel.querySelector('vl-pill');
+      if (pill) {
+        pill.textContent = this._formatStatusLabel(b, nu);
+      }
     });
   }
 
   _formatStatus(b, nu) {
+    nu = nu || Date.now();
+    const label = this._formatStatusLabel(b, nu);
+
+    const type = STATUS_PILL_TYPES[b.status] || '';
+    const typeAttr = type ? ` type="${type}"` : '';
+    const disabledAttr = b.status === 'niet ondersteund' ? ' disabled' : '';
+    return `<vl-pill${typeAttr}${disabledAttr}>${label}</vl-pill>`;
+  }
+
+  _formatStatusLabel(b, nu) {
     nu = nu || Date.now();
     const taakData = this.__takenData[b.bestandsnaam];
 
@@ -190,11 +213,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       return `Bezig (${this._formatTijd(wachtMs)} + ${this._formatTijd(verwerkMs)})`;
     }
 
-    const label = STATUS_LABELS[b.status] || this._escapeHtml(b.status);
-    if (b.status === 'extractie-klaar' && b.aantalWoorden != null) {
-      return `${label} (${b.aantalWoorden} woorden)`;
-    }
-    return label;
+    return STATUS_LABELS[b.status] || b.status;
   }
 
   _formatTijd(ms) {

@@ -105,6 +105,23 @@ class ExtractieTaakRepositoryTest {
     assertThat(resultaat.get().getAangemaaktOp()).isEqualTo(nu);
   }
 
+  @Test
+  void vindtGefaaldeTakenVoorProject() {
+    Instant nu = Instant.now();
+    repository.save(maakTaak("windmolens", "bezwaar-001.txt",
+        ExtractieTaakStatus.FOUT, nu));
+    repository.save(maakTaak("windmolens", "bezwaar-002.txt",
+        ExtractieTaakStatus.KLAAR, nu));
+    repository.save(maakTaak("zonnepark", "bezwaar-003.txt",
+        ExtractieTaakStatus.FOUT, nu));
+
+    List<ExtractieTaak> resultaat =
+        repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT);
+
+    assertThat(resultaat).hasSize(1);
+    assertThat(resultaat.get(0).getBestandsnaam()).isEqualTo("bezwaar-001.txt");
+  }
+
   private ExtractieTaak maakTaak(String projectNaam, String bestandsnaam,
       ExtractieTaakStatus status, Instant aangemaaktOp) {
     ExtractieTaak taak = new ExtractieTaak();
