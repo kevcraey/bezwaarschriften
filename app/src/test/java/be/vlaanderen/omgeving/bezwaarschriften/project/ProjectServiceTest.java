@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.vlaanderen.omgeving.bezwaarschriften.ingestie.Brondocument;
+import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -24,11 +26,14 @@ class ProjectServiceTest {
   @Mock
   private ExtractieTaakRepository extractieTaakRepository;
 
+  @Mock
+  private IngestiePoort ingestiePoort;
+
   private ProjectService service;
 
   @BeforeEach
   void setUp() {
-    service = new ProjectService(projectPoort, extractieTaakRepository);
+    service = new ProjectService(projectPoort, extractieTaakRepository, ingestiePoort);
   }
 
   @Test
@@ -115,6 +120,28 @@ class ProjectServiceTest {
 
     assertThat(result).isEqualTo(verwacht);
     verify(projectPoort).geefBestandsPad("windmolens", "bezwaar1.txt");
+  }
+
+  @Test
+  void geeftBezwaartekstenVoorGroepering() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.txt", "bijlage.pdf"));
+    var taak = maakTaak(ExtractieTaakStatus.KLAAR, 150, 3);
+    when(extractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens",
+            "bezwaar-001.txt"))
+        .thenReturn(Optional.of(taak));
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt"));
+    when(ingestiePoort.leesBestand(Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt")))
+        .thenReturn(new Brondocument("De geluidsoverlast is ondraaglijk.", "bezwaar-001.txt",
+            "/tmp/windmolens/bezwaren/bezwaar-001.txt", Instant.now()));
+
+    var resultaat = service.geefBezwaartekstenVoorGroepering("windmolens");
+
+    assertThat(resultaat).hasSize(1);
+    assertThat(resultaat.get(0).bestandsnaam()).isEqualTo("bezwaar-001.txt");
+    assertThat(resultaat.get(0).tekst()).isEqualTo("De geluidsoverlast is ondraaglijk.");
   }
 
   private ExtractieTaak maakTaak(ExtractieTaakStatus status, Integer aantalWoorden,

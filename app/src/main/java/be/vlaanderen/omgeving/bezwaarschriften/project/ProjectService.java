@@ -1,5 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarPoort;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -23,17 +25,21 @@ public class ProjectService {
 
   private final ProjectPoort projectPoort;
   private final ExtractieTaakRepository extractieTaakRepository;
+  private final IngestiePoort ingestiePoort;
 
   /**
    * Maakt een nieuwe ProjectService aan.
    *
    * @param projectPoort Port voor filesystem toegang
    * @param extractieTaakRepository Repository voor extractie-taken
+   * @param ingestiePoort Port voor bestandsingestie
    */
   public ProjectService(ProjectPoort projectPoort,
-      ExtractieTaakRepository extractieTaakRepository) {
+      ExtractieTaakRepository extractieTaakRepository,
+      IngestiePoort ingestiePoort) {
     this.projectPoort = projectPoort;
     this.extractieTaakRepository = extractieTaakRepository;
+    this.ingestiePoort = ingestiePoort;
   }
 
   /**
@@ -134,6 +140,27 @@ public class ProjectService {
    */
   public Path geefBestandsPad(String projectNaam, String bestandsnaam) {
     return projectPoort.geefBestandsPad(projectNaam, bestandsnaam);
+  }
+
+  /**
+   * Geeft de bezwaarteksten van een project als invoer voor kernbezwaar-groepering.
+   * Filtert op .txt-bestanden met status EXTRACTIE_KLAAR.
+   *
+   * @param projectNaam Naam van het project
+   * @return Lijst van bezwaarinvoer voor groepering
+   */
+  public List<KernbezwaarPoort.BezwaarInvoer> geefBezwaartekstenVoorGroepering(
+      String projectNaam) {
+    var bezwaren = geefBezwaren(projectNaam);
+    return bezwaren.stream()
+        .filter(b -> b.status() == BezwaarBestandStatus.EXTRACTIE_KLAAR)
+        .filter(b -> isTxtBestand(b.bestandsnaam()))
+        .map(b -> {
+          var pad = projectPoort.geefBestandsPad(projectNaam, b.bestandsnaam());
+          var doc = ingestiePoort.leesBestand(pad);
+          return new KernbezwaarPoort.BezwaarInvoer(null, b.bestandsnaam(), doc.tekst());
+        })
+        .toList();
   }
 
   private boolean isTxtBestand(String bestandsnaam) {
