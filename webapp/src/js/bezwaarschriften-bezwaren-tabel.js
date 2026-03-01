@@ -35,6 +35,11 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       <style>
         ${vlGlobalStyles}
         .status-cel { min-width: 220px; }
+        .status-cel vl-pill {
+          font-variant-numeric: tabular-nums;
+          min-width: 180px;
+          display: inline-block;
+        }
       </style>
       <vl-table>
         <table>
