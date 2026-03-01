@@ -40,6 +40,31 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           min-width: 180px;
           display: inline-block;
         }
+        .actieve-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .annuleer-btn {
+          background: none;
+          border: 1px solid #ccc;
+          border-radius: 50%;
+          cursor: pointer;
+          font-size: 14px;
+          color: #666;
+          width: 22px;
+          height: 22px;
+          padding: 0;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .annuleer-btn:hover {
+          color: #fff;
+          background: #d32f2f;
+          border-color: #d32f2f;
+        }
       </style>
       <vl-table>
         <table>
@@ -80,6 +105,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   werkBijMetTaakUpdate(taak) {
     this.__takenData[taak.bestandsnaam] = {
+      id: taak.id,
       aangemaaktOp: taak.aangemaaktOp,
       verwerkingGestartOp: taak.verwerkingGestartOp,
     };
@@ -150,6 +176,21 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       cb.addEventListener('change', () => this._dispatchSelectieGewijzigd());
     });
 
+    tbody.querySelectorAll('.annuleer-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const bestandsnaam = btn.dataset.bestandsnaam;
+        const taakData = this.__takenData[bestandsnaam];
+        if (taakData && taakData.id) {
+          this.dispatchEvent(new CustomEvent('annuleer-taak', {
+            detail: {bestandsnaam, taakId: taakData.id},
+            bubbles: true,
+            composed: true,
+          }));
+        }
+      });
+    });
+
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
   }
@@ -184,9 +225,9 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           `.status-cel[data-bestandsnaam="${CSS.escape(b.bestandsnaam)}"]`,
       );
       if (!cel) return;
-      const pill = cel.querySelector('vl-pill');
-      if (pill) {
-        pill.textContent = this._formatStatusLabel(b, nu);
+      const timerTekst = cel.querySelector('.timer-tekst');
+      if (timerTekst) {
+        timerTekst.textContent = this._formatStatusLabel(b, nu);
       }
     });
   }
@@ -194,10 +235,14 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   _formatStatus(b, nu) {
     nu = nu || Date.now();
     const label = this._formatStatusLabel(b, nu);
-
     const type = STATUS_PILL_TYPES[b.status] || '';
     const typeAttr = type ? ` type="${type}"` : '';
     const disabledAttr = b.status === 'niet ondersteund' ? ' disabled' : '';
+    const isActief = b.status === 'wachtend' || b.status === 'bezig';
+
+    if (isActief) {
+      return `<span class="actieve-pill"><vl-pill${typeAttr}><span class="timer-tekst">${label}</span></vl-pill><button class="annuleer-btn" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" title="Annuleer verwerking">&times;</button></span>`;
+    }
     return `<vl-pill${typeAttr}${disabledAttr}>${label}</vl-pill>`;
   }
 
