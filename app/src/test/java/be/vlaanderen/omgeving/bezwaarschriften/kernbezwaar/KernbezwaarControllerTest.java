@@ -30,7 +30,7 @@ class KernbezwaarControllerTest {
   void groepeerRetourneertThemas() {
     var thema = new Thema("Geluid", List.of(
         new Kernbezwaar(1L, "samenvatting", List.of(
-            new IndividueelBezwaarReferentie(1L, "b1.txt", "passage")))));
+            new IndividueelBezwaarReferentie(1L, "b1.txt", "passage")), null)));
     when(kernbezwaarService.groepeer("windmolens")).thenReturn(List.of(thema));
 
     var response = controller.groepeer("windmolens");

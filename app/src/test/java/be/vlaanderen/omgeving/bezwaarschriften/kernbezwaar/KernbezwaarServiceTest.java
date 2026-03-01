@@ -36,7 +36,7 @@ class KernbezwaarServiceTest {
             new KernbezwaarPoort.BezwaarInvoer(1L, "bezwaar1.txt", "tekst")));
     var thema = new Thema("Geluid", List.of(
         new Kernbezwaar(1L, "samenvatting", List.of(
-            new IndividueelBezwaarReferentie(1L, "bezwaar1.txt", "passage")))));
+            new IndividueelBezwaarReferentie(1L, "bezwaar1.txt", "passage")), null)));
     when(kernbezwaarPoort.groepeer(anyList())).thenReturn(List.of(thema));
 
     var resultaat = service.groepeer("windmolens");
