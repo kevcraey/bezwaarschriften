@@ -5,6 +5,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -40,6 +42,21 @@ public class KernbezwaarController {
         .orElse(ResponseEntity.notFound().build());
   }
 
+  /**
+   * Slaat het antwoord (weerwoord) op voor een specifiek kernbezwaar.
+   */
+  @PutMapping("/{naam}/kernbezwaren/{id}/antwoord")
+  public ResponseEntity<Void> slaAntwoordOp(
+      @PathVariable String naam,
+      @PathVariable Long id,
+      @RequestBody AntwoordRequest request) {
+    kernbezwaarService.slaAntwoordOp(id, request.inhoud());
+    return ResponseEntity.ok().build();
+  }
+
   /** Response DTO met thema's en kernbezwaren. */
   record ThemasResponse(List<Thema> themas) {}
+
+  /** Request DTO voor het opslaan van een antwoord. */
+  record AntwoordRequest(String inhoud) {}
 }
