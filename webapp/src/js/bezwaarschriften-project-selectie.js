@@ -36,7 +36,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <vl-tabs-pane id="documenten" title="Documenten">
             <vl-button id="extraheer-knop" hidden>Extraheer geselecteerde</vl-button>
             <vl-button id="verwijder-knop" type="error" hidden>Verwijder geselecteerde</vl-button>
-            <vl-button id="retry-knop" hidden>Opnieuw proberen</vl-button>
+            <vl-button id="verwerken-knop" hidden>Verwerken</vl-button>
             <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
@@ -187,7 +187,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
     const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
     const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
-    const retryKnop = this.shadowRoot && this.shadowRoot.querySelector('#retry-knop');
+    const verwerkenKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwerken-knop');
     const toevoegenKnop = this.shadowRoot && this.shadowRoot.querySelector('#toevoegen-knop');
     const uploadVerzendKnop = this.shadowRoot && this.shadowRoot.querySelector('#upload-verzend-knop');
     const verwijderBevestigKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-bevestig-knop');
@@ -219,8 +219,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       if (toevoegenKnop) {
         toevoegenKnop.hidden = heeftSelectie;
       }
-      if (retryKnop) {
-        retryKnop.hidden = heeftSelectie || this.__bezwaren.filter((b) => b.status === 'fout').length === 0;
+      if (verwerkenKnop) {
+        const aantalTeVerwerken = this.__bezwaren.filter(
+            (b) => b.status === 'fout' || b.status === 'todo').length;
+        verwerkenKnop.hidden = heeftSelectie || aantalTeVerwerken === 0;
       }
     });
 
@@ -235,10 +237,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       });
     }
 
-    if (retryKnop) {
-      retryKnop.addEventListener('vl-click', () => {
+    if (verwerkenKnop) {
+      verwerkenKnop.addEventListener('vl-click', () => {
         if (this.__bezig || !this.__geselecteerdProject) return;
-        this._retryGefaaldeExtracties(this.__geselecteerdProject);
+        this._verwerkOnafgeronde(this.__geselecteerdProject);
       });
     }
 
@@ -274,6 +276,13 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (uploadVerzendKnop) {
       uploadVerzendKnop.addEventListener('vl-click', () => {
         this._verzendUpload();
+      });
+    }
+
+    const tabs = this.shadowRoot && this.shadowRoot.querySelector('vl-tabs');
+    if (tabs) {
+      tabs.addEventListener('change', () => {
+        tabs.scrollIntoView({behavior: 'smooth', block: 'start'});
       });
     }
   }
