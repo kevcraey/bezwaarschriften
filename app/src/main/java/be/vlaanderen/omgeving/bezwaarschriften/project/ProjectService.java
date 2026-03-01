@@ -197,4 +197,20 @@ public class ProjectService {
     extractieTaakRepository.deleteByProjectNaam(naam);
     return projectPoort.verwijderProject(naam);
   }
+
+  /**
+   * Projectoverzicht met documentaantal.
+   */
+  public record ProjectOverzicht(String naam, int aantalDocumenten) {}
+
+  /**
+   * Geeft alle projecten met het aantal documenten per project.
+   *
+   * @return Lijst van project-overzichten
+   */
+  public List<ProjectOverzicht> geefProjectenMetAantalDocumenten() {
+    return projectPoort.geefProjecten().stream()
+        .map(naam -> new ProjectOverzicht(naam, projectPoort.geefBestandsnamen(naam).size()))
+        .toList();
+  }
 }

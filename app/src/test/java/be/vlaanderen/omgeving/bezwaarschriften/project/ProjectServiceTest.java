@@ -185,4 +185,21 @@ class ProjectServiceTest {
     assertThat(result).isFalse();
     verify(extractieTaakRepository).deleteByProjectNaam("bestaat-niet");
   }
+
+  @Test
+  void geeftProjectenMetAantalDocumenten() {
+    when(projectPoort.geefProjecten()).thenReturn(List.of("windmolens", "leeg-project"));
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar1.txt", "bezwaar2.txt", "bijlage.pdf"));
+    when(projectPoort.geefBestandsnamen("leeg-project"))
+        .thenReturn(List.of());
+
+    var resultaat = service.geefProjectenMetAantalDocumenten();
+
+    assertThat(resultaat).hasSize(2);
+    assertThat(resultaat.get(0).naam()).isEqualTo("windmolens");
+    assertThat(resultaat.get(0).aantalDocumenten()).isEqualTo(3);
+    assertThat(resultaat.get(1).naam()).isEqualTo("leeg-project");
+    assertThat(resultaat.get(1).aantalDocumenten()).isEqualTo(0);
+  }
 }
