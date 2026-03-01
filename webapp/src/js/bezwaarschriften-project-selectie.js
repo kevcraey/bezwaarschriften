@@ -34,8 +34,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       <div id="tabs-sectie" hidden>
         <vl-tabs observe-title active-tab="documenten">
           <vl-tabs-pane id="documenten" title="Documenten">
-            <vl-button id="extraheer-knop" disabled>Extraheer geselecteerde</vl-button>
-            <vl-button id="verwijder-knop" disabled error>Verwijder geselecteerde</vl-button>
+            <vl-button id="extraheer-knop" hidden>Extraheer geselecteerde</vl-button>
+            <vl-button id="verwijder-knop" type="error" hidden>Verwijder geselecteerde</vl-button>
+            <vl-button id="retry-knop" hidden>Opnieuw proberen</vl-button>
             <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
@@ -50,7 +51,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <p id="verwijder-bevestiging-tekst"></p>
         </div>
         <div slot="button">
-          <vl-button id="verwijder-bevestig-knop">Verwijderen</vl-button>
+          <vl-button id="verwijder-bevestig-knop" type="error">Verwijderen</vl-button>
         </div>
       </vl-modal>
       <vl-modal id="upload-modal" title="Bestanden toevoegen" closable>
@@ -137,6 +138,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       tabel.werkBijMetTaakUpdate(taak);
     }
     this._werkDocumentenTabTitelBij();
+    this._werkRetryKnopBij();
   }
 
   _syncExtracties(projectNaam) {
@@ -157,6 +159,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               tabel.werkBijMetTaakUpdate(taak);
             });
             this._werkDocumentenTabTitelBij();
+            this._werkRetryKnopBij();
           }
         })
         .catch(() => {/* stille fout bij sync */});
@@ -184,6 +187,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const selectEl = this.shadowRoot && this.shadowRoot.querySelector('#project-select');
     const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
     const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
+    const retryKnop = this.shadowRoot && this.shadowRoot.querySelector('#retry-knop');
     const toevoegenKnop = this.shadowRoot && this.shadowRoot.querySelector('#toevoegen-knop');
     const uploadVerzendKnop = this.shadowRoot && this.shadowRoot.querySelector('#upload-verzend-knop');
     const verwijderBevestigKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-bevestig-knop');
@@ -206,13 +210,17 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       const aantal = e.detail.geselecteerd.length;
       const heeftSelectie = aantal > 0;
       if (extraheerKnop) {
-        extraheerKnop.disabled = this.__bezig || !heeftSelectie;
-        extraheerKnop.textContent = heeftSelectie ?
-          `Extraheer geselecteerde (${aantal})` :
-          'Extraheer geselecteerde';
+        extraheerKnop.hidden = !heeftSelectie;
+        extraheerKnop.textContent = `Extraheer geselecteerde (${aantal})`;
       }
       if (verwijderKnop) {
-        verwijderKnop.disabled = this.__bezig || !heeftSelectie;
+        verwijderKnop.hidden = !heeftSelectie;
+      }
+      if (toevoegenKnop) {
+        toevoegenKnop.hidden = heeftSelectie;
+      }
+      if (retryKnop) {
+        retryKnop.hidden = heeftSelectie || this.__bezwaren.filter((b) => b.status === 'fout').length === 0;
       }
     });
 
@@ -224,6 +232,13 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         const geselecteerd = tabel.geefGeselecteerdeBestandsnamen();
         if (geselecteerd.length === 0) return;
         this._dienExtractiesIn(this.__geselecteerdProject, geselecteerd);
+      });
+    }
+
+    if (retryKnop) {
+      retryKnop.addEventListener('vl-click', () => {
+        if (this.__bezig || !this.__geselecteerdProject) return;
+        this._retryGefaaldeExtracties(this.__geselecteerdProject);
       });
     }
 
@@ -274,6 +289,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this.__bezwaren = data.bezwaren;
           this._werkTabelBij();
           this._werkDocumentenTabTitelBij();
+          this._werkRetryKnopBij();
           this._syncExtracties(projectNaam);
         })
         .catch(() => {
@@ -309,10 +325,36 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               tabel.werkBijMetTaakUpdate(taak);
             });
             this._werkDocumentenTabTitelBij();
+            this._werkRetryKnopBij();
           }
         })
         .catch(() => {
           this._toonFout('Extracties konden niet worden ingediend.');
+        })
+        .finally(() => {
+          this._zetBezig(false);
+        });
+  }
+
+  _retryGefaaldeExtracties(projectNaam) {
+    this._verbergFout();
+    this._zetBezig(true);
+
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/retry`, {
+      method: 'POST',
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Retry mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          if (data.aantalOpnieuwIngepland > 0) {
+            this._toonToast('success',
+                `${data.aantalOpnieuwIngepland} extractie(s) opnieuw ingepland.`);
+          }
+        })
+        .catch(() => {
+          this._toonFout('Opnieuw proberen mislukt.');
         })
         .finally(() => {
           this._zetBezig(false);
@@ -341,8 +383,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const isBezig = this.__bezwaren.some(
         (b) => b.status === 'wachtend' || b.status === 'bezig',
     );
+    const allesKlaar = aantalKlaar === totaal;
 
     let titel = `Documenten (${aantalKlaar}/${totaal})`;
+    if (allesKlaar) titel = `\u2714\uFE0F Documenten (${totaal}/${totaal})`;
     if (isBezig) titel += ' \u23F3';
     if (aantalFout > 0) titel += ` \u26A0\uFE0F${aantalFout}`;
 
@@ -351,6 +395,17 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         tabs.shadowRoot.querySelector(`slot[name="documenten-title-slot"]`);
     if (slot) {
       slot.innerHTML = titel;
+      slot.style.color = allesKlaar ? '#0e7c3a' : '';
+    }
+  }
+
+  _werkRetryKnopBij() {
+    const retryKnop = this.shadowRoot && this.shadowRoot.querySelector('#retry-knop');
+    if (!retryKnop) return;
+    const aantalFout = this.__bezwaren.filter((b) => b.status === 'fout').length;
+    retryKnop.hidden = aantalFout === 0;
+    if (aantalFout > 0) {
+      retryKnop.textContent = `Opnieuw proberen (${aantalFout})`;
     }
   }
 
@@ -387,7 +442,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
           if (data.geupload && data.geupload.length > 0) {
             this._toonToast('success',
-              `${data.geupload.length} bestand(en) succesvol opgeladen.`);
+                `${data.geupload.length} bestand(en) succesvol opgeladen.`);
           }
 
           if (data.fouten && data.fouten.length > 0) {
@@ -395,7 +450,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
             alert.setAttribute('type', 'error');
             alert.setAttribute('icon', 'warning');
             alert.setAttribute('message',
-              `${data.fouten.length} bestand(en) niet opgeladen: bestand met dezelfde naam bestaat al.`);
+                `${data.fouten.length} bestand(en) niet opgeladen: bestand met dezelfde naam bestaat al.`);
             alert.setAttribute('closable', '');
             const ul = document.createElement('ul');
             data.fouten.forEach((f) => {
@@ -444,10 +499,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
   _zetBezig(bezig) {
     this.__bezig = bezig;
-    const extraheerKnop = this.shadowRoot && this.shadowRoot.querySelector('#extraheer-knop');
-    const verwijderKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-knop');
-    if (extraheerKnop) extraheerKnop.disabled = bezig;
-    if (verwijderKnop) verwijderKnop.disabled = bezig;
   }
 
   _toonFout(bericht) {
