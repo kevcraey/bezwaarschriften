@@ -43,17 +43,21 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           text-align: center;
           color: #687483;
         }
+        .side-sheet-wrapper {
+          display: flex;
+          flex-direction: column;
+          height: calc(100vh - 43px);
+          margin: -1.5rem;
+          padding: 0;
+        }
         .side-sheet-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          position: sticky;
-          top: 0;
-          background: white;
-          padding: 0.75rem 0;
-          z-index: 1;
+          padding: 1rem 1.5rem;
           border-bottom: 2px solid #e8ebee;
-          margin-bottom: 1rem;
+          flex-shrink: 0;
+          background: white;
         }
         .side-sheet-titel {
           font-weight: bold;
@@ -73,15 +77,22 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .side-sheet-sluit-knop:hover {
           color: #000;
         }
+        .side-sheet-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 1rem 1.5rem;
+        }
       </style>
       <div id="inhoud"></div>
       <vl-side-sheet id="side-sheet" hide-toggle-button>
-        <div class="side-sheet-header">
-          <div id="side-sheet-titel" class="side-sheet-titel"></div>
-          <button id="side-sheet-sluit-knop" class="side-sheet-sluit-knop"
-              aria-label="Sluiten">&times;</button>
+        <div class="side-sheet-wrapper">
+          <div class="side-sheet-header">
+            <div id="side-sheet-titel" class="side-sheet-titel"></div>
+            <button id="side-sheet-sluit-knop" class="side-sheet-sluit-knop"
+                aria-label="Sluiten">&times;</button>
+          </div>
+          <div id="side-sheet-inhoud" class="side-sheet-body"></div>
         </div>
-        <div id="side-sheet-inhoud"></div>
       </vl-side-sheet>
     `);
     this._projectNaam = null;
