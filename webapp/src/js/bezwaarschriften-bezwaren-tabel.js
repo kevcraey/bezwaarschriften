@@ -32,7 +32,10 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   constructor() {
     super(`
-      <style>${vlGlobalStyles}</style>
+      <style>
+        ${vlGlobalStyles}
+        .status-cel { min-width: 220px; }
+      </style>
       <vl-table>
         <table>
           <thead>
