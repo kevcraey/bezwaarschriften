@@ -186,6 +186,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         actie.className = 'kernbezwaar-actie';
         const knop = document.createElement('vl-button');
         knop.setAttribute('tertiary', '');
+        knop.setAttribute('icon', 'search');
         knop.textContent = `(${kern.individueleBezwaren.length})`;
         knop.addEventListener('vl-click', () => this._toonPassages(kern));
 
