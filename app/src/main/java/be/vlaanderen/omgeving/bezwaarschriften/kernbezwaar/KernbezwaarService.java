@@ -157,7 +157,9 @@ public class KernbezwaarService {
    */
   public void slaAntwoordOp(Long kernbezwaarId, String inhoud) {
     if (inhoud == null || inhoud.isBlank()) {
-      antwoordRepository.deleteById(kernbezwaarId);
+      if (antwoordRepository.existsById(kernbezwaarId)) {
+        antwoordRepository.deleteById(kernbezwaarId);
+      }
       return;
     }
     var entiteit = new KernbezwaarAntwoordEntiteit();
