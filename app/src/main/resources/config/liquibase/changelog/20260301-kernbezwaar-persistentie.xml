@@ -64,6 +64,8 @@
   </changeSet>
 
   <changeSet id="20260301-3" author="kenzo">
+    <comment>Verwijder verweesd antwoorden uit in-memory tijdperk voordat FK wordt toegevoegd</comment>
+    <delete tableName="kernbezwaar_antwoord"/>
     <addForeignKeyConstraint
         baseTableName="kernbezwaar_antwoord"
         baseColumnNames="kernbezwaar_id"
