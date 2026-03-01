@@ -12,7 +12,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       <style>
         ${vlGlobalStyles}
         ${vlGridStyles}
-        :host { display: block; }
+        :host { display: block; padding: 1.5rem; transition: margin-right 0.2s ease; }
+        :host(.side-sheet-open) { margin-right: 33.3%; }
         .kernbezwaar-item {
           display: flex;
           justify-content: space-between;
@@ -33,6 +34,12 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           font-size: 0.85rem;
           color: #687483;
           margin-bottom: 0.25rem;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .passage-bestandsnaam:hover {
+          text-decoration: underline;
+          color: #0055cc;
         }
         .passage-tekst {
           font-style: italic;
@@ -46,10 +53,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .side-sheet-wrapper {
           display: flex;
           flex-direction: column;
-          height: 100vh;
+          height: calc(100vh - 43px);
           margin: -1.5rem;
-          margin-top: calc(-1.5rem - 43px);
           padding: 0;
+          overflow: hidden;
         }
         .side-sheet-header {
           display: flex;
@@ -108,7 +115,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const sluitKnop = this.shadowRoot.querySelector('#side-sheet-sluit-knop');
     const sideSheet = this.shadowRoot.querySelector('#side-sheet');
     if (sluitKnop && sideSheet) {
-      sluitKnop.addEventListener('click', () => sideSheet.close());
+      sluitKnop.addEventListener('click', () => {
+        sideSheet.close();
+        this.classList.remove('side-sheet-open');
+      });
     }
   }
 
@@ -215,13 +225,27 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
   }
 
+  _maakOpnieuwKnop() {
+    const knop = document.createElement('vl-button');
+    knop.setAttribute('secondary', '');
+    knop.textContent = 'Opnieuw verwerken';
+    knop.addEventListener('vl-click', () => this._groepeer());
+    return knop;
+  }
+
   _renderThemas(inhoud) {
     inhoud.innerHTML = '';
+
+    const knopBoven = this._maakOpnieuwKnop();
+    knopBoven.style.marginBottom = '1.5rem';
+    inhoud.appendChild(knopBoven);
+
     this._themas.forEach((thema) => {
       const accordion = document.createElement('vl-accordion');
       const aantalKern = thema.kernbezwaren.length;
       const label = aantalKern === 1 ? '1 kernbezwaar' : `${aantalKern} kernbezwaren`;
       accordion.setAttribute('toggle-text', `${thema.naam} (${label})`);
+      accordion.setAttribute('default-open', '');
 
       const wrapper = document.createElement('div');
       thema.kernbezwaren.forEach((kern) => {
@@ -249,6 +273,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       accordion.appendChild(wrapper);
       inhoud.appendChild(accordion);
     });
+
+    const knopOnder = this._maakOpnieuwKnop();
+    knopOnder.style.marginTop = '1.5rem';
+    inhoud.appendChild(knopOnder);
   }
 
   _toonPassages(kernbezwaar) {
@@ -269,9 +297,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       const item = document.createElement('div');
       item.className = 'passage-item';
 
-      const bestand = document.createElement('div');
+      const bestand = document.createElement('a');
       bestand.className = 'passage-bestandsnaam';
       bestand.textContent = ref.bestandsnaam;
+      bestand.href = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(ref.bestandsnaam)}/download`;
+      bestand.download = ref.bestandsnaam;
 
       const passage = document.createElement('div');
       passage.className = 'passage-tekst';
@@ -283,6 +313,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     });
 
     sideSheet.open();
+    this.classList.add('side-sheet-open');
   }
 }
 
