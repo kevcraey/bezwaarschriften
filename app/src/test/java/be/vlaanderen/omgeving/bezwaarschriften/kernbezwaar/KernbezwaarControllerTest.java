@@ -62,4 +62,14 @@ class KernbezwaarControllerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
+
+  @Test
+  void slaatAntwoordOp() {
+    var request = new KernbezwaarController.AntwoordRequest("<p>Weerwoord</p>");
+
+    var response = controller.slaAntwoordOp("windmolens", 42L, request);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    verify(kernbezwaarService).slaAntwoordOp(42L, "<p>Weerwoord</p>");
+  }
 }
