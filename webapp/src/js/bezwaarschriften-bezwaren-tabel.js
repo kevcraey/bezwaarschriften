@@ -185,7 +185,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   _formatStatus(b, nu) {
     nu = nu || Date.now();
-    let label = this._formatStatusLabel(b, nu);
+    const label = this._formatStatusLabel(b, nu);
 
     const type = STATUS_PILL_TYPES[b.status] || '';
     const typeAttr = type ? ` type="${type}"` : '';
