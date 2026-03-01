@@ -35,7 +35,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         <vl-tabs observe-title active-tab="documenten">
           <vl-tabs-pane id="documenten" title="Documenten">
             <vl-button id="verwerken-knop" hidden>Verwerken</vl-button>
-            <vl-button id="verwijder-knop" type="error" hidden>Verwijder geselecteerde</vl-button>
+            <vl-button id="verwijder-knop" error="" hidden>Verwijder geselecteerde</vl-button>
             <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
@@ -50,7 +50,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <p id="verwijder-bevestiging-tekst"></p>
         </div>
         <div slot="button">
-          <vl-button id="verwijder-bevestig-knop" type="error">Verwijderen</vl-button>
+          <vl-button id="verwijder-bevestig-knop" error="">Verwijderen</vl-button>
         </div>
       </vl-modal>
       <vl-modal id="upload-modal" title="Bestanden toevoegen" closable>
