@@ -15,7 +15,7 @@ class ThemaTest {
         "Wij ondervinden ernstige hinder van nachtelijk transport.");
     var kern = new Kernbezwaar(1L,
         "Geluidshinder tijdens nachtelijke uren door vrachtverkeer",
-        List.of(ref1, ref2));
+        List.of(ref1, ref2), null);
     var thema = new Thema("Geluid", List.of(kern));
 
     assertThat(thema.naam()).isEqualTo("Geluid");

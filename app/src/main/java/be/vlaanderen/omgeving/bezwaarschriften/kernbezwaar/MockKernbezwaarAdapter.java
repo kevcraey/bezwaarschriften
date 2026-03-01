@@ -148,7 +148,7 @@ public class MockKernbezwaarAdapter implements KernbezwaarPoort {
         }
 
         kernbezwaren.add(new Kernbezwaar(
-            idTeller.getAndIncrement(), samenvatting, refs));
+            idTeller.getAndIncrement(), samenvatting, refs, null));
       }
 
       themas.add(new Thema(themaNaam, kernbezwaren));
