@@ -4,9 +4,16 @@ import {VlRichDataField} from '@domg-wc/components/block/rich-data-table/vl-rich
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {VlSearchFilterComponent} from '@domg-wc/components/block/search-filter/vl-search-filter.component.js';
 import {VlPagerComponent} from '@domg-wc/components/block/pager/vl-pager.component.js';
+import {VlInputFieldComponent} from '@domg-wc/components/form/input-field/vl-input-field.component.js';
+import {VlFormLabelComponent} from '@domg-wc/components/form/form-label/vl-form-label.component.js';
+import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
-registerWebComponents([VlRichDataTable, VlRichDataField, VlPillComponent, VlSearchFilterComponent, VlPagerComponent]);
+registerWebComponents([
+  VlRichDataTable, VlRichDataField, VlPillComponent,
+  VlSearchFilterComponent, VlPagerComponent,
+  VlInputFieldComponent, VlFormLabelComponent, VlSelectComponent,
+]);
 
 const STATUS_LABELS = {
   'todo': 'Te verwerken',
@@ -26,6 +33,18 @@ const STATUS_PILL_TYPES = {
   'niet ondersteund': '',
 };
 
+const STATUS_OPTIES = [
+  {value: '', label: 'Alle statussen'},
+  {value: 'todo', label: 'Te verwerken'},
+  {value: 'wachtend', label: 'Wachtend'},
+  {value: 'bezig', label: 'Bezig'},
+  {value: 'extractie-klaar', label: 'Extractie klaar'},
+  {value: 'fout', label: 'Fout'},
+  {value: 'niet ondersteund', label: 'Niet ondersteund'},
+];
+
+const ITEMS_PER_PAGINA = 50;
+
 export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   static get properties() {
     return {
@@ -37,65 +56,27 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     super(`
       <style>
         ${vlGlobalStyles}
-        .status-cel { min-width: 220px; }
-        .status-cel vl-pill {
-          font-variant-numeric: tabular-nums;
-          min-width: 180px;
-          display: inline-block;
-        }
-        .pill-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: 14px;
-          color: inherit;
-          padding: 0;
-          margin-left: 6px;
-          line-height: 1;
-          opacity: 0.6;
-        }
-        .pill-btn:hover {
-          opacity: 1;
-        }
       </style>
-      <vl-rich-data-table id="tabel">
-        <vl-search-filter slot="filter" filter-title="Filters">
-          <form id="filter-form">
-            <label>
-              Bestandsnaam
-              <input type="text" name="bestandsnaam" placeholder="Zoek op bestandsnaam...">
-            </label>
-            <label>
-              Status
-              <select name="status">
-                <option value="">Alle statussen</option>
-                <option value="todo">Te verwerken</option>
-                <option value="wachtend">Wachtend</option>
-                <option value="bezig">Bezig</option>
-                <option value="extractie-klaar">Extractie klaar</option>
-                <option value="fout">Fout</option>
-                <option value="niet ondersteund">Niet ondersteund</option>
-              </select>
-            </label>
+      <vl-rich-data-table id="tabel" filter-closable filter-closed>
+        <vl-search-filter slot="filter" alt>
+          <form>
+            <section>
+              <div>
+                <vl-form-label for="filter-bestandsnaam" label="Bestandsnaam" light></vl-form-label>
+                <vl-input-field id="filter-bestandsnaam" type="text" name="bestandsnaam" placeholder="Zoek op bestandsnaam..." block></vl-input-field>
+              </div>
+              <div>
+                <vl-form-label for="filter-status" label="Status" light></vl-form-label>
+                <vl-select id="filter-status" name="status" placeholder="Alle statussen" block></vl-select>
+              </div>
+            </section>
           </form>
         </vl-search-filter>
         <vl-rich-data-field name="selectie" label=" "></vl-rich-data-field>
         <vl-rich-data-field name="bestandsnaam" label="Bestandsnaam" sortable></vl-rich-data-field>
         <vl-rich-data-field name="aantalBezwaren" label="Aantal bezwaren" sortable></vl-rich-data-field>
         <vl-rich-data-field name="status" label="Status" sortable></vl-rich-data-field>
-        <div slot="pager" id="pager-wrapper">
-          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-            <vl-pager id="pager" items-per-page="50" current-page="1" total-items="0"></vl-pager>
-            <label>
-              Per pagina:
-              <select id="pagina-grootte">
-                <option value="50" selected>50</option>
-                <option value="100">100</option>
-                <option value="alle">Alle</option>
-              </select>
-            </label>
-          </div>
-        </div>
+        <vl-pager slot="pager" total-items="0" items-per-page="${ITEMS_PER_PAGINA}" current-page="1"></vl-pager>
       </vl-rich-data-table>
     `);
     this.__bronBezwaren = [];
@@ -104,9 +85,9 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     this._projectNaam = null;
     this.__filters = {};
     this.__sorting = [];
-    this.__paginaGrootte = 50;
     this.__huidigePagina = 1;
     this.__herberekenGepland = false;
+    this.__tabelKlaar = false;
   }
 
   set projectNaam(naam) {
@@ -129,30 +110,21 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this._configureerRenderers();
 
-    // Luister naar change-events van vl-rich-data (getriggerd door vl-input events)
     const tabel = this.shadowRoot.querySelector('#tabel');
     if (tabel) {
       tabel.addEventListener('change', (e) => this._onTabelChange(e));
     }
 
-    // Native <input> en <select> vuren 'input'/'change' events, niet 'vl-input'.
-    // vl-rich-data luistert op 'vl-input', dus native elementen triggeren het
-    // change-event van de tabel niet. Voeg daarom directe listeners toe.
-    this._koppelFilterListeners();
-
-    const paginaGrootteSelect = this.shadowRoot.querySelector('#pagina-grootte');
-    if (paginaGrootteSelect) {
-      paginaGrootteSelect.addEventListener('change', (e) => {
-        const waarde = e.target.value;
-        this.__paginaGrootte = waarde === 'alle' ? Infinity : parseInt(waarde, 10);
-        this.__huidigePagina = 1;
-        this._herbereken();
-      });
-    }
-
-    this._herbereken();
+    // vl-rich-data-table gebruikt webComponentPromised: registratie is asynchroon.
+    // Wacht tot het component volledig geüpgraded is voordat we renderers, data en
+    // statusopties configureren — anders worden property setters niet aangeroepen.
+    customElements.whenDefined('vl-rich-data-table').then(() => {
+      this.__tabelKlaar = true;
+      this._configureerRenderers();
+      this._configureerStatusOpties();
+      this._herbereken();
+    });
   }
 
   disconnectedCallback() {
@@ -188,7 +160,14 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     if (!tabel) return null;
     const vlTable = tabel.shadowRoot && tabel.shadowRoot.querySelector('vl-table');
     if (!vlTable) return null;
-    return vlTable.querySelector('table'); // light DOM, NOT shadowRoot
+    return vlTable.querySelector('table');
+  }
+
+  _configureerStatusOpties() {
+    const select = this.shadowRoot.querySelector('#filter-status');
+    if (select) {
+      select.options = STATUS_OPTIES;
+    }
   }
 
   _configureerRenderers() {
@@ -227,11 +206,15 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         case 'status':
           veld.renderer = (td, rij) => {
             td.className = 'status-cel';
+            td.style.minWidth = '220px';
             td.dataset.bestandsnaam = rij.bestandsnaam;
             const pill = document.createElement('vl-pill');
             const type = STATUS_PILL_TYPES[rij.status] || '';
             if (type) pill.setAttribute('type', type);
             if (rij.status === 'niet ondersteund') pill.setAttribute('disabled', '');
+            pill.style.fontVariantNumeric = 'tabular-nums';
+            pill.style.minWidth = '180px';
+            pill.style.display = 'inline-block';
 
             const isActief = rij.status === 'wachtend' || rij.status === 'bezig';
             if (isActief) {
@@ -278,55 +261,32 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   _onTabelChange(event) {
     const detail = event.detail || {};
 
-    // Filter state uit formData
+    // Bouw filters altijd opnieuw vanuit formData — vl-rich-data retourneert
+    // undefined als alle filterwaarden leeg zijn (bv. "Alle statussen").
+    const nieuweFilters = {};
     if (detail.formData) {
-      this.__filters = {};
       for (const [key, value] of detail.formData.entries()) {
-        if (value) this.__filters[key] = value;
+        if (value) nieuweFilters[key] = value;
       }
-      // Bij filter-wijziging: reset naar pagina 1
+    }
+    if (JSON.stringify(nieuweFilters) !== JSON.stringify(this.__filters)) {
+      this.__filters = nieuweFilters;
       this.__huidigePagina = 1;
     }
 
-    // Sorting state
-    if (detail.sorting) {
-      this.__sorting = detail.sorting;
-    }
-
-    // Paging state
     if (detail.paging && detail.paging.currentPage) {
       this.__huidigePagina = detail.paging.currentPage;
+    }
+
+    if (detail.sorting) {
+      this.__sorting = detail.sorting;
     }
 
     this._herbereken();
   }
 
-  _koppelFilterListeners() {
-    const form = this.shadowRoot.querySelector('#filter-form');
-    if (!form) return;
-
-    const _verzamelFilters = () => {
-      const formData = new FormData(form);
-      this.__filters = {};
-      for (const [key, value] of formData.entries()) {
-        if (value) this.__filters[key] = value;
-      }
-      this.__huidigePagina = 1;
-      this._herbereken();
-    };
-
-    const input = form.querySelector('input[name="bestandsnaam"]');
-    if (input) {
-      input.addEventListener('input', _verzamelFilters);
-    }
-
-    const select = form.querySelector('select[name="status"]');
-    if (select) {
-      select.addEventListener('change', _verzamelFilters);
-    }
-  }
-
   _herbereken() {
+    if (!this.__tabelKlaar) return;
     if (this.__herberekenGepland) return;
     this.__herberekenGepland = true;
     requestAnimationFrame(() => {
@@ -343,28 +303,19 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     resultaat = this._sorteerBezwaren(resultaat, this.__sorting);
 
     const totaal = resultaat.length;
-    const paginaGrootte = this.__paginaGrootte === Infinity ? totaal : this.__paginaGrootte;
-    const effectievePaginaGrootte = paginaGrootte > 0 ? paginaGrootte : totaal;
-    const totalePaginas = effectievePaginaGrootte > 0 ? Math.ceil(totaal / effectievePaginaGrootte) : 1;
-    this.__huidigePagina = Math.max(1, Math.min(this.__huidigePagina, totalePaginas));
+    const pagina = resultaat.slice(
+        (this.__huidigePagina - 1) * ITEMS_PER_PAGINA,
+        this.__huidigePagina * ITEMS_PER_PAGINA,
+    );
 
-    const start = (this.__huidigePagina - 1) * effectievePaginaGrootte;
-    const pagina = this.__paginaGrootte === Infinity ? resultaat : resultaat.slice(start, start + effectievePaginaGrootte);
+    tabel.data = {
+      data: pagina,
+      paging: {
+        currentPage: this.__huidigePagina,
+        totalItems: totaal,
+      },
+    };
 
-    // Werk pager bij
-    const pager = this.shadowRoot.querySelector('#pager');
-    if (pager) {
-      pager.setAttribute('total-items', String(totaal));
-      pager.setAttribute('items-per-page', String(effectievePaginaGrootte > totaal ? totaal || 1 : effectievePaginaGrootte));
-      pager.setAttribute('current-page', String(this.__huidigePagina));
-      if (this.__paginaGrootte === Infinity) {
-        pager.setAttribute('pagination-disabled', '');
-      } else {
-        pager.removeAttribute('pagination-disabled');
-      }
-    }
-
-    tabel.data = {data: pagina};
     requestAnimationFrame(() => this._configureerSelecteerAlles());
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
@@ -451,9 +402,25 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   _maakPillKnop(symbool, titel, onClick) {
     const btn = document.createElement('button');
-    btn.className = 'pill-btn';
     btn.title = titel;
     btn.textContent = symbool;
+    Object.assign(btn.style, {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '14px',
+      color: 'inherit',
+      padding: '0',
+      marginLeft: '6px',
+      lineHeight: '1',
+      opacity: '0.6',
+    });
+    btn.addEventListener('mouseenter', () => {
+      btn.style.opacity = '1';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.opacity = '0.6';
+    });
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       onClick();
@@ -500,12 +467,10 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
     let cb = firstTh.querySelector('#selecteer-alles');
     if (cb) {
-      // Reset bestaande checkbox bij her-render
       cb.checked = false;
       return;
     }
 
-    // Maak nieuwe checkbox aan
     cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.id = 'selecteer-alles';
