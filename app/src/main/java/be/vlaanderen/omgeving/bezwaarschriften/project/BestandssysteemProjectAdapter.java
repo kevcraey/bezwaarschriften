@@ -5,7 +5,9 @@ import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -132,6 +134,30 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
       LOGGER.info("Project '{}' aangemaakt", naam);
     } catch (IOException e) {
       throw new RuntimeException("Kon project niet aanmaken: " + naam, e);
+    }
+  }
+
+  @Override
+  public boolean verwijderProject(final String naam) {
+    var projectPad = inputFolder.resolve(naam).normalize();
+    if (!projectPad.startsWith(inputFolder.normalize())) {
+      throw new IllegalArgumentException("Ongeldige projectnaam: " + naam);
+    }
+    if (!Files.isDirectory(projectPad)) {
+      return false;
+    }
+    try (Stream<Path> walk = Files.walk(projectPad)) {
+      walk.sorted(Comparator.reverseOrder()).forEach(pad -> {
+        try {
+          Files.delete(pad);
+        } catch (IOException e) {
+          throw new RuntimeException("Kon niet verwijderen: " + pad, e);
+        }
+      });
+      LOGGER.info("Project '{}' verwijderd", naam);
+      return true;
+    } catch (IOException e) {
+      throw new RuntimeException("Kon project niet verwijderen: " + naam, e);
     }
   }
 

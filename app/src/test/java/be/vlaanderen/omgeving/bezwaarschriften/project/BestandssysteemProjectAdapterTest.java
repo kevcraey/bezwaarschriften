@@ -184,4 +184,31 @@ class BestandssysteemProjectAdapterTest {
         () -> adapter.maakProjectAan("../kwaadaardig")
     );
   }
+
+  @Test
+  void verwijdertProjectMapRecursief() throws Exception {
+    var bezwarenMap = inputFolder.resolve("oud-project").resolve("bezwaren");
+    Files.createDirectories(bezwarenMap);
+    Files.writeString(bezwarenMap.resolve("bestand.txt"), "inhoud");
+
+    boolean result = adapter.verwijderProject("oud-project");
+
+    assertThat(result).isTrue();
+    assertThat(Files.exists(inputFolder.resolve("oud-project"))).isFalse();
+  }
+
+  @Test
+  void verwijderProject_geeftFalseAlsProjectNietBestaat() {
+    boolean result = adapter.verwijderProject("bestaat-niet");
+
+    assertThat(result).isFalse();
+  }
+
+  @Test
+  void verwijderProject_gooitExceptionBijPathTraversal() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> adapter.verwijderProject("../kwaadaardig")
+    );
+  }
 }
