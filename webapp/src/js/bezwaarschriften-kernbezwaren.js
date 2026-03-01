@@ -51,7 +51,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         }
       </style>
       <div id="inhoud"></div>
-      <vl-side-sheet id="side-sheet" hide-toggle-button>
+      <vl-side-sheet id="side-sheet" toggle-text="Sluiten">
         <div id="side-sheet-inhoud"></div>
       </vl-side-sheet>
     `);
