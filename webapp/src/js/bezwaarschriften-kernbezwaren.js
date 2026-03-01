@@ -46,8 +46,9 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .side-sheet-wrapper {
           display: flex;
           flex-direction: column;
-          height: calc(100vh - 43px);
+          height: 100vh;
           margin: -1.5rem;
+          margin-top: calc(-1.5rem - 43px);
           padding: 0;
         }
         .side-sheet-header {
