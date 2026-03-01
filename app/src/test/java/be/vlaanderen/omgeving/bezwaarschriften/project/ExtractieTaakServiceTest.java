@@ -25,11 +25,14 @@ class ExtractieTaakServiceTest {
   @Mock
   private ExtractieNotificatie notificatie;
 
+  @Mock
+  private ProjectService projectService;
+
   private ExtractieTaakService service;
 
   @BeforeEach
   void setUp() {
-    service = new ExtractieTaakService(repository, notificatie, 3, 3);
+    service = new ExtractieTaakService(repository, notificatie, projectService, 3, 3);
   }
 
   @Test
@@ -142,39 +145,95 @@ class ExtractieTaakServiceTest {
   }
 
   @Test
-  void herplanGefaaldeTakenZetTerugNaarWachtend() {
+  void verwerkOnafgerondeHerstartGefaaldeTaken() {
     var taak1 = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.FOUT);
     taak1.setAantalPogingen(3);
     taak1.setMaxPogingen(3);
     taak1.setFoutmelding("Timeout");
     taak1.setAfgerondOp(Instant.now());
-    var taak2 = maakTaak(2L, "windmolens", "bezwaar-002.txt", ExtractieTaakStatus.FOUT);
-    taak2.setAantalPogingen(3);
-    taak2.setMaxPogingen(3);
-    taak2.setFoutmelding("Connection refused");
-    taak2.setAfgerondOp(Instant.now());
 
     when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
-        .thenReturn(List.of(taak1, taak2));
+        .thenReturn(List.of(taak1));
+    when(projectService.geefBezwaren("windmolens"))
+        .thenReturn(List.of(new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.FOUT)));
 
-    int aantal = service.herplanGefaaldeTaken("windmolens");
+    int aantal = service.verwerkOnafgeronde("windmolens");
 
-    assertThat(aantal).isEqualTo(2);
+    assertThat(aantal).isEqualTo(1);
     assertThat(taak1.getStatus()).isEqualTo(ExtractieTaakStatus.WACHTEND);
     assertThat(taak1.getMaxPogingen()).isEqualTo(4);
     assertThat(taak1.getFoutmelding()).isNull();
     assertThat(taak1.getAfgerondOp()).isNull();
     assertThat(taak1.getVerwerkingGestartOp()).isNull();
-    assertThat(taak2.getStatus()).isEqualTo(ExtractieTaakStatus.WACHTEND);
-    verify(notificatie, times(2)).taakGewijzigd(any(ExtractieTaakDto.class));
+    verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));
   }
 
   @Test
-  void herplanGefaaldeTakenGeeftNulAlsGeenFouten() {
+  void verwerkOnafgerondeCreertTakenVoorTodoDocumenten() {
     when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
         .thenReturn(List.of());
+    when(projectService.geefBezwaren("windmolens"))
+        .thenReturn(List.of(
+            new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TODO),
+            new BezwaarBestand("klaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR),
+            new BezwaarBestand("foto.jpg", BezwaarBestandStatus.NIET_ONDERSTEUND)
+        ));
+    when(repository.save(any())).thenAnswer(i -> {
+      var t = i.getArgument(0, ExtractieTaak.class);
+      t.setId(10L);
+      return t;
+    });
 
-    int aantal = service.herplanGefaaldeTaken("windmolens");
+    int aantal = service.verwerkOnafgeronde("windmolens");
+
+    assertThat(aantal).isEqualTo(1);
+    var captor = ArgumentCaptor.forClass(ExtractieTaak.class);
+    verify(repository).save(captor.capture());
+    var nieuweTaak = captor.getValue();
+    assertThat(nieuweTaak.getProjectNaam()).isEqualTo("windmolens");
+    assertThat(nieuweTaak.getBestandsnaam()).isEqualTo("nieuw-001.txt");
+    assertThat(nieuweTaak.getStatus()).isEqualTo(ExtractieTaakStatus.WACHTEND);
+    assertThat(nieuweTaak.getAantalPogingen()).isZero();
+  }
+
+  @Test
+  void verwerkOnafgerondeCombinatieVanFoutEnTodo() {
+    var foutTaak = maakTaak(1L, "windmolens", "fout-001.txt", ExtractieTaakStatus.FOUT);
+    foutTaak.setAantalPogingen(3);
+    foutTaak.setMaxPogingen(3);
+    foutTaak.setFoutmelding("Error");
+    foutTaak.setAfgerondOp(Instant.now());
+
+    when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
+        .thenReturn(List.of(foutTaak));
+    when(projectService.geefBezwaren("windmolens"))
+        .thenReturn(List.of(
+            new BezwaarBestand("fout-001.txt", BezwaarBestandStatus.FOUT),
+            new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TODO)
+        ));
+    when(repository.save(any())).thenAnswer(i -> {
+      var t = i.getArgument(0, ExtractieTaak.class);
+      if (t.getId() == null) {
+        t.setId(10L);
+      }
+      return t;
+    });
+
+    int aantal = service.verwerkOnafgeronde("windmolens");
+
+    assertThat(aantal).isEqualTo(2);
+  }
+
+  @Test
+  void verwerkOnafgerondeGeeftNulAlsAllesKlaar() {
+    when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
+        .thenReturn(List.of());
+    when(projectService.geefBezwaren("windmolens"))
+        .thenReturn(List.of(
+            new BezwaarBestand("klaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR)
+        ));
+
+    int aantal = service.verwerkOnafgeronde("windmolens");
 
     assertThat(aantal).isZero();
     verify(notificatie, org.mockito.Mockito.never()).taakGewijzigd(any());

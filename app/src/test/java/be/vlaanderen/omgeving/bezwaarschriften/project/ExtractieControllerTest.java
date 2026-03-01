@@ -65,12 +65,12 @@ class ExtractieControllerTest {
   }
 
   @Test
-  void retryHerplantGefaaldeTaken() throws Exception {
-    when(extractieTaakService.herplanGefaaldeTaken("windmolens")).thenReturn(3);
+  void verwerkenPlantOnafgerondeTakenIn() throws Exception {
+    when(extractieTaakService.verwerkOnafgeronde("windmolens")).thenReturn(5);
 
-    mockMvc.perform(post("/api/v1/projects/windmolens/extracties/retry")
+    mockMvc.perform(post("/api/v1/projects/windmolens/extracties/verwerken")
             .with(csrf()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.aantalOpnieuwIngepland").value(3));
+        .andExpect(jsonPath("$.aantalIngepland").value(5));
   }
 }
