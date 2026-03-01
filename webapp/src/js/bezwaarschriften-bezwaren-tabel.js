@@ -40,7 +40,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           min-width: 180px;
           display: inline-block;
         }
-        .annuleer-btn {
+        .pill-btn {
           background: none;
           border: none;
           cursor: pointer;
@@ -51,7 +51,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           line-height: 1;
           opacity: 0.6;
         }
-        .annuleer-btn:hover {
+        .pill-btn:hover {
           opacity: 1;
         }
       </style>
@@ -180,6 +180,18 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       });
     });
 
+    tbody.querySelectorAll('.herstart-btn, .start-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const bestandsnaam = btn.dataset.bestandsnaam;
+        this.dispatchEvent(new CustomEvent('herstart-taak', {
+          detail: {bestandsnaam},
+          bubbles: true,
+          composed: true,
+        }));
+      });
+    });
+
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
   }
@@ -230,7 +242,13 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const isActief = b.status === 'wachtend' || b.status === 'bezig';
 
     if (isActief) {
-      return `<vl-pill${typeAttr}><span class="timer-tekst">${label}</span><button class="annuleer-btn" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" title="Annuleer verwerking">&times;</button></vl-pill>`;
+      return `<vl-pill${typeAttr}><span class="timer-tekst">${label}</span><button class="pill-btn annuleer-btn" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" title="Annuleer verwerking">&times;</button></vl-pill>`;
+    }
+    if (b.status === 'fout') {
+      return `<vl-pill${typeAttr}>${label}<button class="pill-btn herstart-btn" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" title="Opnieuw proberen">&#x21bb;</button></vl-pill>`;
+    }
+    if (b.status === 'todo') {
+      return `<vl-pill${typeAttr}>${label}<button class="pill-btn start-btn" data-bestandsnaam="${this._escapeHtml(b.bestandsnaam)}" title="Verwerking starten">&#x25b6;</button></vl-pill>`;
     }
     return `<vl-pill${typeAttr}${disabledAttr}>${label}</vl-pill>`;
   }

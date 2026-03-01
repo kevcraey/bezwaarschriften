@@ -244,6 +244,13 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       });
     }
 
+    this.shadowRoot.addEventListener('herstart-taak', (e) => {
+      const {bestandsnaam} = e.detail;
+      if (this.__geselecteerdProject) {
+        this._dienExtractiesIn(this.__geselecteerdProject, [bestandsnaam]);
+      }
+    });
+
     this.shadowRoot.addEventListener('selectie-gewijzigd', (e) => {
       const aantal = e.detail.geselecteerd.length;
       const heeftSelectie = aantal > 0;
