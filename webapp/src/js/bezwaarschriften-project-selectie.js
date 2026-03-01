@@ -251,6 +251,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       }
     });
 
+    this.shadowRoot.addEventListener('antwoord-voortgang', (e) => {
+      this._werkKernbezwarenTabTitelBij(e.detail.aantalMetAntwoord, e.detail.totaal);
+    });
+
     this.shadowRoot.addEventListener('selectie-gewijzigd', (e) => {
       const aantal = e.detail.geselecteerd.length;
       const heeftSelectie = aantal > 0;
@@ -428,6 +432,22 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const tabs = this.shadowRoot.querySelector('vl-tabs');
     const slot = tabs && tabs.shadowRoot &&
         tabs.shadowRoot.querySelector(`slot[name="documenten-title-slot"]`);
+    if (slot) {
+      slot.innerHTML = titel;
+      slot.style.color = allesKlaar ? '#0e7c3a' : '';
+    }
+  }
+
+  _werkKernbezwarenTabTitelBij(aantalMetAntwoord, totaal) {
+    if (totaal === 0) return;
+    const allesKlaar = aantalMetAntwoord === totaal;
+
+    let titel = `Kernbezwaren (${aantalMetAntwoord}/${totaal})`;
+    if (allesKlaar) titel = `\u2714\uFE0F Kernbezwaren (${totaal}/${totaal})`;
+
+    const tabs = this.shadowRoot.querySelector('vl-tabs');
+    const slot = tabs && tabs.shadowRoot &&
+        tabs.shadowRoot.querySelector(`slot[name="kernbezwaren-title-slot"]`);
     if (slot) {
       slot.innerHTML = titel;
       slot.style.color = allesKlaar ? '#0e7c3a' : '';

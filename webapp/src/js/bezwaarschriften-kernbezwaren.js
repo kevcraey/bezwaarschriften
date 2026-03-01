@@ -272,11 +272,12 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
         const samenvatting = document.createElement('div');
         samenvatting.className = 'kernbezwaar-samenvatting';
-        samenvatting.textContent = kern.samenvatting;
+        samenvatting.textContent = kern.antwoord ? `\u2714 ${kern.samenvatting}` : kern.samenvatting;
+        if (kern.antwoord) samenvatting.style.color = '#0e7c3a';
 
         const penKnop = document.createElement('vl-button');
         penKnop.setAttribute('tertiary', '');
-        penKnop.setAttribute('icon', kern.antwoord ? 'close' : 'pencil');
+        penKnop.setAttribute('icon', 'pencil');
         if (kern.antwoord) {
           penKnop.classList.add('heeft-antwoord');
         }
@@ -304,6 +305,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const knopOnder = this._maakOpnieuwKnop();
     knopOnder.style.marginTop = '1.5rem';
     inhoud.appendChild(knopOnder);
+
+    this._dispatchVoortgang();
   }
 
   _toggleEditor(item, kern, penKnop) {
@@ -352,7 +355,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _slaAntwoordOp(kern, textarea, opslaanRij) {
     const inhoud = textarea.value;
-    if (!inhoud || !inhoud.trim()) return;
+    const isLeeg = !inhoud || !inhoud.trim();
 
     const opslaanKnop = opslaanRij.querySelector('vl-button');
     if (opslaanKnop) opslaanKnop.setAttribute('disabled', '');
@@ -360,11 +363,27 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/kernbezwaren/${kern.id}/antwoord`, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({inhoud: inhoud}),
+      body: JSON.stringify({inhoud: isLeeg ? '' : inhoud}),
     })
         .then((response) => {
           if (!response.ok) throw new Error('Opslaan mislukt');
-          kern.antwoord = inhoud;
+          kern.antwoord = isLeeg ? null : inhoud;
+
+          // Update samenvatting: vinkje + groen als antwoord, anders reset
+          const editorWrapper = opslaanRij.parentElement;
+          const kernItem = editorWrapper.parentElement;
+          const samenvattingEl = kernItem &&
+              kernItem.querySelector('.kernbezwaar-samenvatting');
+          if (samenvattingEl) {
+            if (kern.antwoord) {
+              samenvattingEl.textContent = `\u2714 ${kern.samenvatting}`;
+              samenvattingEl.style.color = '#0e7c3a';
+            } else {
+              samenvattingEl.textContent = kern.samenvatting;
+              samenvattingEl.style.color = '';
+            }
+          }
+          this._dispatchVoortgang();
 
           // Toon bevestiging
           let melding = opslaanRij.querySelector('.antwoord-opslaan-melding');
@@ -382,6 +401,22 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .finally(() => {
           if (opslaanKnop) opslaanKnop.removeAttribute('disabled');
         });
+  }
+
+  _dispatchVoortgang() {
+    if (!this._themas) return;
+    let totaal = 0;
+    let aantalMetAntwoord = 0;
+    this._themas.forEach((thema) => {
+      thema.kernbezwaren.forEach((kern) => {
+        totaal++;
+        if (kern.antwoord) aantalMetAntwoord++;
+      });
+    });
+    this.dispatchEvent(new CustomEvent('antwoord-voortgang', {
+      bubbles: true,
+      detail: {aantalMetAntwoord, totaal},
+    }));
   }
 
   _toonPassages(kernbezwaar) {
