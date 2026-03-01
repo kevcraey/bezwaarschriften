@@ -91,17 +91,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           overflow-y: auto;
           padding: 1rem 1.5rem;
         }
-        .antwoord-preview {
-          margin-top: 0.5rem;
-          padding: 0.5rem 0.75rem;
-          background: #f7f9fc;
-          border-left: 3px solid #0055cc;
-          font-size: 0.9rem;
-          color: #333;
-          max-height: 3.5em;
-          overflow: hidden;
-          cursor: pointer;
-        }
         .antwoord-editor-wrapper {
           margin-top: 0.75rem;
           padding-top: 0.75rem;
@@ -283,7 +272,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         samenvatting.className = 'kernbezwaar-samenvatting';
         samenvatting.textContent = kern.samenvatting;
 
-        // Declare penKnop early so preview click handler can reference it
         const penKnop = document.createElement('vl-button');
         penKnop.setAttribute('tertiary', '');
         penKnop.setAttribute('icon', kern.antwoord ? 'close' : 'pencil');
@@ -291,14 +279,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           penKnop.classList.add('heeft-antwoord');
         }
         penKnop.addEventListener('vl-click', () => this._toggleEditor(item, kern, penKnop));
-
-        if (kern.antwoord) {
-          const preview = document.createElement('div');
-          preview.className = 'antwoord-preview';
-          preview.innerHTML = kern.antwoord;
-          preview.addEventListener('click', () => this._toggleEditor(item, kern, penKnop));
-          samenvatting.appendChild(preview);
-        }
 
         const actie = document.createElement('div');
         actie.className = 'kernbezwaar-actie';
@@ -360,7 +340,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const opslaanKnop = document.createElement('vl-button');
     opslaanKnop.textContent = 'Opslaan';
     opslaanKnop.addEventListener('vl-click', () =>
-      this._slaAntwoordOp(kern, textarea, opslaanRij, penKnop, item));
+      this._slaAntwoordOp(kern, textarea, opslaanRij));
 
     opslaanRij.appendChild(opslaanKnop);
     wrapper.appendChild(textarea);
@@ -368,7 +348,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     item.appendChild(wrapper);
   }
 
-  _slaAntwoordOp(kern, textarea, opslaanRij, penKnop, item) {
+  _slaAntwoordOp(kern, textarea, opslaanRij) {
     const inhoud = textarea.value;
     if (!inhoud || !inhoud.trim()) return;
 
@@ -393,9 +373,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           }
           melding.textContent = 'Opgeslagen';
           setTimeout(() => melding.textContent = '', 3000);
-
-          // Update preview
-          this._updatePreview(item, kern);
         })
         .catch(() => {
           alert('Het opslaan van het antwoord is mislukt. Probeer opnieuw.');
@@ -403,22 +380,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .finally(() => {
           if (opslaanKnop) opslaanKnop.removeAttribute('disabled');
         });
-  }
-
-  _updatePreview(item, kern) {
-    const samenvatting = item.querySelector('.kernbezwaar-samenvatting');
-    if (!samenvatting) return;
-    let preview = samenvatting.querySelector('.antwoord-preview');
-    if (kern.antwoord) {
-      if (!preview) {
-        preview = document.createElement('div');
-        preview.className = 'antwoord-preview';
-        samenvatting.appendChild(preview);
-      }
-      preview.innerHTML = kern.antwoord;
-    } else if (preview) {
-      preview.remove();
-    }
   }
 
   _toonPassages(kernbezwaar) {
