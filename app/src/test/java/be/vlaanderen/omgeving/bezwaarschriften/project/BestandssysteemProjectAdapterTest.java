@@ -158,4 +158,30 @@ class BestandssysteemProjectAdapterTest {
         () -> adapter.geefBestandsPad("onbekend", "bezwaar1.txt")
     );
   }
+
+  @Test
+  void maaktProjectMapAanMetBezwarenSubmap() throws Exception {
+    adapter.maakProjectAan("nieuw-project");
+
+    assertThat(Files.isDirectory(inputFolder.resolve("nieuw-project"))).isTrue();
+    assertThat(Files.isDirectory(inputFolder.resolve("nieuw-project").resolve("bezwaren"))).isTrue();
+  }
+
+  @Test
+  void maakProjectAan_gooitExceptionAlsProjectAlBestaat() throws Exception {
+    Files.createDirectory(inputFolder.resolve("bestaand"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> adapter.maakProjectAan("bestaand")
+    );
+  }
+
+  @Test
+  void maakProjectAan_gooitExceptionBijPathTraversal() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> adapter.maakProjectAan("../kwaadaardig")
+    );
+  }
 }

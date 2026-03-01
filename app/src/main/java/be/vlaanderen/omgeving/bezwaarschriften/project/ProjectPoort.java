@@ -54,4 +54,12 @@ public interface ProjectPoort {
    * @throws BestandNietGevondenException Als het bestand niet bestaat
    */
   Path geefBestandsPad(String projectNaam, String bestandsnaam);
+
+  /**
+   * Maakt een nieuw project aan met een bezwaren-submap.
+   *
+   * @param naam Naam van het project
+   * @throws IllegalArgumentException Als het project al bestaat of de naam ongeldig is
+   */
+  void maakProjectAan(String naam);
 }
