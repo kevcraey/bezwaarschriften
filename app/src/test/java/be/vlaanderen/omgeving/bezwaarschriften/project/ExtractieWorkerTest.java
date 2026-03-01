@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -79,6 +80,31 @@ class ExtractieWorkerTest {
     verify(verwerker, never()).verwerk(anyString(), anyString(), anyInt());
     verify(service, never()).markeerKlaar(anyLong(), anyInt(), anyInt());
     verify(service, never()).markeerFout(anyLong(), anyString());
+  }
+
+  @Test
+  void annuleerTaakCanceltLopendeFuture() throws Exception {
+    var taak = maakTaak(5L, "windmolens", "stuck.txt", 0);
+    when(service.pakOpVoorVerwerking()).thenReturn(List.of(taak));
+    when(verwerker.verwerk("windmolens", "stuck.txt", 0))
+        .thenAnswer(invocation -> {
+          Thread.sleep(10_000);
+          return new ExtractieResultaat(100, 1);
+        });
+
+    worker.verwerkTaken();
+    Thread.sleep(200);
+
+    boolean geannuleerd = worker.annuleerTaak(5L);
+
+    assertThat(geannuleerd).isTrue();
+  }
+
+  @Test
+  void annuleerTaakRetourneertFalseVoorOnbekendeTaak() {
+    boolean geannuleerd = worker.annuleerTaak(999L);
+
+    assertThat(geannuleerd).isFalse();
   }
 
   private ExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam, int pogingen) {
