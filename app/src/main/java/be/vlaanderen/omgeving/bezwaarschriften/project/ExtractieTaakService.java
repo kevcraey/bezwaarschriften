@@ -232,4 +232,23 @@ public class ExtractieTaakService {
         totaal, projectNaam, gefaaldeTaken.size(), todoDocumenten.size());
     return totaal;
   }
+
+  /**
+   * Verwijdert een extractie-taak uit de database.
+   *
+   * @param projectNaam naam van het project (voor validatie)
+   * @param taakId id van de te verwijderen taak
+   * @throws IllegalArgumentException als de taak niet bestaat of niet bij het project hoort
+   */
+  @Transactional
+  public void verwijderTaak(String projectNaam, Long taakId) {
+    var taak = repository.findById(taakId)
+        .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden: " + taakId));
+    if (!taak.getProjectNaam().equals(projectNaam)) {
+      throw new IllegalArgumentException(
+          "Taak " + taakId + " behoort niet tot project: " + projectNaam);
+    }
+    repository.delete(taak);
+    LOGGER.info("Taak {} verwijderd uit project '{}'", taakId, projectNaam);
+  }
 }

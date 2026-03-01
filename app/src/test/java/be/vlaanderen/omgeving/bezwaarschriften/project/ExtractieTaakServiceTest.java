@@ -239,6 +239,35 @@ class ExtractieTaakServiceTest {
     verify(notificatie, org.mockito.Mockito.never()).taakGewijzigd(any());
   }
 
+  @Test
+  void verwijderTaakVerwijdertUitRepository() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.WACHTEND);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+
+    service.verwijderTaak("windmolens", 1L);
+
+    verify(repository).delete(taak);
+  }
+
+  @Test
+  void verwijderTaakGooitExceptieBijOnbekendeTaak() {
+    when(repository.findById(999L)).thenReturn(Optional.empty());
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.verwijderTaak("windmolens", 999L))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void verwijderTaakGooitExceptieBijVerkeerdeProject() {
+    var taak = maakTaak(1L, "snelweg", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.verwijderTaak("windmolens", 1L))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
   private ExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam,
       ExtractieTaakStatus status) {
     var taak = new ExtractieTaak();

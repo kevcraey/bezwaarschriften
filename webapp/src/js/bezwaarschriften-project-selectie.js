@@ -54,6 +54,14 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <vl-button id="verwijder-bevestig-knop" error="">Verwijderen</vl-button>
         </div>
       </vl-modal>
+      <vl-modal id="annuleer-modal" title="Verwerking annuleren" closable>
+        <div slot="content">
+          <p id="annuleer-bevestiging-tekst"></p>
+        </div>
+        <div slot="button">
+          <vl-button id="annuleer-bevestig-knop" error="">Annuleren</vl-button>
+        </div>
+      </vl-modal>
       <vl-modal id="upload-modal" title="Bestanden toevoegen" closable>
         <div slot="content">
           <vl-upload id="bestand-upload"
@@ -78,6 +86,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this._ws = null;
     this._wsReconnectDelay = 1000;
     this._teVerwijderenBestanden = [];
+    this._teAnnulerenTaak = null;
   }
 
   connectedCallback() {
@@ -211,6 +220,26 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         } else {
           this.__bezwaren = [];
           this._verbergTabsSectie();
+        }
+      });
+    }
+
+    this.shadowRoot.addEventListener('annuleer-taak', (e) => {
+      const {bestandsnaam, taakId} = e.detail;
+      this._teAnnulerenTaak = {bestandsnaam, taakId};
+      const tekst = this.shadowRoot.querySelector('#annuleer-bevestiging-tekst');
+      if (tekst) {
+        tekst.textContent = `Weet je zeker dat je de verwerking van "${bestandsnaam}" wilt annuleren?`;
+      }
+      const modal = this.shadowRoot.querySelector('#annuleer-modal');
+      if (modal) modal.open();
+    });
+
+    const annuleerBevestigKnop = this.shadowRoot && this.shadowRoot.querySelector('#annuleer-bevestig-knop');
+    if (annuleerBevestigKnop) {
+      annuleerBevestigKnop.addEventListener('vl-click', () => {
+        if (this._teAnnulerenTaak) {
+          this._annuleerTaak(this._teAnnulerenTaak.taakId);
         }
       });
     }
@@ -513,6 +542,29 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         })
         .finally(() => {
           this._zetBezig(false);
+        });
+  }
+
+  _annuleerTaak(taakId) {
+    if (!this.__geselecteerdProject) return;
+
+    this._zetBezig(true);
+    this._verbergFout();
+
+    fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/extracties/${taakId}`, {
+      method: 'DELETE',
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Annuleren mislukt');
+          this._toonToast('success', 'Verwerking geannuleerd.');
+          this._laadBezwaren(this.__geselecteerdProject);
+        })
+        .catch(() => {
+          this._toonFout('Annuleren van verwerking mislukt.');
+        })
+        .finally(() => {
+          this._zetBezig(false);
+          this._teAnnulerenTaak = null;
         });
   }
 

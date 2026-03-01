@@ -1,7 +1,10 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,6 +28,9 @@ class ExtractieControllerTest {
 
   @MockBean
   private ExtractieTaakService extractieTaakService;
+
+  @MockBean
+  private ExtractieWorker extractieWorker;
 
   @Test
   void dientExtractieTakenIn() throws Exception {
@@ -72,5 +78,25 @@ class ExtractieControllerTest {
             .with(csrf()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.aantalIngepland").value(5));
+  }
+
+  @Test
+  void annuleertExtractieTaak() throws Exception {
+    mockMvc.perform(delete("/api/v1/projects/windmolens/extracties/1")
+            .with(csrf()))
+        .andExpect(status().isNoContent());
+
+    verify(extractieTaakService).verwijderTaak("windmolens", 1L);
+    verify(extractieWorker).annuleerTaak(1L);
+  }
+
+  @Test
+  void annulerenGeeft404BijOnbekendeTaak() throws Exception {
+    doThrow(new IllegalArgumentException("Taak niet gevonden"))
+        .when(extractieTaakService).verwijderTaak("windmolens", 999L);
+
+    mockMvc.perform(delete("/api/v1/projects/windmolens/extracties/999")
+            .with(csrf()))
+        .andExpect(status().isNotFound());
   }
 }
