@@ -7,5 +7,5 @@ public record ExtractieDetailDto(
     int aantalBezwaren,
     List<BezwaarDetail> bezwaren) {
 
-  public record BezwaarDetail(String samenvatting, String passage) {}
+  public record BezwaarDetail(String samenvatting, String passage) { }
 }
