@@ -135,16 +135,25 @@ public class MockKernbezwaarAdapter implements KernbezwaarPoort {
 
       for (int k = 1; k < themaData.length; k++) {
         var samenvatting = themaData[k];
-        int aantalRefs = 5 + (int) (idTeller.get() % 25);
-        var refs = new ArrayList<IndividueelBezwaarReferentie>();
 
-        for (int r = 0; r < aantalRefs; r++) {
-          int passageIdx = (int) (refIdTeller.get() % PASSAGES.length);
-          int bestandIdx = (int) (refIdTeller.get() % bestandsnamen.size());
-          refs.add(new IndividueelBezwaarReferentie(
-              refIdTeller.getAndIncrement(),
-              bestandsnamen.get(bestandIdx),
-              PASSAGES[passageIdx]));
+        // Elk kernbezwaar raakt 1-3 documenten (niet alle)
+        int kernIdx = (int) idTeller.get();
+        int startDoc = kernIdx % bestandsnamen.size();
+        int aantalDocs = 1 + (kernIdx % 3); // 1, 2 of 3 documenten
+        aantalDocs = Math.min(aantalDocs, bestandsnamen.size());
+
+        var refs = new ArrayList<IndividueelBezwaarReferentie>();
+        for (int d = 0; d < aantalDocs; d++) {
+          int bestandIdx = (startDoc + d) % bestandsnamen.size();
+          // 1-3 individuele bezwaren per document
+          int refsPerDoc = 1 + ((kernIdx + d) % 3);
+          for (int r = 0; r < refsPerDoc; r++) {
+            int passageIdx = (int) (refIdTeller.get() % PASSAGES.length);
+            refs.add(new IndividueelBezwaarReferentie(
+                refIdTeller.getAndIncrement(),
+                bestandsnamen.get(bestandIdx),
+                PASSAGES[passageIdx]));
+          }
         }
 
         kernbezwaren.add(new Kernbezwaar(

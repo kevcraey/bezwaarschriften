@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.consolidatie;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,6 +20,9 @@ public interface ConsolidatieTaakRepository extends JpaRepository<ConsolidatieTa
 
   List<ConsolidatieTaak> findByProjectNaamAndStatus(
       String projectNaam, ConsolidatieTaakStatus status);
+
+  List<ConsolidatieTaak> findByProjectNaamAndBestandsnaamInAndStatus(
+      String projectNaam, Collection<String> bestandsnamen, ConsolidatieTaakStatus status);
 
   void deleteByProjectNaam(String projectNaam);
 }

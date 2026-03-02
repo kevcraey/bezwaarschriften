@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarAntwoordRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarReferentieEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarReferentieRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,11 +25,15 @@ class AntwoordStatusServiceTest {
   @Mock
   private KernbezwaarAntwoordRepository antwoordRepository;
 
+  @Mock
+  private KernbezwaarRepository kernbezwaarRepository;
+
   private AntwoordStatusService service;
 
   @BeforeEach
   void setUp() {
-    service = new AntwoordStatusService(referentieRepository, antwoordRepository);
+    service = new AntwoordStatusService(referentieRepository, antwoordRepository,
+        kernbezwaarRepository);
   }
 
   @Test
@@ -41,14 +47,26 @@ class AntwoordStatusServiceTest {
         .thenReturn(List.of(ref1, ref2, ref3, ref4));
     when(antwoordRepository.findKernbezwaarIdsMetAntwoord(anyList()))
         .thenReturn(List.of(10L, 20L));
+    when(kernbezwaarRepository.findAllById(anyList()))
+        .thenReturn(List.of(
+            maakKernbezwaar(10L, "Geluidshinder"),
+            maakKernbezwaar(20L, "Motivering"),
+            maakKernbezwaar(30L, "Advies milieuraad")));
 
     var resultaat = service.berekenAntwoordStatus("windmolens");
 
     assertThat(resultaat).hasSize(2);
     assertThat(resultaat.get("bezwaar-001.txt").aantalMetAntwoord()).isEqualTo(2);
     assertThat(resultaat.get("bezwaar-001.txt").totaal()).isEqualTo(2);
+    assertThat(resultaat.get("bezwaar-001.txt").kernbezwaren()).hasSize(2);
+    assertThat(resultaat.get("bezwaar-001.txt").kernbezwaren())
+        .allMatch(AntwoordStatus.KernbezwaarInfo::beantwoord);
     assertThat(resultaat.get("bezwaar-002.txt").aantalMetAntwoord()).isEqualTo(1);
     assertThat(resultaat.get("bezwaar-002.txt").totaal()).isEqualTo(2);
+    assertThat(resultaat.get("bezwaar-002.txt").kernbezwaren()).hasSize(2);
+    assertThat(resultaat.get("bezwaar-002.txt").kernbezwaren())
+        .extracting(AntwoordStatus.KernbezwaarInfo::samenvatting)
+        .containsExactlyInAnyOrder("Geluidshinder", "Advies milieuraad");
   }
 
   @Test
@@ -67,6 +85,8 @@ class AntwoordStatusServiceTest {
         .thenReturn(List.of(ref1));
     when(antwoordRepository.findKernbezwaarIdsMetAntwoord(anyList()))
         .thenReturn(List.of(10L));
+    when(kernbezwaarRepository.findAllById(anyList()))
+        .thenReturn(List.of(maakKernbezwaar(10L, "Geluidshinder")));
 
     var resultaat = service.berekenAntwoordStatus("p");
 
@@ -80,6 +100,8 @@ class AntwoordStatusServiceTest {
         .thenReturn(List.of(ref1));
     when(antwoordRepository.findKernbezwaarIdsMetAntwoord(anyList()))
         .thenReturn(List.of());
+    when(kernbezwaarRepository.findAllById(anyList()))
+        .thenReturn(List.of(maakKernbezwaar(10L, "Geluidshinder")));
 
     var resultaat = service.berekenAntwoordStatus("p");
 
@@ -92,5 +114,12 @@ class AntwoordStatusServiceTest {
     ref.setKernbezwaarId(kernbezwaarId);
     ref.setPassage("test");
     return ref;
+  }
+
+  private KernbezwaarEntiteit maakKernbezwaar(Long id, String samenvatting) {
+    var kb = new KernbezwaarEntiteit();
+    kb.setId(id);
+    kb.setSamenvatting(samenvatting);
+    return kb;
   }
 }

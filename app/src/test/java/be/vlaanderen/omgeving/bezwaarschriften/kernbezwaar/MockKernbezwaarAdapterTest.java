@@ -46,17 +46,18 @@ class MockKernbezwaarAdapterTest {
   }
 
   @Test
-  void genereertHonderdenIndividueleBezwaren() {
+  void genereertIndividueleBezwarenPerKernbezwaar() {
     var invoer = List.of(
-        new KernbezwaarPoort.BezwaarInvoer(1L, "b1.txt", "t1"));
+        new KernbezwaarPoort.BezwaarInvoer(1L, "b1.txt", "t1"),
+        new KernbezwaarPoort.BezwaarInvoer(2L, "b2.txt", "t2"),
+        new KernbezwaarPoort.BezwaarInvoer(3L, "b3.txt", "t3"));
 
     var themas = adapter.groepeer(invoer);
 
-    var totaalRefs = themas.stream()
+    // Elk kernbezwaar verwijst naar 1-3 documenten met 1-3 refs per doc
+    themas.stream()
         .flatMap(t -> t.kernbezwaren().stream())
-        .mapToInt(k -> k.individueleBezwaren().size())
-        .sum();
-    assertThat(totaalRefs).isGreaterThan(100);
+        .forEach(k -> assertThat(k.individueleBezwaren()).hasSizeBetween(1, 9));
   }
 
   @Test

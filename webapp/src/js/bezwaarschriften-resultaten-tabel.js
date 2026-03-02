@@ -7,12 +7,14 @@ import {VlPagerComponent} from '@domg-wc/components/block/pager/vl-pager.compone
 import {VlInputFieldComponent} from '@domg-wc/components/form/input-field/vl-input-field.component.js';
 import {VlFormLabelComponent} from '@domg-wc/components/form/form-label/vl-form-label.component.js';
 import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
+import {VlPopoverComponent} from '@domg-wc/components/block/popover/vl-popover.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
 registerWebComponents([
   VlRichDataTable, VlRichDataField, VlPillComponent,
   VlSearchFilterComponent, VlPagerComponent,
   VlInputFieldComponent, VlFormLabelComponent, VlSelectComponent,
+  VlPopoverComponent,
 ]);
 
 const STATUS_LABELS = {
@@ -210,7 +212,35 @@ export class BezwaarschriftenResultatenTabel extends BaseHTMLElement {
             td.style.verticalAlign = 'middle';
             td.style.textAlign = 'center';
             if (rij.antwoordenAantal != null && rij.antwoordenTotaal != null) {
-              td.textContent = `${rij.antwoordenAantal}/${rij.antwoordenTotaal}`;
+              const anchorId = `antw-${rij.bestandsnaam.replace(/[^a-zA-Z0-9]/g, '-')}`;
+              const span = document.createElement('span');
+              span.id = anchorId;
+              span.textContent = `${rij.antwoordenAantal}/${rij.antwoordenTotaal}`;
+              span.style.cursor = 'default';
+              td.appendChild(span);
+
+              if (rij.kernbezwaren && rij.kernbezwaren.length > 0) {
+                const popover = document.createElement('vl-popover');
+                popover.setAttribute('for', anchorId);
+                popover.setAttribute('trigger', 'hover focus');
+                popover.setAttribute('placement', 'top');
+                popover.setAttribute('content-padding', 'small');
+                popover.setAttribute('hide-arrow', '');
+
+                const lijst = document.createElement('div');
+                lijst.style.fontSize = '13px';
+                lijst.style.lineHeight = '1.6';
+                lijst.style.whiteSpace = 'nowrap';
+                lijst.style.textAlign = 'left';
+                rij.kernbezwaren.forEach((kb) => {
+                  const regel = document.createElement('div');
+                  regel.textContent = `${kb.beantwoord ? '\u2713' : '\u2717'} ${kb.samenvatting}`;
+                  regel.style.color = kb.beantwoord ? 'var(--vl-theme-fg-color, #333)' : 'var(--vl-theme-error-color, #db3434)';
+                  lijst.appendChild(regel);
+                });
+                popover.appendChild(lijst);
+                td.appendChild(popover);
+              }
             } else {
               td.textContent = '';
             }

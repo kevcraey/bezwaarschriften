@@ -9,6 +9,10 @@ public interface KernbezwaarReferentieRepository extends JpaRepository<Kernbezwa
 
   List<KernbezwaarReferentieEntiteit> findByKernbezwaarIdIn(List<Long> kernbezwaarIds);
 
+  @Query("SELECT DISTINCT r.bestandsnaam FROM KernbezwaarReferentieEntiteit r "
+      + "WHERE r.kernbezwaarId = :kernbezwaarId")
+  List<String> findBestandsnamenByKernbezwaarId(@Param("kernbezwaarId") Long kernbezwaarId);
+
   @Query("SELECT r FROM KernbezwaarReferentieEntiteit r "
       + "JOIN KernbezwaarEntiteit k ON r.kernbezwaarId = k.id "
       + "JOIN ThemaEntiteit t ON k.themaId = t.id "

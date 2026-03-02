@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.consolidatie;
 
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.AntwoordStatus.KernbezwaarInfo;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,7 +55,7 @@ public class ConsolidatieController {
 
           return new DocumentConsolidatieStatus(
               bestandsnaam, status.aantalMetAntwoord(), status.totaal(),
-              consolidatieStatus, taakDto);
+              consolidatieStatus, taakDto, status.kernbezwaren());
         })
         .sorted(Comparator.comparing(DocumentConsolidatieStatus::bestandsnaam))
         .toList();
@@ -83,7 +84,8 @@ public class ConsolidatieController {
   record ConsolidatieResponse(List<DocumentConsolidatieStatus> documenten) {}
 
   record DocumentConsolidatieStatus(String bestandsnaam, int antwoordenAantal,
-      int antwoordenTotaal, String status, ConsolidatieTaakDto taak) {}
+      int antwoordenTotaal, String status, ConsolidatieTaakDto taak,
+      List<KernbezwaarInfo> kernbezwaren) {}
 
   record ConsolidatieTakenResponse(List<ConsolidatieTaakDto> taken) {}
 

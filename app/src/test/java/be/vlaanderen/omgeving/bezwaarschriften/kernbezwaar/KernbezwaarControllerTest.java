@@ -2,8 +2,10 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,11 +21,18 @@ class KernbezwaarControllerTest {
   @Mock
   private KernbezwaarService kernbezwaarService;
 
+  @Mock
+  private KernbezwaarReferentieRepository referentieRepository;
+
+  @Mock
+  private ConsolidatieTaakService consolidatieTaakService;
+
   private KernbezwaarController controller;
 
   @BeforeEach
   void setUp() {
-    controller = new KernbezwaarController(kernbezwaarService);
+    controller = new KernbezwaarController(
+        kernbezwaarService, referentieRepository, consolidatieTaakService);
   }
 
   @Test
@@ -66,10 +75,44 @@ class KernbezwaarControllerTest {
   @Test
   void slaatAntwoordOp() {
     var request = new KernbezwaarController.AntwoordRequest("<p>Weerwoord</p>");
+    when(referentieRepository.findBestandsnamenByKernbezwaarId(42L))
+        .thenReturn(List.of("bezwaar-001.txt"));
+    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
+        List.of("bezwaar-001.txt"))).thenReturn(List.of());
 
-    var response = controller.slaAntwoordOp("windmolens", 42L, request);
+    var response = controller.slaAntwoordOp("windmolens", 42L, request, false);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     verify(kernbezwaarService).slaAntwoordOp(42L, "<p>Weerwoord</p>");
+  }
+
+  @Test
+  void retourneert409BijKlareConsolidaties() {
+    var request = new KernbezwaarController.AntwoordRequest("<p>Nieuw</p>");
+    when(referentieRepository.findBestandsnamenByKernbezwaarId(42L))
+        .thenReturn(List.of("bezwaar-001.txt"));
+    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
+        List.of("bezwaar-001.txt"))).thenReturn(List.of("bezwaar-001.txt"));
+
+    var response = controller.slaAntwoordOp("windmolens", 42L, request, false);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    verifyNoInteractions(kernbezwaarService);
+  }
+
+  @Test
+  void verwijdertKlareConsolidatiesBijBevestiging() {
+    var request = new KernbezwaarController.AntwoordRequest("<p>Nieuw</p>");
+    when(referentieRepository.findBestandsnamenByKernbezwaarId(42L))
+        .thenReturn(List.of("bezwaar-001.txt"));
+    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
+        List.of("bezwaar-001.txt"))).thenReturn(List.of("bezwaar-001.txt"));
+
+    var response = controller.slaAntwoordOp("windmolens", 42L, request, true);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    verify(consolidatieTaakService).verwijderKlareTaken("windmolens",
+        List.of("bezwaar-001.txt"));
+    verify(kernbezwaarService).slaAntwoordOp(42L, "<p>Nieuw</p>");
   }
 }

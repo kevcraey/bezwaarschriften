@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.consolidatie;
 
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import javax.transaction.Transactional;
 import org.slf4j.Logger;
@@ -111,6 +112,22 @@ public class ConsolidatieTaakService {
 
     repository.save(taak);
     notificatie.consolidatieTaakGewijzigd(ConsolidatieTaakDto.van(taak));
+  }
+
+  public List<String> vindKlareBestandsnamen(String projectNaam,
+      Collection<String> bestandsnamen) {
+    return repository.findByProjectNaamAndBestandsnaamInAndStatus(
+            projectNaam, bestandsnamen, ConsolidatieTaakStatus.KLAAR)
+        .stream().map(ConsolidatieTaak::getBestandsnaam).distinct().toList();
+  }
+
+  @Transactional
+  public void verwijderKlareTaken(String projectNaam, Collection<String> bestandsnamen) {
+    var taken = repository.findByProjectNaamAndBestandsnaamInAndStatus(
+        projectNaam, bestandsnamen, ConsolidatieTaakStatus.KLAAR);
+    repository.deleteAll(taken);
+    LOGGER.info("{} klare consolidatie-taken verwijderd voor project '{}'",
+        taken.size(), projectNaam);
   }
 
   @Transactional
