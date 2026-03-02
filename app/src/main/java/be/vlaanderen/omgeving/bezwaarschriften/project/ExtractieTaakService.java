@@ -368,4 +368,78 @@ public class ExtractieTaakService {
 
     return new ExtractieDetailDto(bestandsnaam, details.size(), details);
   }
+
+  /**
+   * Voegt een manueel bezwaar toe aan een afgeronde extractietaak.
+   *
+   * <p>Valideert dat de passage exact voorkomt in het originele document (na normalisatie).
+   *
+   * @param projectNaam naam van het project
+   * @param bestandsnaam naam van het bestand
+   * @param samenvatting samenvatting van het bezwaar
+   * @param passageTekst exacte passage uit het originele document
+   * @return het aangemaakte bezwaar als BezwaarDetail
+   * @throws IllegalArgumentException bij ongeldige invoer of niet-gevonden passage
+   */
+  @Transactional
+  public ExtractieDetailDto.BezwaarDetail voegManueelBezwaarToe(
+      String projectNaam, String bestandsnaam, String samenvatting, String passageTekst) {
+
+    if (samenvatting == null || samenvatting.isBlank()) {
+      throw new IllegalArgumentException("Samenvatting mag niet leeg zijn");
+    }
+    if (passageTekst == null || passageTekst.isBlank()) {
+      throw new IllegalArgumentException("Passage mag niet leeg zijn");
+    }
+
+    var taak = repository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, bestandsnaam)
+        .orElseThrow(() -> new IllegalArgumentException("Geen taak gevonden voor: " + bestandsnaam));
+
+    if (taak.getStatus() != ExtractieTaakStatus.KLAAR) {
+      throw new IllegalArgumentException("Taak is niet afgerond: " + taak.getStatus());
+    }
+
+    // Passage-validatie: exacte match na normalisatie
+    var pad = projectPoort.geefBestandsPad(projectNaam, bestandsnaam);
+    var brondocument = ingestiePoort.leesBestand(pad);
+    var genormaliseerdeDocument = passageValidator.normaliseer(brondocument.tekst());
+    var genormaliseerdePassage = passageValidator.normaliseer(passageTekst);
+
+    if (!genormaliseerdeDocument.contains(genormaliseerdePassage)) {
+      throw new IllegalArgumentException("Passage komt niet voor in het originele document");
+    }
+
+    // Bepaal volgend passageNr
+    int volgendPassageNr = passageRepository.findTopByTaakIdOrderByPassageNrDesc(taak.getId())
+        .map(p -> p.getPassageNr() + 1)
+        .orElse(1);
+
+    // Sla passage op
+    var passageEntiteit = new ExtractiePassageEntiteit();
+    passageEntiteit.setTaakId(taak.getId());
+    passageEntiteit.setPassageNr(volgendPassageNr);
+    passageEntiteit.setTekst(passageTekst);
+    passageRepository.save(passageEntiteit);
+
+    // Sla bezwaar op
+    var bezwaarEntiteit = new GeextraheerdBezwaarEntiteit();
+    bezwaarEntiteit.setTaakId(taak.getId());
+    bezwaarEntiteit.setPassageNr(volgendPassageNr);
+    bezwaarEntiteit.setSamenvatting(samenvatting);
+    bezwaarEntiteit.setCategorie("overig");
+    bezwaarEntiteit.setPassageGevonden(true);
+    bezwaarEntiteit.setManueel(true);
+
+    // Werk taak bij
+    taak.setHeeftManueel(true);
+    int huidigAantal = taak.getAantalBezwaren() != null ? taak.getAantalBezwaren() : 0;
+    taak.setAantalBezwaren(huidigAantal + 1);
+    repository.save(taak);
+    notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
+
+    var opgeslagen = bezwaarRepository.save(bezwaarEntiteit);
+    return new ExtractieDetailDto.BezwaarDetail(
+        opgeslagen.getId(), samenvatting, passageTekst, true, true);
+  }
 }

@@ -437,6 +437,108 @@ class ExtractieTaakServiceTest {
     verify(passageValidator, org.mockito.Mockito.never()).valideer(any(), any(), any());
   }
 
+  @Test
+  void voegManueelBezwaarToeMetGeldigePassage() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "bezwaar-001.txt")).thenReturn(Optional.of(taak));
+
+    var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(ingestiePoort.leesBestand(pad)).thenReturn(
+        new Brondocument("Dit is de volledige documenttekst met relevante inhoud.",
+            "bezwaar-001.txt", pad.toString(), Instant.now()));
+
+    when(passageValidator.normaliseer("Dit is de volledige documenttekst met relevante inhoud."))
+        .thenReturn("dit is de volledige documenttekst met relevante inhoud.");
+    when(passageValidator.normaliseer("volledige documenttekst"))
+        .thenReturn("volledige documenttekst");
+
+    when(passageRepository.findTopByTaakIdOrderByPassageNrDesc(1L))
+        .thenReturn(Optional.of(maakPassage(1L, 3)));
+    when(passageRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(bezwaarRepository.save(any())).thenAnswer(i -> {
+      var b = i.getArgument(0, GeextraheerdBezwaarEntiteit.class);
+      b.setId(10L);
+      return b;
+    });
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var detail = service.voegManueelBezwaarToe(
+        "windmolens", "bezwaar-001.txt", "Samenvatting test", "volledige documenttekst");
+
+    assertThat(detail).isNotNull();
+    assertThat(detail.id()).isEqualTo(10L);
+    assertThat(detail.samenvatting()).isEqualTo("Samenvatting test");
+    assertThat(detail.manueel()).isTrue();
+    assertThat(detail.passageGevonden()).isTrue();
+
+    var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
+    verify(bezwaarRepository).save(bezwaarCaptor.capture());
+    assertThat(bezwaarCaptor.getValue().isManueel()).isTrue();
+    assertThat(bezwaarCaptor.getValue().getPassageNr()).isEqualTo(4);
+
+    assertThat(taak.isHeeftManueel()).isTrue();
+    assertThat(taak.getAantalBezwaren()).isEqualTo(1);
+  }
+
+  @Test
+  void voegManueelBezwaarToeGooitExceptieBijOngeldigePassage() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "bezwaar-001.txt")).thenReturn(Optional.of(taak));
+
+    var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(ingestiePoort.leesBestand(pad)).thenReturn(
+        new Brondocument("Dit is de volledige documenttekst.",
+            "bezwaar-001.txt", pad.toString(), Instant.now()));
+
+    when(passageValidator.normaliseer("Dit is de volledige documenttekst."))
+        .thenReturn("dit is de volledige documenttekst.");
+    when(passageValidator.normaliseer("Deze tekst staat er niet in"))
+        .thenReturn("deze tekst staat er niet in");
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.voegManueelBezwaarToe(
+            "windmolens", "bezwaar-001.txt", "Samenvatting", "Deze tekst staat er niet in"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Passage komt niet voor");
+  }
+
+  @Test
+  void voegManueelBezwaarToeGooitExceptieBijLegeSamenvatting() {
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.voegManueelBezwaarToe("windmolens", "bezwaar-001.txt", "", "passage"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void voegManueelBezwaarToeGooitExceptieBijLegePassage() {
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.voegManueelBezwaarToe("windmolens", "bezwaar-001.txt", "samenvatting", ""))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void voegManueelBezwaarToeGooitExceptieAlsTaakNietKlaar() {
+    var taak = maakTaak(1L, "windmolens", "bezig.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "bezig.txt")).thenReturn(Optional.of(taak));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.voegManueelBezwaarToe("windmolens", "bezig.txt", "Samenvatting", "passage"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  private ExtractiePassageEntiteit maakPassage(Long taakId, int passageNr) {
+    var p = new ExtractiePassageEntiteit();
+    p.setTaakId(taakId);
+    p.setPassageNr(passageNr);
+    p.setTekst("Passage tekst");
+    return p;
+  }
+
   private ExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam,
       ExtractieTaakStatus status) {
     var taak = new ExtractieTaak();
