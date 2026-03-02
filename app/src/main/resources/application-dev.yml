@@ -1,6 +1,8 @@
 bezwaarschriften:
   input:
     folder: input
+  testdata:
+    pad: testdata/gaverbeek-stadion
   extractie:
     max-concurrent: 3
     max-pogingen: 2
