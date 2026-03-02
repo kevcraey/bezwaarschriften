@@ -1,11 +1,12 @@
 import {BaseHTMLElement, defineWebComponent, registerWebComponents} from '@domg-wc/common';
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
 import {VlAccordionComponent} from '@domg-wc/components/block/accordion/vl-accordion.component.js';
+import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import '@domg-wc/components/form/textarea-rich';
 
-registerWebComponents([VlButtonComponent, VlAccordionComponent, VlSideSheet]);
+registerWebComponents([VlButtonComponent, VlAccordionComponent, VlModalComponent, VlSideSheet]);
 
 export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   constructor() {
@@ -120,6 +121,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           <div id="side-sheet-inhoud" class="side-sheet-body"></div>
         </div>
       </vl-side-sheet>
+      <vl-modal id="consolidatie-waarschuwing" title="Antwoordbrieven worden ongeldig" closable not-auto-closable>
+        <div slot="content" id="consolidatie-waarschuwing-inhoud"></div>
+        <vl-button slot="button" id="consolidatie-waarschuwing-bevestig" error="">Doorgaan en verwijderen</vl-button>
+      </vl-modal>
     `);
     this._projectNaam = null;
     this._aantalBezwaren = 0;
@@ -353,19 +358,33 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     item.appendChild(wrapper);
   }
 
-  _slaAntwoordOp(kern, textarea, opslaanRij) {
+  _slaAntwoordOp(kern, textarea, opslaanRij, bevestigd = false) {
     const inhoud = textarea.value;
     const isLeeg = !inhoud || !inhoud.trim();
 
     const opslaanKnop = opslaanRij.querySelector('vl-button');
     if (opslaanKnop) opslaanKnop.setAttribute('disabled', '');
 
-    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/kernbezwaren/${kern.id}/antwoord`, {
+    const basisUrl = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/kernbezwaren/${kern.id}/antwoord`;
+    const url = bevestigd ? `${basisUrl}?bevestigd=true` : basisUrl;
+
+    fetch(url, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({inhoud: isLeeg ? '' : inhoud}),
     })
         .then((response) => {
+          if (response.status === 409) {
+            return response.json().then((data) => {
+              this._toonConsolidatieWaarschuwing(
+                  data.getroffenDocumenten || [],
+                  () => this._slaAntwoordOp(kern, textarea, opslaanRij, true),
+                  () => {
+                    if (opslaanKnop) opslaanKnop.removeAttribute('disabled');
+                  });
+              return null;
+            });
+          }
           if (!response.ok) throw new Error('Opslaan mislukt');
           kern.antwoord = isLeeg ? null : inhoud;
 
@@ -394,13 +413,62 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           }
           melding.textContent = 'Opgeslagen';
           setTimeout(() => melding.textContent = '', 3000);
+          return null;
         })
-        .catch(() => {
-          alert('Het opslaan van het antwoord is mislukt. Probeer opnieuw.');
+        .catch((err) => {
+          if (err) alert('Het opslaan van het antwoord is mislukt. Probeer opnieuw.');
         })
         .finally(() => {
-          if (opslaanKnop) opslaanKnop.removeAttribute('disabled');
+          if (opslaanKnop && !bevestigd) opslaanKnop.removeAttribute('disabled');
         });
+  }
+
+  _toonConsolidatieWaarschuwing(documenten, onBevestig, onAnnuleer) {
+    const modal = this.shadowRoot.querySelector('#consolidatie-waarschuwing');
+    const inhoud = this.shadowRoot.querySelector('#consolidatie-waarschuwing-inhoud');
+    const bevestigKnop = this.shadowRoot.querySelector('#consolidatie-waarschuwing-bevestig');
+    if (!modal || !inhoud) return;
+
+    const MAX_ZICHTBAAR = 10;
+    const zichtbaar = documenten.slice(0, MAX_ZICHTBAAR);
+    const verborgen = documenten.length - MAX_ZICHTBAAR;
+
+    inhoud.innerHTML = '';
+    const p = document.createElement('p');
+    p.textContent = 'De volgende documenten hebben al een gegenereerde antwoordbrief. ' +
+        'Deze antwoordbrieven worden verwijderd als u doorgaat.';
+    inhoud.appendChild(p);
+
+    const ul = document.createElement('ul');
+    zichtbaar.forEach((doc) => {
+      const li = document.createElement('li');
+      li.textContent = doc;
+      ul.appendChild(li);
+    });
+    if (verborgen > 0) {
+      const li = document.createElement('li');
+      li.textContent = `\u2026 en nog ${verborgen} andere`;
+      li.style.fontStyle = 'italic';
+      ul.appendChild(li);
+    }
+    inhoud.appendChild(ul);
+
+    const afhandelen = (bevestigd) => {
+      bevestigKnop.removeEventListener('vl-click', bevestigHandler);
+      modal.off('close', sluitHandler);
+      modal.close();
+      if (bevestigd) {
+        onBevestig();
+      } else {
+        onAnnuleer();
+      }
+    };
+    const bevestigHandler = () => afhandelen(true);
+    const sluitHandler = () => afhandelen(false);
+
+    bevestigKnop.addEventListener('vl-click', bevestigHandler);
+    modal.on('close', sluitHandler);
+    modal.open();
   }
 
   _dispatchVoortgang() {

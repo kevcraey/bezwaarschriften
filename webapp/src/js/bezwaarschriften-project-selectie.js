@@ -52,7 +52,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
             <bezwaarschriften-kernbezwaren id="kernbezwaren-component"></bezwaarschriften-kernbezwaren>
           </vl-tabs-pane>
           <vl-tabs-pane id="resultaten" title="Resultaten">
-            <vl-button id="consolideren-knop" hidden>Consolideren</vl-button>
+            <vl-button id="consolideren-knop" hidden>Genereer antwoordbrieven</vl-button>
             <bezwaarschriften-resultaten-tabel id="resultaten-tabel"></bezwaarschriften-resultaten-tabel>
           </vl-tabs-pane>
         </vl-tabs>
@@ -290,11 +290,12 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const consoliderenKnop = this.shadowRoot && this.shadowRoot.querySelector('#consolideren-knop');
     if (consoliderenKnop) {
       consoliderenKnop.addEventListener('vl-click', () => {
-        if (!this.__geselecteerdProject) return;
-        const tabel = this.shadowRoot.querySelector('#resultaten-tabel');
-        const geselecteerd = tabel ? tabel.geefGeselecteerdeBestandsnamen() : [];
-        if (geselecteerd.length > 0) {
-          this._dienConsolidatiesIn(this.__geselecteerdProject, geselecteerd);
+        if (!this.__geselecteerdProject || !this.__consolidatieDocumenten) return;
+        const opStartbaar = this.__consolidatieDocumenten
+            .filter((d) => d.status === 'volledig' || d.status === 'fout')
+            .map((d) => d.bestandsnaam);
+        if (opStartbaar.length > 0) {
+          this._dienConsolidatiesIn(this.__geselecteerdProject, opStartbaar);
         }
       });
     }
@@ -729,18 +730,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _werkConsoliderenKnopBij() {
     const consoliderenKnop = this.shadowRoot && this.shadowRoot.querySelector('#consolideren-knop');
     if (!consoliderenKnop || !this.__consolidatieDocumenten) return;
-    const tabel = this.shadowRoot.querySelector('#resultaten-tabel');
-    const geselecteerd = tabel ? tabel.geefGeselecteerdeBestandsnamen() : [];
-    if (geselecteerd.length > 0) {
-      consoliderenKnop.hidden = false;
-      consoliderenKnop.textContent = `Consolideren (${geselecteerd.length})`;
-    } else {
-      const aantalVolledig = this.__consolidatieDocumenten.filter(
-          (d) => d.status === 'volledig' || d.status === 'fout').length;
-      consoliderenKnop.hidden = aantalVolledig === 0;
-      if (aantalVolledig > 0) {
-        consoliderenKnop.textContent = `Consolideren (${aantalVolledig})`;
-      }
+    const aantalOpStartbaar = this.__consolidatieDocumenten.filter(
+        (d) => d.status === 'volledig' || d.status === 'fout').length;
+    consoliderenKnop.hidden = aantalOpStartbaar === 0;
+    if (aantalOpStartbaar > 0) {
+      consoliderenKnop.textContent = `Genereer antwoordbrieven (${aantalOpStartbaar})`;
     }
   }
 

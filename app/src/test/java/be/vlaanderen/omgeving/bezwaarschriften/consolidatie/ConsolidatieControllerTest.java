@@ -39,8 +39,13 @@ class ConsolidatieControllerTest {
   void geeftConsolidatieStatusPerDocument() throws Exception {
     when(antwoordStatusService.berekenAntwoordStatus("windmolens"))
         .thenReturn(Map.of(
-            "bezwaar-001.txt", new AntwoordStatus(2, 3),
-            "bezwaar-002.txt", new AntwoordStatus(2, 2)));
+            "bezwaar-001.txt", new AntwoordStatus(2, 3, List.of(
+                new AntwoordStatus.KernbezwaarInfo("Geluidshinder is niet onderzocht", true),
+                new AntwoordStatus.KernbezwaarInfo("Motivering besluit ontoereikend", true),
+                new AntwoordStatus.KernbezwaarInfo("Advies milieuraad genegeerd", false))),
+            "bezwaar-002.txt", new AntwoordStatus(2, 2, List.of(
+                new AntwoordStatus.KernbezwaarInfo("Geluidshinder is niet onderzocht", true),
+                new AntwoordStatus.KernbezwaarInfo("Motivering besluit ontoereikend", true)))));
     when(consolidatieTaakService.geefTaken("windmolens"))
         .thenReturn(List.of(
             new ConsolidatieTaakDto(1L, "windmolens", "bezwaar-002.txt", "klaar",
