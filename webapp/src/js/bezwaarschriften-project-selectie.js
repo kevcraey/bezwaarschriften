@@ -111,7 +111,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
   _verbindWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}/ws/extracties`;
+    const url = `${protocol}//${window.location.host}/ws/taken`;
     this._ws = new WebSocket(url);
 
     this._ws.onmessage = (event) => {
