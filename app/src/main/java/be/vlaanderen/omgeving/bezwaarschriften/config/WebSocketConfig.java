@@ -1,6 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.config;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieWebSocketHandler;
+import be.vlaanderen.omgeving.bezwaarschriften.project.TaakWebSocketHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -13,14 +13,14 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
-  private final ExtractieWebSocketHandler handler;
+  private final TaakWebSocketHandler handler;
 
-  public WebSocketConfig(ExtractieWebSocketHandler handler) {
+  public WebSocketConfig(TaakWebSocketHandler handler) {
     this.handler = handler;
   }
 
   @Override
   public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-    registry.addHandler(handler, "/ws/extracties").setAllowedOrigins("*");
+    registry.addHandler(handler, "/ws/taken").setAllowedOrigins("*");
   }
 }

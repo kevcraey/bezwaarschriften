@@ -15,16 +15,16 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 @ExtendWith(MockitoExtension.class)
-class ExtractieWebSocketHandlerTest {
+class TaakWebSocketHandlerTest {
 
   @Mock
   private WebSocketSession session;
 
-  private ExtractieWebSocketHandler handler;
+  private TaakWebSocketHandler handler;
 
   @BeforeEach
   void setUp() {
-    handler = new ExtractieWebSocketHandler(new ObjectMapper());
+    handler = new TaakWebSocketHandler(new ObjectMapper());
   }
 
   @Test
