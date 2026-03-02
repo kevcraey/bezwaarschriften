@@ -1,0 +1,165 @@
+{
+  "project": "Herontwikkeling Gaverbeek Stadion",
+  "bestanden": [
+    {
+      "bestandsnaam": "Bewzaar_16_handgeschreven",
+      "txtBestand": "bezwaren/Bewzaar_16_handgeschreven.txt",
+      "fixtureBestand": "bezwaren/Bewzaar_16_handgeschreven.json",
+      "aantalBezwaren": 2,
+      "aantalPassages": 2,
+      "aantalWoorden": 45
+    },
+    {
+      "bestandsnaam": "Bezwaar_01",
+      "txtBestand": "bezwaren/Bezwaar_01.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_01.json",
+      "aantalBezwaren": 7,
+      "aantalPassages": 7,
+      "aantalWoorden": 285
+    },
+    {
+      "bestandsnaam": "Bezwaar_010",
+      "txtBestand": "bezwaren/Bezwaar_010.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_010.json",
+      "aantalBezwaren": 2,
+      "aantalPassages": 2,
+      "aantalWoorden": 69
+    },
+    {
+      "bestandsnaam": "Bezwaar_011",
+      "txtBestand": "bezwaren/Bezwaar_011.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_011.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 3,
+      "aantalWoorden": 76
+    },
+    {
+      "bestandsnaam": "Bezwaar_012",
+      "txtBestand": "bezwaren/Bezwaar_012.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_012.json",
+      "aantalBezwaren": 2,
+      "aantalPassages": 2,
+      "aantalWoorden": 74
+    },
+    {
+      "bestandsnaam": "Bezwaar_013",
+      "txtBestand": "bezwaren/Bezwaar_013.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_013.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 3,
+      "aantalWoorden": 59
+    },
+    {
+      "bestandsnaam": "Bezwaar_02",
+      "txtBestand": "bezwaren/Bezwaar_02.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_02.json",
+      "aantalBezwaren": 8,
+      "aantalPassages": 8,
+      "aantalWoorden": 307
+    },
+    {
+      "bestandsnaam": "Bezwaar_03",
+      "txtBestand": "bezwaren/Bezwaar_03.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_03.json",
+      "aantalBezwaren": 6,
+      "aantalPassages": 6,
+      "aantalWoorden": 306
+    },
+    {
+      "bestandsnaam": "Bezwaar_04",
+      "txtBestand": "bezwaren/Bezwaar_04.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_04.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 3,
+      "aantalWoorden": 83
+    },
+    {
+      "bestandsnaam": "Bezwaar_05",
+      "txtBestand": "bezwaren/Bezwaar_05.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_05.json",
+      "aantalBezwaren": 6,
+      "aantalPassages": 3,
+      "aantalWoorden": 87
+    },
+    {
+      "bestandsnaam": "Bezwaar_06",
+      "txtBestand": "bezwaren/Bezwaar_06.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_06.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 3,
+      "aantalWoorden": 56
+    },
+    {
+      "bestandsnaam": "Bezwaar_07",
+      "txtBestand": "bezwaren/Bezwaar_07.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_07.json",
+      "aantalBezwaren": 5,
+      "aantalPassages": 4,
+      "aantalWoorden": 66
+    },
+    {
+      "bestandsnaam": "Bezwaar_08",
+      "txtBestand": "bezwaren/Bezwaar_08.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_08.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 3,
+      "aantalWoorden": 94
+    },
+    {
+      "bestandsnaam": "Bezwaar_09",
+      "txtBestand": "bezwaren/Bezwaar_09.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_09.json",
+      "aantalBezwaren": 4,
+      "aantalPassages": 3,
+      "aantalWoorden": 93
+    },
+    {
+      "bestandsnaam": "Bezwaar_10",
+      "txtBestand": "bezwaren/Bezwaar_10.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_10.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 3,
+      "aantalWoorden": 94
+    },
+    {
+      "bestandsnaam": "Bezwaar_11",
+      "txtBestand": "bezwaren/Bezwaar_11.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_11.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 3,
+      "aantalWoorden": 99
+    },
+    {
+      "bestandsnaam": "Bezwaar_12",
+      "txtBestand": "bezwaren/Bezwaar_12.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_12.json",
+      "aantalBezwaren": 2,
+      "aantalPassages": 2,
+      "aantalWoorden": 100
+    },
+    {
+      "bestandsnaam": "Bezwaar_13",
+      "txtBestand": "bezwaren/Bezwaar_13.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_13.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 3,
+      "aantalWoorden": 94
+    },
+    {
+      "bestandsnaam": "Bezwaar_14_geheel_gescand",
+      "txtBestand": "bezwaren/Bezwaar_14_geheel_gescand.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_14_geheel_gescand.json",
+      "aantalBezwaren": 3,
+      "aantalPassages": 1,
+      "aantalWoorden": 86
+    },
+    {
+      "bestandsnaam": "Bezwaar_15_mixed",
+      "txtBestand": "bezwaren/Bezwaar_15_mixed.txt",
+      "fixtureBestand": "bezwaren/Bezwaar_15_mixed.json",
+      "aantalBezwaren": 4,
+      "aantalPassages": 4,
+      "aantalWoorden": 158
+    }
+  ]
+}
