@@ -5,6 +5,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,5 +63,26 @@ class TaakWebSocketHandlerTest {
     handler.taakGewijzigd(taak);
 
     verify(session, never()).sendMessage(argThat(msg -> msg instanceof TextMessage));
+  }
+
+  @Test
+  void broadcastConsolidatieUpdate() throws Exception {
+    when(session.isOpen()).thenReturn(true);
+    when(session.getId()).thenReturn("test-sessie-3");
+    handler.afterConnectionEstablished(session);
+
+    var taak = new ConsolidatieTaakDto(
+        1L, "windmolens", "bezwaar-001.txt", "bezig",
+        1, "2026-03-02T10:00:00Z", "2026-03-02T10:01:00Z",
+        null);
+
+    handler.consolidatieTaakGewijzigd(taak);
+
+    verify(session).sendMessage(argThat(msg -> {
+      String payload = ((TextMessage) msg).getPayload();
+      return payload.contains("\"type\":\"consolidatie-update\"")
+          && payload.contains("\"bestandsnaam\":\"bezwaar-001.txt\"")
+          && payload.contains("\"status\":\"bezig\"");
+    }));
   }
 }
