@@ -6,6 +6,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.vlaanderen.omgeving.bezwaarschriften.ingestie.Brondocument;
+import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -34,12 +37,22 @@ class ExtractieTaakServiceTest {
   @Mock
   private GeextraheerdBezwaarRepository bezwaarRepository;
 
+  @Mock
+  private ProjectPoort projectPoort;
+
+  @Mock
+  private IngestiePoort ingestiePoort;
+
+  @Mock
+  private PassageValidator passageValidator;
+
   private ExtractieTaakService service;
 
   @BeforeEach
   void setUp() {
     service = new ExtractieTaakService(repository, notificatie, projectService,
-        passageRepository, bezwaarRepository, 3, 3);
+        passageRepository, bezwaarRepository, projectPoort, ingestiePoort,
+        passageValidator, 3, 3);
   }
 
   @Test
@@ -351,6 +364,77 @@ class ExtractieTaakServiceTest {
 
     var result = service.geefExtractieDetails("windmolens", "onbekend.txt");
     assertThat(result).isNull();
+  }
+
+  @Test
+  void markeerKlaarValideertPassagesEnZetPassageGevonden() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(ingestiePoort.leesBestand(pad)).thenReturn(
+        new Brondocument("Volledige documenttekst.", "bezwaar-001.txt", pad.toString(),
+            Instant.now()));
+    when(passageValidator.valideer(any(), any(), any()))
+        .thenReturn(new PassageValidator.ValidatieResultaat(0));
+
+    var resultaat = new ExtractieResultaat(100, 1,
+        List.of(new Passage(1, "Volledige documenttekst.")),
+        List.of(new GeextraheerdBezwaar(1, "Samenvatting", "milieu")),
+        "Samenvatting doc");
+
+    service.markeerKlaar(1L, resultaat);
+
+    assertThat(taak.isHeeftOpmerkingen()).isFalse();
+    verify(passageValidator).valideer(any(), any(), any());
+  }
+
+  @Test
+  void markeerKlaarZetHeeftOpmerkingenBijNietGevondenPassages() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(ingestiePoort.leesBestand(pad)).thenReturn(
+        new Brondocument("Documenttekst.", "bezwaar-001.txt", pad.toString(), Instant.now()));
+    when(passageValidator.valideer(any(), any(), any()))
+        .thenReturn(new PassageValidator.ValidatieResultaat(2));
+
+    var resultaat = new ExtractieResultaat(100, 2,
+        List.of(new Passage(1, "Passage een")),
+        List.of(
+            new GeextraheerdBezwaar(1, "Samenvatting een", "milieu"),
+            new GeextraheerdBezwaar(1, "Samenvatting twee", "mobiliteit")),
+        "Doc samenvatting");
+
+    service.markeerKlaar(1L, resultaat);
+
+    assertThat(taak.isHeeftOpmerkingen()).isTrue();
+  }
+
+  @Test
+  void markeerKlaarGracefulBijOnleesbaarDocument() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt"))
+        .thenThrow(new RuntimeException("Bestand niet gevonden"));
+
+    var resultaat = new ExtractieResultaat(100, 1,
+        List.of(new Passage(1, "Passage")),
+        List.of(new GeextraheerdBezwaar(1, "Samenvatting", "milieu")),
+        "Samenvatting");
+
+    service.markeerKlaar(1L, resultaat);
+
+    assertThat(taak.getStatus()).isEqualTo(ExtractieTaakStatus.KLAAR);
+    assertThat(taak.isHeeftOpmerkingen()).isFalse();
+    verify(passageValidator, org.mockito.Mockito.never()).valideer(any(), any(), any());
   }
 
   private ExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam,
