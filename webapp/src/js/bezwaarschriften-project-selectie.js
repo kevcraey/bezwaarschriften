@@ -252,15 +252,19 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     });
 
     this.shadowRoot.addEventListener('selectie-gewijzigd', (e) => {
-      const aantal = e.detail.geselecteerd.length;
-      const heeftSelectie = aantal > 0;
-      if (verwijderKnop) {
-        verwijderKnop.hidden = !heeftSelectie;
+      if (e.target.tagName === 'BEZWAARSCHRIFTEN-BEZWAREN-TABEL') {
+        const aantal = e.detail.geselecteerd.length;
+        const heeftSelectie = aantal > 0;
+        if (verwijderKnop) {
+          verwijderKnop.hidden = !heeftSelectie;
+        }
+        if (toevoegenKnop) {
+          toevoegenKnop.hidden = heeftSelectie;
+        }
+        this._werkVerwerkenKnopBij();
+      } else if (e.target.tagName === 'BEZWAARSCHRIFTEN-RESULTATEN-TABEL') {
+        this._werkConsoliderenKnopBij();
       }
-      if (toevoegenKnop) {
-        toevoegenKnop.hidden = heeftSelectie;
-      }
-      this._werkVerwerkenKnopBij();
     });
 
     // Consolidatie-events
