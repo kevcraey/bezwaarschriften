@@ -15,18 +15,18 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 /**
- * WebSocket handler die extractie-taak updates naar verbonden clients stuurt.
+ * WebSocket handler die taak-updates naar verbonden clients stuurt.
  */
 @Component
-public class ExtractieWebSocketHandler extends TextWebSocketHandler
+public class TaakWebSocketHandler extends TextWebSocketHandler
     implements ExtractieNotificatie {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ExtractieWebSocketHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TaakWebSocketHandler.class);
 
   private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
   private final ObjectMapper objectMapper;
 
-  public ExtractieWebSocketHandler(ObjectMapper objectMapper) {
+  public TaakWebSocketHandler(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
 
@@ -44,11 +44,15 @@ public class ExtractieWebSocketHandler extends TextWebSocketHandler
 
   @Override
   public void taakGewijzigd(ExtractieTaakDto taak) {
+    verstuur(Map.of("type", "taak-update", "taak", taak));
+  }
+
+  void verstuur(Map<String, Object> bericht) {
     String json;
     try {
-      json = objectMapper.writeValueAsString(Map.of("type", "taak-update", "taak", taak));
+      json = objectMapper.writeValueAsString(bericht);
     } catch (JsonProcessingException e) {
-      LOG.error("Fout bij serialisatie van taak-update", e);
+      LOG.error("Fout bij serialisatie van WebSocket-bericht", e);
       return;
     }
 
