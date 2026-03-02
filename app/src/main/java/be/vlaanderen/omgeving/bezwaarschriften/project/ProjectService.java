@@ -78,7 +78,8 @@ public class ProjectService {
           return new BezwaarBestand(naam,
               vanExtractieTaakStatus(laatsteTaak.getStatus()),
               laatsteTaak.getAantalWoorden(),
-              laatsteTaak.getAantalBezwaren());
+              laatsteTaak.getAantalBezwaren(),
+              laatsteTaak.isHeeftOpmerkingen());
         })
         .toList();
   }

@@ -17,10 +17,11 @@ class BezwaarBestandTest {
   @Test
   void maaktRecordAanMetAantalWoordenEnAantalBezwaren() {
     var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR,
-        42, 3);
+        42, 3, false);
 
     assertThat(bestand.aantalWoorden()).isEqualTo(42);
     assertThat(bestand.aantalBezwaren()).isEqualTo(3);
+    assertThat(bestand.heeftOpmerkingen()).isFalse();
   }
 
   @Test
@@ -29,5 +30,14 @@ class BezwaarBestandTest {
 
     assertThat(bestand.aantalWoorden()).isNull();
     assertThat(bestand.aantalBezwaren()).isNull();
+    assertThat(bestand.heeftOpmerkingen()).isFalse();
+  }
+
+  @Test
+  void maaktRecordAanMetHeeftOpmerkingen() {
+    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR,
+        42, 3, true);
+
+    assertThat(bestand.heeftOpmerkingen()).isTrue();
   }
 }

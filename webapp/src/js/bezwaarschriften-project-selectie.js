@@ -155,6 +155,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         status: taak.status,
         aantalWoorden: taak.aantalWoorden,
         aantalBezwaren: taak.aantalBezwaren,
+        heeftOpmerkingen: taak.heeftOpmerkingen,
       } : b,
     );
     const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
@@ -188,6 +189,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
                   status: taak.status,
                   aantalWoorden: taak.aantalWoorden,
                   aantalBezwaren: taak.aantalBezwaren,
+                  heeftOpmerkingen: taak.heeftOpmerkingen,
                 } : b,
               );
               tabel.werkBijMetTaakUpdate(taak);
@@ -408,6 +410,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
                   status: taak.status,
                   aantalWoorden: taak.aantalWoorden,
                   aantalBezwaren: taak.aantalBezwaren,
+                  heeftOpmerkingen: taak.heeftOpmerkingen,
                 } : b,
               );
               tabel.werkBijMetTaakUpdate(taak);

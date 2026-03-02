@@ -115,8 +115,12 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         }
         .bezwaar-waarschuwing {
           color: #a5673f;
-          font-size: 0.85rem;
-          margin-bottom: 0.25rem;
+          font-weight: bold;
+          margin-bottom: 0.5rem;
+          padding: 0.4rem 0.6rem;
+          background: #fff4e5;
+          border-left: 3px solid #a5673f;
+          border-radius: 2px;
         }
       </style>
       <vl-rich-data-table id="tabel" filter-closable filter-closed>
@@ -225,6 +229,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         status: taak.status,
         aantalWoorden: taak.aantalWoorden,
         aantalBezwaren: taak.aantalBezwaren,
+        heeftOpmerkingen: taak.heeftOpmerkingen,
       } : b,
     );
     this._herbereken();
@@ -272,6 +277,13 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           veld.renderer = (td, rij) => {
             td.style.verticalAlign = 'middle';
             td.style.width = '100%';
+            if (rij.heeftOpmerkingen) {
+              const icon = document.createElement('span');
+              icon.textContent = '\u26A0\uFE0F';
+              icon.title = 'Niet alle passages konden gevonden worden';
+              icon.style.marginRight = '0.4rem';
+              td.appendChild(icon);
+            }
             if (this._projectNaam) {
               const a = document.createElement('a');
               a.href = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(rij.bestandsnaam)}/download`;
@@ -405,13 +417,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             return a.passageGevonden ? 1 : -1;
           });
 
-          const heeftNietGevonden = gesorteerd.some((b) => !b.passageGevonden);
-
           if (titelEl) {
-            const basisTitel = `${data.bestandsnaam} - ${data.aantalBezwaren} bezwar${data.aantalBezwaren === 1 ? '' : 'en'} gevonden`;
-            titelEl.textContent = heeftNietGevonden ?
-                `${basisTitel} (met opmerkingen)` :
-                basisTitel;
+            titelEl.textContent = `${data.bestandsnaam} - ${data.aantalBezwaren} bezwar${data.aantalBezwaren === 1 ? '' : 'en'} gevonden`;
           }
 
           gesorteerd.forEach((bezwaar) => {

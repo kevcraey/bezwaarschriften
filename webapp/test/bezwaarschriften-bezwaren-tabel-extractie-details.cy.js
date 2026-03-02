@@ -79,24 +79,68 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .should('not.exist');
   });
 
-  it('titel bevat "(met opmerkingen)" bij niet-gevonden passages', () => {
-    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
-      statusCode: 200,
-      body: MOCK_DETAILS_MET_OPMERKINGEN,
-    }).as('details');
+  it('toont waarschuwingsicoon bij bestandsnaam in tabel als heeftOpmerkingen true is', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3, heeftOpmerkingen: true},
+            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftOpmerkingen: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('span[title="Niet alle passages konden gevonden worden"]')
+        .should('have.length', 1)
+        .and('contain.text', '\u26A0\uFE0F');
+  });
+
+  it('toont geen waarschuwingsicoon bij bestandsnaam als heeftOpmerkingen false is', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3, heeftOpmerkingen: false},
+            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftOpmerkingen: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('span[title="Niet alle passages konden gevonden worden"]')
+        .should('not.exist');
+  });
+
+  it('toont waarschuwingsicoon na werkBijMetTaakUpdate met heeftOpmerkingen', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-001.txt', status: 'bezig', aantalBezwaren: null, heeftOpmerkingen: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('span[title="Niet alle passages konden gevonden worden"]')
+        .should('not.exist');
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .its(0)
-        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-001.txt');
-
-    cy.wait('@details');
+        .invoke('werkBijMetTaakUpdate', {
+          bestandsnaam: 'bezwaar-001.txt',
+          status: 'extractie-klaar',
+          aantalBezwaren: 3,
+          heeftOpmerkingen: true,
+        });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('#extractie-side-sheet-titel')
-        .should('contain.text', '(met opmerkingen)');
+        .find('span[title="Niet alle passages konden gevonden worden"]')
+        .should('have.length', 1);
   });
 
-  it('titel zonder opmerkingen bij alle passages gevonden', () => {
+  it('side-panel titel toont bestandsnaam en aantal bezwaren', () => {
     cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
       statusCode: 200,
       body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
@@ -110,7 +154,6 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('#extractie-side-sheet-titel')
-        .should('not.contain.text', '(met opmerkingen)')
-        .and('contain.text', '2 bezwaren gevonden');
+        .should('contain.text', '2 bezwaren gevonden');
   });
 });
