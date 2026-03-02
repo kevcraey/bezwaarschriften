@@ -59,10 +59,30 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
       @Value("${bezwaarschriften.extractie.mock.max-delay-seconden:30}") int maxDelaySeconden) {
     this.ingestiePoort = ingestiePoort;
     this.inputFolder = Path.of(inputFolderString);
-    this.testdataFixtureDir = testdataPad.isEmpty()
-        ? null : Path.of(testdataPad).resolve("bezwaren");
+    this.testdataFixtureDir = resolveFixtureDir(testdataPad);
     this.minDelaySeconden = minDelaySeconden;
     this.maxDelaySeconden = maxDelaySeconden;
+    if (this.testdataFixtureDir != null) {
+      LOGGER.info("Fixture-directory geconfigureerd: {}", this.testdataFixtureDir.toAbsolutePath());
+    }
+  }
+
+  private static Path resolveFixtureDir(String testdataPad) {
+    if (testdataPad.isEmpty()) {
+      return null;
+    }
+    var pad = Path.of(testdataPad).resolve("bezwaren");
+    if (Files.isDirectory(pad)) {
+      return pad;
+    }
+    // Probeer parent directory (als app start vanuit app/ submodule)
+    var parentPad = Path.of("..").resolve(testdataPad).resolve("bezwaren");
+    if (Files.isDirectory(parentPad)) {
+      return parentPad;
+    }
+    LOGGER.warn("Fixture-directory niet gevonden op '{}' of '{}'",
+        pad.toAbsolutePath(), parentPad.toAbsolutePath());
+    return null;
   }
 
   @Override
@@ -95,6 +115,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
         : bestandsnaam;
     var fixturePad = testdataFixtureDir.resolve(naamZonderExtensie + ".json");
     if (!Files.exists(fixturePad)) {
+      LOGGER.debug("Geen fixture gevonden op: {}", fixturePad.toAbsolutePath());
       return null;
     }
     try {
