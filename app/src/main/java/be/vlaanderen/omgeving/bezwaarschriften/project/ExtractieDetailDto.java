@@ -7,5 +7,6 @@ public record ExtractieDetailDto(
     int aantalBezwaren,
     List<BezwaarDetail> bezwaren) {
 
-  public record BezwaarDetail(String samenvatting, String passage, boolean passageGevonden) { }
+  public record BezwaarDetail(Long id, String samenvatting, String passage,
+      boolean passageGevonden, boolean manueel) { }
 }

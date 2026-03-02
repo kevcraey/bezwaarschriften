@@ -14,12 +14,13 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
  * @param aantalBezwaren aantal geextraheerde bezwaren, kan null zijn
  * @param foutmelding foutmelding bij mislukking, kan null zijn
  * @param heeftOpmerkingen of er opmerkingen zijn (bv. passage-validatie waarschuwingen)
+ * @param heeftManueel of er manueel toegevoegde bezwaren zijn
  */
 public record ExtractieTaakDto(
     Long id, String projectNaam, String bestandsnaam, String status,
     int aantalPogingen, String aangemaaktOp, String verwerkingGestartOp,
     Integer aantalWoorden, Integer aantalBezwaren, String foutmelding,
-    boolean heeftOpmerkingen) {
+    boolean heeftOpmerkingen, boolean heeftManueel) {
 
   /**
    * Converteert een {@link ExtractieTaak} entiteit naar een DTO.
@@ -34,7 +35,7 @@ public record ExtractieTaakDto(
         taak.getAangemaaktOp().toString(),
         taak.getVerwerkingGestartOp() != null ? taak.getVerwerkingGestartOp().toString() : null,
         taak.getAantalWoorden(), taak.getAantalBezwaren(), taak.getFoutmelding(),
-        taak.isHeeftOpmerkingen());
+        taak.isHeeftOpmerkingen(), taak.isHeeftManueel());
   }
 
   private static String statusNaarString(ExtractieTaakStatus status) {

@@ -359,9 +359,11 @@ public class ExtractieTaakService {
 
     var details = bezwaren.stream()
         .map(b -> new ExtractieDetailDto.BezwaarDetail(
+            b.getId(),
             b.getSamenvatting(),
             passageMap.getOrDefault(b.getPassageNr(), ""),
-            b.isPassageGevonden()))
+            b.isPassageGevonden(),
+            b.isManueel()))
         .toList();
 
     return new ExtractieDetailDto(bestandsnaam, details.size(), details);
