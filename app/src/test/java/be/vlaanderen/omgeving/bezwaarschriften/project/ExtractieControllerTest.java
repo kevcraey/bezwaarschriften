@@ -145,4 +145,55 @@ class ExtractieControllerTest {
         .andExpect(jsonPath("$.bezwaren[0].passageGevonden").value(false))
         .andExpect(jsonPath("$.bezwaren[1].passageGevonden").value(true));
   }
+
+  @Test
+  void voegManueelBezwaarToe() throws Exception {
+    var detail = new ExtractieDetailDto.BezwaarDetail(
+        10L, "Geluidshinder", "De geluidsoverlast zal...", true, true);
+    when(extractieTaakService.voegManueelBezwaarToe(
+        "windmolens", "bezwaar-001.txt", "Geluidshinder", "De geluidsoverlast zal..."))
+        .thenReturn(detail);
+
+    mockMvc.perform(post("/api/v1/projects/windmolens/extracties/bezwaar-001.txt/bezwaren")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"samenvatting\":\"Geluidshinder\",\"passage\":\"De geluidsoverlast zal...\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(10))
+        .andExpect(jsonPath("$.samenvatting").value("Geluidshinder"))
+        .andExpect(jsonPath("$.manueel").value(true));
+  }
+
+  @Test
+  void voegManueelBezwaarToeGeeft400BijOngeldigePassage() throws Exception {
+    when(extractieTaakService.voegManueelBezwaarToe(
+        "windmolens", "bezwaar-001.txt", "Samenvatting", "Onbekende passage"))
+        .thenThrow(new IllegalArgumentException("Passage komt niet voor in het originele document"));
+
+    mockMvc.perform(post("/api/v1/projects/windmolens/extracties/bezwaar-001.txt/bezwaren")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"samenvatting\":\"Samenvatting\",\"passage\":\"Onbekende passage\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fout").value("Passage komt niet voor in het originele document"));
+  }
+
+  @Test
+  void verwijderManueelBezwaar() throws Exception {
+    mockMvc.perform(delete("/api/v1/projects/windmolens/extracties/bezwaar-001.txt/bezwaren/10")
+            .with(csrf()))
+        .andExpect(status().isNoContent());
+
+    verify(extractieTaakService).verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L);
+  }
+
+  @Test
+  void verwijderNietManueelBezwaarGeeft403() throws Exception {
+    doThrow(new IllegalStateException("Bezwaar is niet manueel toegevoegd"))
+        .when(extractieTaakService).verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L);
+
+    mockMvc.perform(delete("/api/v1/projects/windmolens/extracties/bezwaar-001.txt/bezwaren/10")
+            .with(csrf()))
+        .andExpect(status().isForbidden());
+  }
 }

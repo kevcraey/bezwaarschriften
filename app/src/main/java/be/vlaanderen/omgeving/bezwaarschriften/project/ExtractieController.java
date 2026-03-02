@@ -107,6 +107,49 @@ public class ExtractieController {
     return ResponseEntity.ok(detail);
   }
 
+  /**
+   * Voegt een manueel bezwaar toe aan een afgeronde extractietaak.
+   *
+   * @param naam projectnaam
+   * @param bestandsnaam naam van het bestand
+   * @param request verzoek met samenvatting en passage
+   * @return het aangemaakte bezwaar (201 Created), of 400 bij ongeldige invoer
+   */
+  @PostMapping("/{naam}/extracties/{bestandsnaam}/bezwaren")
+  public ResponseEntity<?> voegBezwaarToe(
+      @PathVariable String naam, @PathVariable String bestandsnaam,
+      @RequestBody ManueelBezwaarRequest request) {
+    try {
+      var detail = extractieTaakService.voegManueelBezwaarToe(
+          naam, bestandsnaam, request.samenvatting(), request.passage());
+      return ResponseEntity.status(201).body(detail);
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(new FoutResponse(e.getMessage()));
+    }
+  }
+
+  /**
+   * Verwijdert een manueel toegevoegd bezwaar.
+   *
+   * @param naam projectnaam
+   * @param bestandsnaam naam van het bestand
+   * @param bezwaarId id van het te verwijderen bezwaar
+   * @return 204 No Content bij succes, 403 als bezwaar niet manueel is, 404 als niet gevonden
+   */
+  @DeleteMapping("/{naam}/extracties/{bestandsnaam}/bezwaren/{bezwaarId}")
+  public ResponseEntity<Void> verwijderBezwaar(
+      @PathVariable String naam, @PathVariable String bestandsnaam,
+      @PathVariable Long bezwaarId) {
+    try {
+      extractieTaakService.verwijderManueelBezwaar(naam, bestandsnaam, bezwaarId);
+      return ResponseEntity.noContent().build();
+    } catch (IllegalStateException e) {
+      return ResponseEntity.status(403).build();
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.notFound().build();
+    }
+  }
+
   /** Response DTO voor het verwerken-endpoint. */
   record VerwerkenResponse(int aantalIngepland) {}
 
@@ -115,4 +158,10 @@ public class ExtractieController {
 
   /** Response DTO met een lijst van extractie-taken. */
   record ExtractieTakenResponse(List<ExtractieTaakDto> taken) {}
+
+  /** Request DTO voor het handmatig toevoegen van een bezwaar. */
+  record ManueelBezwaarRequest(String samenvatting, String passage) {}
+
+  /** Response DTO voor foutmeldingen. */
+  record FoutResponse(String fout) {}
 }
