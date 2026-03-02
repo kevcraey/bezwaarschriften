@@ -75,7 +75,7 @@ public class ExtractieWorker {
           taak.getBestandsnaam(),
           taak.getAantalPogingen());
       try {
-        service.markeerKlaar(taak.getId(), resultaat.aantalWoorden(), resultaat.aantalBezwaren());
+        service.markeerKlaar(taak.getId(), resultaat);
       } catch (IllegalArgumentException e) {
         LOGGER.info("Taak {} niet meer aanwezig na voltooiing (geannuleerd?)", taak.getId());
       }
