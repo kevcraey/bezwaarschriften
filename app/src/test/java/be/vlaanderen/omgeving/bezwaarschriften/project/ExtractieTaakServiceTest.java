@@ -534,6 +534,68 @@ class ExtractieTaakServiceTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  @Test
+  void verwijderManueelBezwaarSuccesvol() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    taak.setAantalBezwaren(3);
+    taak.setHeeftManueel(true);
+
+    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    bezwaar.setId(10L);
+    bezwaar.setTaakId(1L);
+    bezwaar.setManueel(true);
+    when(bezwaarRepository.findById(10L)).thenReturn(Optional.of(bezwaar));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+
+    // Nog 1 ander manueel bezwaar over na verwijdering
+    var anderManueel = new GeextraheerdBezwaarEntiteit();
+    anderManueel.setManueel(true);
+    when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of(anderManueel));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    service.verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L);
+
+    verify(bezwaarRepository).delete(bezwaar);
+    assertThat(taak.getAantalBezwaren()).isEqualTo(2);
+    assertThat(taak.isHeeftManueel()).isTrue();
+  }
+
+  @Test
+  void verwijderLaatstManueelBezwaarZetHeeftManueelUit() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    taak.setAantalBezwaren(2);
+    taak.setHeeftManueel(true);
+
+    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    bezwaar.setId(10L);
+    bezwaar.setTaakId(1L);
+    bezwaar.setManueel(true);
+    when(bezwaarRepository.findById(10L)).thenReturn(Optional.of(bezwaar));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+
+    // Geen manuele bezwaren meer over
+    when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of());
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    service.verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L);
+
+    assertThat(taak.isHeeftManueel()).isFalse();
+  }
+
+  @Test
+  void verwijderNietManueelBezwaarGooitForbidden() {
+    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    bezwaar.setId(10L);
+    bezwaar.setTaakId(1L);
+    bezwaar.setManueel(false);
+    when(bezwaarRepository.findById(10L)).thenReturn(Optional.of(bezwaar));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("niet manueel");
+  }
+
   private ExtractiePassageEntiteit maakPassage(Long taakId, int passageNr) {
     var p = new ExtractiePassageEntiteit();
     p.setTaakId(taakId);
