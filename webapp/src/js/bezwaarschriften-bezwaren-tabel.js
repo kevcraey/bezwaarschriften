@@ -7,12 +7,14 @@ import {VlPagerComponent} from '@domg-wc/components/block/pager/vl-pager.compone
 import {VlInputFieldComponent} from '@domg-wc/components/form/input-field/vl-input-field.component.js';
 import {VlFormLabelComponent} from '@domg-wc/components/form/form-label/vl-form-label.component.js';
 import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
+import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
 registerWebComponents([
   VlRichDataTable, VlRichDataField, VlPillComponent,
   VlSearchFilterComponent, VlPagerComponent,
   VlInputFieldComponent, VlFormLabelComponent, VlSelectComponent,
+  VlSideSheet,
 ]);
 
 const STATUS_LABELS = {
@@ -56,6 +58,61 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     super(`
       <style>
         ${vlGlobalStyles}
+        :host { display: block; transition: margin-right 0.2s ease; }
+        :host(.side-sheet-open) { margin-right: 33.3%; }
+        .side-sheet-wrapper {
+          display: flex;
+          flex-direction: column;
+          height: calc(100vh - 43px);
+          margin: -1.5rem;
+          padding: 0;
+          overflow: hidden;
+        }
+        .side-sheet-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          padding: 1rem 1.5rem;
+          border-bottom: 2px solid #e8ebee;
+          flex-shrink: 0;
+          background: white;
+        }
+        .side-sheet-titel {
+          font-weight: bold;
+          flex: 1;
+          margin-right: 1rem;
+        }
+        .side-sheet-sluit-knop {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          padding: 0;
+          color: #333;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+        .side-sheet-sluit-knop:hover { color: #000; }
+        .side-sheet-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 1rem 1.5rem;
+        }
+        .bezwaar-item {
+          margin-bottom: 1.5rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid #e8ebee;
+        }
+        .bezwaar-item:last-child { border-bottom: none; }
+        .bezwaar-samenvatting {
+          font-weight: bold;
+          margin-bottom: 0.25rem;
+        }
+        .bezwaar-passage {
+          font-style: italic;
+          line-height: 1.5;
+          color: #687483;
+        }
       </style>
       <vl-rich-data-table id="tabel" filter-closable filter-closed>
         <vl-search-filter slot="filter" alt>
@@ -79,6 +136,16 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         <vl-rich-data-field name="acties" label="Acties"></vl-rich-data-field>
         <vl-pager slot="pager" total-items="0" items-per-page="${ITEMS_PER_PAGINA}" current-page="1"></vl-pager>
       </vl-rich-data-table>
+      <vl-side-sheet id="extractie-side-sheet" hide-toggle-button>
+        <div class="side-sheet-wrapper">
+          <div class="side-sheet-header">
+            <div id="extractie-side-sheet-titel" class="side-sheet-titel"></div>
+            <button id="extractie-side-sheet-sluit" class="side-sheet-sluit-knop"
+                aria-label="Sluiten">&times;</button>
+          </div>
+          <div id="extractie-side-sheet-inhoud" class="side-sheet-body"></div>
+        </div>
+      </vl-side-sheet>
     `);
     this.__bronBezwaren = [];
     this.__takenData = {};
@@ -115,6 +182,15 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const tabel = this.shadowRoot.querySelector('#tabel');
     if (tabel) {
       tabel.addEventListener('change', (e) => this._onTabelChange(e));
+    }
+
+    const sluitKnop = this.shadowRoot.querySelector('#extractie-side-sheet-sluit');
+    const sideSheet = this.shadowRoot.querySelector('#extractie-side-sheet');
+    if (sluitKnop && sideSheet) {
+      sluitKnop.addEventListener('click', () => {
+        sideSheet.close();
+        this.classList.remove('side-sheet-open');
+      });
     }
 
     // vl-rich-data-table gebruikt webComponentPromised: registratie is asynchroon.
@@ -265,6 +341,21 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         case 'acties':
           veld.renderer = (td, rij) => {
             td.style.verticalAlign = 'middle';
+            td.style.whiteSpace = 'nowrap';
+            if (rij.status === 'extractie-klaar') {
+              const zoekBtn = document.createElement('vl-button');
+              zoekBtn.setAttribute('icon', 'search');
+              zoekBtn.setAttribute('ghost', '');
+              zoekBtn.setAttribute('label', 'Extractie-details bekijken');
+              zoekBtn.addEventListener('vl-click', (e) => {
+                e.stopPropagation();
+                this.dispatchEvent(new CustomEvent('toon-extractie-detail', {
+                  detail: {bestandsnaam: rij.bestandsnaam},
+                  bubbles: true, composed: true,
+                }));
+              });
+              td.appendChild(zoekBtn);
+            }
             const btn = document.createElement('vl-button');
             btn.setAttribute('icon', 'bin');
             btn.setAttribute('error', '');
@@ -282,6 +373,50 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           break;
       }
     });
+  }
+
+  toonExtractieDetails(projectNaam, bestandsnaam) {
+    const sideSheet = this.shadowRoot.querySelector('#extractie-side-sheet');
+    const inhoud = this.shadowRoot.querySelector('#extractie-side-sheet-inhoud');
+    const titelEl = this.shadowRoot.querySelector('#extractie-side-sheet-titel');
+    if (!sideSheet || !inhoud) return;
+
+    inhoud.innerHTML = '<p>Laden...</p>';
+    if (titelEl) titelEl.textContent = bestandsnaam;
+    sideSheet.open();
+    this.classList.add('side-sheet-open');
+
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/${encodeURIComponent(bestandsnaam)}/details`)
+        .then((response) => {
+          if (!response.ok) throw new Error('Ophalen details mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          inhoud.innerHTML = '';
+          if (titelEl) {
+            titelEl.textContent = `${data.bestandsnaam} - ${data.aantalBezwaren} bezwar${data.aantalBezwaren === 1 ? '' : 'en'} gevonden`;
+          }
+
+          data.bezwaren.forEach((bezwaar) => {
+            const item = document.createElement('div');
+            item.className = 'bezwaar-item';
+
+            const samenvatting = document.createElement('div');
+            samenvatting.className = 'bezwaar-samenvatting';
+            samenvatting.textContent = bezwaar.samenvatting;
+
+            const passage = document.createElement('div');
+            passage.className = 'bezwaar-passage';
+            passage.textContent = `\u201C${bezwaar.passage}\u201D`;
+
+            item.appendChild(samenvatting);
+            item.appendChild(passage);
+            inhoud.appendChild(item);
+          });
+        })
+        .catch(() => {
+          inhoud.innerHTML = '<p>Kon extractie-details niet laden.</p>';
+        });
   }
 
   _onTabelChange(event) {

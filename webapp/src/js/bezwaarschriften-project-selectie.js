@@ -244,6 +244,14 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       }
     });
 
+    this.shadowRoot.addEventListener('toon-extractie-detail', (e) => {
+      const {bestandsnaam} = e.detail;
+      const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+      if (tabel && this.__geselecteerdProject) {
+        tabel.toonExtractieDetails(this.__geselecteerdProject, bestandsnaam);
+      }
+    });
+
     this.shadowRoot.addEventListener('antwoord-voortgang', (e) => {
       this._werkKernbezwarenTabTitelBij(e.detail.aantalMetAntwoord, e.detail.totaal);
       if (this.__geselecteerdProject) {
