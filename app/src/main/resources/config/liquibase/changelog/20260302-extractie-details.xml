@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <changeSet id="20260302-2" author="kenzo">
+    <createTable tableName="extractie_passage">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="taak_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="passage_nr" type="int">
+        <constraints nullable="false"/>
+      </column>
+      <column name="tekst" type="text">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint
+        baseTableName="extractie_passage"
+        baseColumnNames="taak_id"
+        constraintName="fk_extractie_passage_taak"
+        referencedTableName="extractie_taak"
+        referencedColumnNames="id"
+        onDelete="CASCADE"/>
+
+    <createTable tableName="geextraheerd_bezwaar">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="taak_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="passage_nr" type="int">
+        <constraints nullable="false"/>
+      </column>
+      <column name="samenvatting" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="categorie" type="varchar(50)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint
+        baseTableName="geextraheerd_bezwaar"
+        baseColumnNames="taak_id"
+        constraintName="fk_geextraheerd_bezwaar_taak"
+        referencedTableName="extractie_taak"
+        referencedColumnNames="id"
+        onDelete="CASCADE"/>
+  </changeSet>
+
+</databaseChangeLog>
