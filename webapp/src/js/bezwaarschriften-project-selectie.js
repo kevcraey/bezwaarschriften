@@ -39,7 +39,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         ${vlGridStyles}
       </style>
       <div id="tabs-sectie">
-        <vl-tabs observe-title active-tab="documenten">
+        <vl-tabs observe-title active-tab="documenten" disable-links>
           <vl-tabs-pane id="documenten" title="Documenten">
             <vl-button id="verwerken-knop" hidden>Verwerken</vl-button>
             <vl-button id="verwijder-knop" error="" hidden>Verwijder geselecteerde</vl-button>
@@ -216,6 +216,17 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         }
       });
     }
+
+    this.shadowRoot.addEventListener('verwijder-bezwaar', (e) => {
+      const {bestandsnaam} = e.detail;
+      this._teVerwijderenBestanden = [bestandsnaam];
+      const tekst = this.shadowRoot.querySelector('#verwijder-bevestiging-tekst');
+      if (tekst) {
+        tekst.textContent = `Weet je zeker dat je "${bestandsnaam}" wilt verwijderen? Het bestand en bijhorende extractie-resultaten worden permanent verwijderd.`;
+      }
+      const modal = this.shadowRoot.querySelector('#verwijder-modal');
+      if (modal) modal.open();
+    });
 
     this.shadowRoot.addEventListener('herstart-taak', (e) => {
       const {bestandsnaam} = e.detail;

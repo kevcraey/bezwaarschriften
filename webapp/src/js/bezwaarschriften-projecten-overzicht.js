@@ -19,15 +19,22 @@ export class BezwaarschriftenProjectenOverzicht extends BaseHTMLElement {
     super(`
       <style>
         ${vlGlobalStyles}
-        .actieknoppen { margin-bottom: 1rem; display: flex; gap: 1rem; }
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+        .header h1 { margin: 0; }
+        .filter { margin-bottom: 1rem; max-width: 300px; }
+        .acties-cel { display: flex; justify-content: flex-end; }
       </style>
-      <div class="actieknoppen">
-        <vl-button id="toevoegen-knop">Project toevoegen</vl-button>
-        <vl-button id="verwijder-knop" error="" hidden>Project verwijderen</vl-button>
+      <div class="header">
+        <h1 class="vl-title vl-title--h1">Overzicht projecten</h1>
+        <vl-button id="toevoegen-knop" icon="add">Project toevoegen</vl-button>
+      </div>
+      <div class="filter">
+        <vl-input-field id="filter-naam" type="text" name="naam" placeholder="Zoek op naam..." block></vl-input-field>
       </div>
       <vl-rich-data-table id="tabel">
         <vl-rich-data-field name="naam" label="Naam" sortable></vl-rich-data-field>
-        <vl-rich-data-field name="aantalDocumenten" label="Aantal documenten" sortable></vl-rich-data-field>
+        <vl-rich-data-field name="aantalDocumenten" label="Documenten" sortable></vl-rich-data-field>
+        <vl-rich-data-field name="acties" label="Acties"></vl-rich-data-field>
       </vl-rich-data-table>
       <vl-modal id="toevoegen-modal" title="Project toevoegen" closable>
         <div slot="content">
@@ -50,8 +57,10 @@ export class BezwaarschriftenProjectenOverzicht extends BaseHTMLElement {
       <vl-toaster id="toaster"></vl-toaster>
     `);
     this.__projecten = [];
-    this.__geselecteerdProject = null;
     this.__tabelKlaar = false;
+    this.__filterTekst = '';
+    this.__sorting = [];
+    this.__teVerwijderenProject = null;
   }
 
   connectedCallback() {
@@ -68,13 +77,39 @@ export class BezwaarschriftenProjectenOverzicht extends BaseHTMLElement {
   _configureerRenderers() {
     const velden = this.shadowRoot.querySelectorAll('vl-rich-data-field');
     velden.forEach((veld) => {
-      if (veld.getAttribute('name') === 'naam') {
-        veld.renderer = (td, rij) => {
-          const a = document.createElement('a');
-          a.href = `#/project/${encodeURIComponent(rij.naam)}`;
-          a.textContent = rij.naam;
-          td.appendChild(a);
-        };
+      switch (veld.getAttribute('name')) {
+        case 'naam':
+          veld.renderer = (td, rij) => {
+            td.style.width = '100%';
+            td.style.verticalAlign = 'middle';
+            const a = document.createElement('a');
+            a.href = `#/project/${encodeURIComponent(rij.naam)}`;
+            a.textContent = rij.naam;
+            td.appendChild(a);
+          };
+          break;
+        case 'aantalDocumenten':
+          veld.renderer = (td, rij) => {
+            td.style.verticalAlign = 'middle';
+            td.style.textAlign = 'center';
+            td.textContent = rij.aantalDocumenten;
+          };
+          break;
+        case 'acties':
+          veld.renderer = (td, rij) => {
+            td.style.verticalAlign = 'middle';
+            const btn = document.createElement('vl-button');
+            btn.setAttribute('icon', 'bin');
+            btn.setAttribute('error', '');
+            btn.setAttribute('ghost', '');
+            btn.setAttribute('label', 'Project verwijderen');
+            btn.addEventListener('vl-click', (e) => {
+              e.stopPropagation();
+              this._toonVerwijderModal(rij.naam, rij.aantalDocumenten);
+            });
+            td.appendChild(btn);
+          };
+          break;
       }
     });
   }
@@ -85,8 +120,17 @@ export class BezwaarschriftenProjectenOverzicht extends BaseHTMLElement {
       tabel.addEventListener('change', (e) => {
         const detail = e.detail || {};
         if (detail.sorting) {
-          this._sorteerEnToon(detail.sorting);
+          this.__sorting = detail.sorting;
+          this._toonProjecten();
         }
+      });
+    }
+
+    const filterInvoer = this.shadowRoot.querySelector('#filter-naam');
+    if (filterInvoer) {
+      filterInvoer.addEventListener('input', (e) => {
+        this.__filterTekst = e.target.value || '';
+        this._toonProjecten();
       });
     }
 
@@ -107,25 +151,20 @@ export class BezwaarschriftenProjectenOverzicht extends BaseHTMLElement {
       toevoegenBevestig.addEventListener('vl-click', () => this._voegProjectToe());
     }
 
-    const verwijderKnop = this.shadowRoot.querySelector('#verwijder-knop');
-    if (verwijderKnop) {
-      verwijderKnop.addEventListener('vl-click', () => {
-        if (!this.__geselecteerdProject) return;
-        const project = this.__projecten.find((p) => p.naam === this.__geselecteerdProject);
-        const aantal = project ? project.aantalDocumenten : 0;
-        const tekst = this.shadowRoot.querySelector('#verwijder-bevestiging-tekst');
-        if (tekst) {
-          tekst.textContent = `Weet je zeker dat je project '${this.__geselecteerdProject}' wilt verwijderen? ${aantal} document(en) en bijhorende extractie-resultaten worden permanent verwijderd.`;
-        }
-        const modal = this.shadowRoot.querySelector('#verwijder-modal');
-        if (modal) modal.open();
-      });
-    }
-
     const verwijderBevestig = this.shadowRoot.querySelector('#verwijder-bevestig-knop');
     if (verwijderBevestig) {
       verwijderBevestig.addEventListener('vl-click', () => this._verwijderProject());
     }
+  }
+
+  _toonVerwijderModal(naam, aantalDocumenten) {
+    this.__teVerwijderenProject = naam;
+    const tekst = this.shadowRoot.querySelector('#verwijder-bevestiging-tekst');
+    if (tekst) {
+      tekst.textContent = `Weet je zeker dat je project '${naam}' wilt verwijderen? ${aantalDocumenten} document(en) en bijhorende extractie-resultaten worden permanent verwijderd.`;
+    }
+    const modal = this.shadowRoot.querySelector('#verwijder-modal');
+    if (modal) modal.open();
   }
 
   _laadProjecten() {
@@ -148,49 +187,30 @@ export class BezwaarschriftenProjectenOverzicht extends BaseHTMLElement {
     const tabel = this.shadowRoot.querySelector('#tabel');
     if (!tabel) return;
 
-    tabel.data = {data: this.__projecten};
+    let resultaat = this.__projecten;
+    if (this.__filterTekst) {
+      const zoek = this.__filterTekst.toLowerCase();
+      resultaat = resultaat.filter((p) => p.naam.toLowerCase().includes(zoek));
+    }
+    resultaat = this._sorteerProjecten(resultaat, this.__sorting);
 
-    requestAnimationFrame(() => this._configureerSelectie());
+    tabel.data = {data: resultaat};
   }
 
-  _configureerSelectie() {
-    const tabel = this.shadowRoot.querySelector('#tabel');
-    if (!tabel) return;
-    const vlTable = tabel.shadowRoot && tabel.shadowRoot.querySelector('vl-table');
-    if (!vlTable) return;
-    const innerTable = vlTable.querySelector('table');
-    if (!innerTable) return;
-
-    const rijen = innerTable.querySelectorAll('tbody tr');
-    rijen.forEach((rij) => {
-      rij.style.cursor = 'pointer';
-      rij.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A') return;
-        const naamCel = rij.querySelector('td a');
-        if (naamCel) {
-          const naam = naamCel.textContent;
-          this._selecteerRij(naam, rij, innerTable);
+  _sorteerProjecten(projecten, sorting) {
+    if (!sorting || sorting.length === 0) return projecten;
+    return [...projecten].sort((a, b) => {
+      for (const sort of sorting) {
+        let cmp = 0;
+        if (sort.name === 'aantalDocumenten') {
+          cmp = a.aantalDocumenten - b.aantalDocumenten;
+        } else {
+          cmp = String(a[sort.name] || '').localeCompare(String(b[sort.name] || ''), 'nl');
         }
-      });
+        if (cmp !== 0) return sort.direction === 'asc' ? cmp : -cmp;
+      }
+      return 0;
     });
-  }
-
-  _selecteerRij(naam, rij, tabel) {
-    tabel.querySelectorAll('tbody tr').forEach((r) => {
-      r.style.backgroundColor = '';
-    });
-
-    if (this.__geselecteerdProject === naam) {
-      this.__geselecteerdProject = null;
-    } else {
-      this.__geselecteerdProject = naam;
-      rij.style.backgroundColor = '#e8ebee';
-    }
-
-    const verwijderKnop = this.shadowRoot.querySelector('#verwijder-knop');
-    if (verwijderKnop) {
-      verwijderKnop.hidden = !this.__geselecteerdProject;
-    }
   }
 
   _voegProjectToe() {
@@ -231,8 +251,8 @@ export class BezwaarschriftenProjectenOverzicht extends BaseHTMLElement {
   }
 
   _verwijderProject() {
-    if (!this.__geselecteerdProject) return;
-    const naam = this.__geselecteerdProject;
+    if (!this.__teVerwijderenProject) return;
+    const naam = this.__teVerwijderenProject;
 
     fetch(`/api/v1/projects/${encodeURIComponent(naam)}`, {
       method: 'DELETE',
@@ -241,40 +261,13 @@ export class BezwaarschriftenProjectenOverzicht extends BaseHTMLElement {
           if (!response.ok) throw new Error('Verwijderen mislukt');
           const modal = this.shadowRoot.querySelector('#verwijder-modal');
           if (modal) modal.close();
-          this.__geselecteerdProject = null;
-          const verwijderKnop = this.shadowRoot.querySelector('#verwijder-knop');
-          if (verwijderKnop) verwijderKnop.hidden = true;
+          this.__teVerwijderenProject = null;
           this._toonToast('success', `Project '${naam}' verwijderd.`);
           this._laadProjecten();
         })
         .catch(() => {
           this._toonToast('error', 'Verwijderen mislukt.');
         });
-  }
-
-  _sorteerEnToon(sorting) {
-    if (!sorting || sorting.length === 0) {
-      this._toonProjecten();
-      return;
-    }
-    const gesorteerd = [...this.__projecten].sort((a, b) => {
-      for (const sort of sorting) {
-        let cmp = 0;
-        if (sort.name === 'aantalDocumenten') {
-          cmp = a.aantalDocumenten - b.aantalDocumenten;
-        } else {
-          cmp = String(a[sort.name] || '').localeCompare(String(b[sort.name] || ''), 'nl');
-        }
-        if (cmp !== 0) return sort.direction === 'asc' ? cmp : -cmp;
-      }
-      return 0;
-    });
-
-    const tabel = this.shadowRoot.querySelector('#tabel');
-    if (tabel) {
-      tabel.data = {data: gesorteerd};
-      requestAnimationFrame(() => this._configureerSelectie());
-    }
   }
 
   _toonToast(type, bericht) {

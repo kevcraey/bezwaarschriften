@@ -74,8 +74,9 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         </vl-search-filter>
         <vl-rich-data-field name="selectie" label=" "></vl-rich-data-field>
         <vl-rich-data-field name="bestandsnaam" label="Bestandsnaam" sortable></vl-rich-data-field>
-        <vl-rich-data-field name="aantalBezwaren" label="Aantal bezwaren" sortable></vl-rich-data-field>
+        <vl-rich-data-field name="aantalBezwaren" label="Bezwaren" sortable></vl-rich-data-field>
         <vl-rich-data-field name="status" label="Status" sortable></vl-rich-data-field>
+        <vl-rich-data-field name="acties" label="Acties"></vl-rich-data-field>
         <vl-pager slot="pager" total-items="0" items-per-page="${ITEMS_PER_PAGINA}" current-page="1"></vl-pager>
       </vl-rich-data-table>
     `);
@@ -176,6 +177,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       switch (veld.getAttribute('name')) {
         case 'selectie':
           veld.renderer = (td, rij) => {
+            td.style.verticalAlign = 'middle';
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.className = 'rij-checkbox';
@@ -187,6 +189,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           break;
         case 'bestandsnaam':
           veld.renderer = (td, rij) => {
+            td.style.verticalAlign = 'middle';
+            td.style.width = '100%';
             if (this._projectNaam) {
               const a = document.createElement('a');
               a.href = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(rij.bestandsnaam)}/download`;
@@ -200,12 +204,16 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           break;
         case 'aantalBezwaren':
           veld.renderer = (td, rij) => {
+            td.style.verticalAlign = 'middle';
+            td.style.textAlign = 'center';
             td.textContent = rij.aantalBezwaren != null ? rij.aantalBezwaren : '';
           };
           break;
         case 'status':
           veld.renderer = (td, rij) => {
             td.className = 'status-cel';
+            td.style.verticalAlign = 'middle';
+            td.style.textAlign = 'center';
             td.style.minWidth = '220px';
             td.dataset.bestandsnaam = rij.bestandsnaam;
             const pill = document.createElement('vl-pill');
@@ -252,6 +260,24 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             }
 
             td.appendChild(pill);
+          };
+          break;
+        case 'acties':
+          veld.renderer = (td, rij) => {
+            td.style.verticalAlign = 'middle';
+            const btn = document.createElement('vl-button');
+            btn.setAttribute('icon', 'bin');
+            btn.setAttribute('error', '');
+            btn.setAttribute('ghost', '');
+            btn.setAttribute('label', 'Bestand verwijderen');
+            btn.addEventListener('vl-click', (e) => {
+              e.stopPropagation();
+              this.dispatchEvent(new CustomEvent('verwijder-bezwaar', {
+                detail: {bestandsnaam: rij.bestandsnaam},
+                bubbles: true, composed: true,
+              }));
+            });
+            td.appendChild(btn);
           };
           break;
       }
@@ -316,7 +342,10 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       },
     };
 
-    requestAnimationFrame(() => this._configureerSelecteerAlles());
+    requestAnimationFrame(() => {
+      this._configureerSelecteerAlles();
+      this._centreerKolomHoofdingen();
+    });
     this._dispatchSelectieGewijzigd();
     this._beheerTimer();
   }
@@ -486,6 +515,16 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     });
     firstTh.textContent = '';
     firstTh.appendChild(cb);
+  }
+
+  _centreerKolomHoofdingen() {
+    const innerTable = this._geefInnerTable();
+    if (!innerTable) return;
+    const headers = innerTable.querySelectorAll('thead th');
+    // kolommen: selectie(0), bestandsnaam(1), bezwaren(2), status(3), acties(4)
+    [2, 3].forEach((i) => {
+      if (headers[i]) headers[i].style.textAlign = 'center';
+    });
   }
 
   _dispatchSelectieGewijzigd() {
