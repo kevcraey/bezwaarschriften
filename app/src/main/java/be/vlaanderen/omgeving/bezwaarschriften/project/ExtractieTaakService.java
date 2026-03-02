@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import javax.transaction.Transactional;
 import org.slf4j.Logger;
@@ -289,5 +290,40 @@ public class ExtractieTaakService {
     }
     repository.delete(taak);
     LOGGER.info("Taak {} verwijderd uit project '{}'", taakId, projectNaam);
+  }
+
+  /**
+   * Geeft de extractie-details voor een bestand binnen een project.
+   *
+   * <p>Zoekt de meest recente afgeronde taak voor het bestand en combineert
+   * de geextraheerde bezwaren met hun bijbehorende passages.
+   *
+   * @param projectNaam naam van het project
+   * @param bestandsnaam naam van het bestand
+   * @return extractie-details, of null als geen afgeronde taak bestaat
+   */
+  public ExtractieDetailDto geefExtractieDetails(String projectNaam, String bestandsnaam) {
+    var taak = repository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, bestandsnaam)
+        .orElse(null);
+    if (taak == null || taak.getStatus() != ExtractieTaakStatus.KLAAR) {
+      return null;
+    }
+
+    var passages = passageRepository.findByTaakId(taak.getId());
+    var bezwaren = bezwaarRepository.findByTaakId(taak.getId());
+
+    var passageMap = new HashMap<Integer, String>();
+    for (var p : passages) {
+      passageMap.put(p.getPassageNr(), p.getTekst());
+    }
+
+    var details = bezwaren.stream()
+        .map(b -> new ExtractieDetailDto.BezwaarDetail(
+            b.getSamenvatting(),
+            passageMap.getOrDefault(b.getPassageNr(), "")))
+        .toList();
+
+    return new ExtractieDetailDto(bestandsnaam, details.size(), details);
   }
 }

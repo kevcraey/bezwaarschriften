@@ -305,6 +305,54 @@ class ExtractieTaakServiceTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  @Test
+  void geefExtractieDetailsJointPassagesMetBezwaren() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "bezwaar-001.txt")).thenReturn(Optional.of(taak));
+
+    var passage = new ExtractiePassageEntiteit();
+    passage.setTaakId(1L);
+    passage.setPassageNr(1);
+    passage.setTekst("De geluidsoverlast zal onze nachtrust verstoren.");
+    when(passageRepository.findByTaakId(1L)).thenReturn(List.of(passage));
+
+    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    bezwaar.setTaakId(1L);
+    bezwaar.setPassageNr(1);
+    bezwaar.setSamenvatting("Geluidshinder");
+    bezwaar.setCategorie("milieu");
+    when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of(bezwaar));
+
+    var result = service.geefExtractieDetails("windmolens", "bezwaar-001.txt");
+
+    assertThat(result).isNotNull();
+    assertThat(result.bestandsnaam()).isEqualTo("bezwaar-001.txt");
+    assertThat(result.aantalBezwaren()).isEqualTo(1);
+    assertThat(result.bezwaren().get(0).samenvatting()).isEqualTo("Geluidshinder");
+    assertThat(result.bezwaren().get(0).passage())
+        .isEqualTo("De geluidsoverlast zal onze nachtrust verstoren.");
+  }
+
+  @Test
+  void geefExtractieDetailsGeeftNullAlsTaakNietKlaar() {
+    var taak = maakTaak(1L, "windmolens", "bezig.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "bezig.txt")).thenReturn(Optional.of(taak));
+
+    var result = service.geefExtractieDetails("windmolens", "bezig.txt");
+    assertThat(result).isNull();
+  }
+
+  @Test
+  void geefExtractieDetailsGeeftNullAlsTaakNietBestaat() {
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "onbekend.txt")).thenReturn(Optional.empty());
+
+    var result = service.geefExtractieDetails("windmolens", "onbekend.txt");
+    assertThat(result).isNull();
+  }
+
   private ExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam,
       ExtractieTaakStatus status) {
     var taak = new ExtractieTaak();
