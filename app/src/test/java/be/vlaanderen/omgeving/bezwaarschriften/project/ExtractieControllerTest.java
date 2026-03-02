@@ -91,6 +91,35 @@ class ExtractieControllerTest {
   }
 
   @Test
+  void geeftExtractieDetailsVoorBestand() throws Exception {
+    var detail = new ExtractieDetailDto("bezwaar-001.txt", 2, List.of(
+        new ExtractieDetailDto.BezwaarDetail(
+            "Geluidshinder door evenementen", "De geluidsoverlast zal..."),
+        new ExtractieDetailDto.BezwaarDetail(
+            "Parkeertekort", "Er zijn onvoldoende parkeerplaatsen...")));
+
+    when(extractieTaakService.geefExtractieDetails("windmolens", "bezwaar-001.txt"))
+        .thenReturn(detail);
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/extracties/bezwaar-001.txt/details"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bestandsnaam").value("bezwaar-001.txt"))
+        .andExpect(jsonPath("$.aantalBezwaren").value(2))
+        .andExpect(jsonPath("$.bezwaren[0].samenvatting").value("Geluidshinder door evenementen"))
+        .andExpect(jsonPath("$.bezwaren[0].passage").value("De geluidsoverlast zal..."))
+        .andExpect(jsonPath("$.bezwaren[1].samenvatting").value("Parkeertekort"));
+  }
+
+  @Test
+  void geeftExtractieDetails404AlsGeenResultaat() throws Exception {
+    when(extractieTaakService.geefExtractieDetails("windmolens", "onbekend.txt"))
+        .thenReturn(null);
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/extracties/onbekend.txt/details"))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
   void annulerenGeeft404BijOnbekendeTaak() throws Exception {
     doThrow(new IllegalArgumentException("Taak niet gevonden"))
         .when(extractieTaakService).verwijderTaak("windmolens", 999L);

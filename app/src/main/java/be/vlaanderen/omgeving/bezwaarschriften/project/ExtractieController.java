@@ -90,6 +90,23 @@ public class ExtractieController {
     }
   }
 
+  /**
+   * Geeft de extractie-details voor een specifiek bestand binnen een project.
+   *
+   * @param naam projectnaam
+   * @param bestandsnaam naam van het bestand
+   * @return extractie-details of 404 als geen afgeronde taak bestaat
+   */
+  @GetMapping("/{naam}/extracties/{bestandsnaam}/details")
+  public ResponseEntity<ExtractieDetailDto> geefDetails(
+      @PathVariable String naam, @PathVariable String bestandsnaam) {
+    var detail = extractieTaakService.geefExtractieDetails(naam, bestandsnaam);
+    if (detail == null) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(detail);
+  }
+
   /** Response DTO voor het verwerken-endpoint. */
   record VerwerkenResponse(int aantalIngepland) {}
 

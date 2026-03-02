@@ -28,11 +28,18 @@ class ExtractieTaakServiceTest {
   @Mock
   private ProjectService projectService;
 
+  @Mock
+  private ExtractiePassageRepository passageRepository;
+
+  @Mock
+  private GeextraheerdBezwaarRepository bezwaarRepository;
+
   private ExtractieTaakService service;
 
   @BeforeEach
   void setUp() {
-    service = new ExtractieTaakService(repository, notificatie, projectService, 3, 3);
+    service = new ExtractieTaakService(repository, notificatie, projectService,
+        passageRepository, bezwaarRepository, 3, 3);
   }
 
   @Test
@@ -107,6 +114,36 @@ class ExtractieTaakServiceTest {
     assertThat(taak.getAantalBezwaren()).isEqualTo(7);
     assertThat(taak.getAfgerondOp()).isNotNull();
     verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));
+  }
+
+  @Test
+  void markeerKlaarSlaatPassagesEnBezwarenOp() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var resultaat = new ExtractieResultaat(500, 2,
+        List.of(new Passage(1, "Passage een"), new Passage(2, "Passage twee")),
+        List.of(
+            new GeextraheerdBezwaar(1, "Samenvatting een", "milieu"),
+            new GeextraheerdBezwaar(2, "Samenvatting twee", "mobiliteit")),
+        "Docsamenvatting");
+
+    service.markeerKlaar(1L, resultaat);
+
+    assertThat(taak.getStatus()).isEqualTo(ExtractieTaakStatus.KLAAR);
+    assertThat(taak.getAantalWoorden()).isEqualTo(500);
+    assertThat(taak.getAantalBezwaren()).isEqualTo(2);
+
+    var passageCaptor = ArgumentCaptor.forClass(ExtractiePassageEntiteit.class);
+    verify(passageRepository, times(2)).save(passageCaptor.capture());
+    assertThat(passageCaptor.getAllValues().get(0).getTekst()).isEqualTo("Passage een");
+    assertThat(passageCaptor.getAllValues().get(0).getTaakId()).isEqualTo(1L);
+
+    var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
+    verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
+    assertThat(bezwaarCaptor.getAllValues().get(0).getSamenvatting()).isEqualTo("Samenvatting een");
+    assertThat(bezwaarCaptor.getAllValues().get(0).getTaakId()).isEqualTo(1L);
   }
 
   @Test
@@ -266,6 +303,54 @@ class ExtractieTaakServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(() ->
         service.verwijderTaak("windmolens", 1L))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void geefExtractieDetailsJointPassagesMetBezwaren() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "bezwaar-001.txt")).thenReturn(Optional.of(taak));
+
+    var passage = new ExtractiePassageEntiteit();
+    passage.setTaakId(1L);
+    passage.setPassageNr(1);
+    passage.setTekst("De geluidsoverlast zal onze nachtrust verstoren.");
+    when(passageRepository.findByTaakId(1L)).thenReturn(List.of(passage));
+
+    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    bezwaar.setTaakId(1L);
+    bezwaar.setPassageNr(1);
+    bezwaar.setSamenvatting("Geluidshinder");
+    bezwaar.setCategorie("milieu");
+    when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of(bezwaar));
+
+    var result = service.geefExtractieDetails("windmolens", "bezwaar-001.txt");
+
+    assertThat(result).isNotNull();
+    assertThat(result.bestandsnaam()).isEqualTo("bezwaar-001.txt");
+    assertThat(result.aantalBezwaren()).isEqualTo(1);
+    assertThat(result.bezwaren().get(0).samenvatting()).isEqualTo("Geluidshinder");
+    assertThat(result.bezwaren().get(0).passage())
+        .isEqualTo("De geluidsoverlast zal onze nachtrust verstoren.");
+  }
+
+  @Test
+  void geefExtractieDetailsGeeftNullAlsTaakNietKlaar() {
+    var taak = maakTaak(1L, "windmolens", "bezig.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "bezig.txt")).thenReturn(Optional.of(taak));
+
+    var result = service.geefExtractieDetails("windmolens", "bezig.txt");
+    assertThat(result).isNull();
+  }
+
+  @Test
+  void geefExtractieDetailsGeeftNullAlsTaakNietBestaat() {
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "onbekend.txt")).thenReturn(Optional.empty());
+
+    var result = service.geefExtractieDetails("windmolens", "onbekend.txt");
+    assertThat(result).isNull();
   }
 
   private ExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam,
