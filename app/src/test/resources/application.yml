@@ -22,6 +22,8 @@ spring:
 bezwaarschriften:
   input:
     folder: input
+  testdata:
+    pad: testdata/gaverbeek-stadion
 
 management:
   endpoint:
