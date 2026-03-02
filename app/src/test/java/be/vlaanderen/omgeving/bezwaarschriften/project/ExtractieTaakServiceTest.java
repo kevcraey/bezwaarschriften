@@ -477,9 +477,12 @@ class ExtractieTaakServiceTest {
     verify(bezwaarRepository).save(bezwaarCaptor.capture());
     assertThat(bezwaarCaptor.getValue().isManueel()).isTrue();
     assertThat(bezwaarCaptor.getValue().getPassageNr()).isEqualTo(4);
+    assertThat(bezwaarCaptor.getValue().getCategorie()).isEqualTo("overig");
 
     assertThat(taak.isHeeftManueel()).isTrue();
     assertThat(taak.getAantalBezwaren()).isEqualTo(1);
+
+    verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));
   }
 
   @Test
