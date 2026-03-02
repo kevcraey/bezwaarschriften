@@ -28,21 +28,21 @@ public class AiExtractieVerwerker implements ExtractieVerwerker {
 
       ## Wat is een individueel bezwaar?
 
-      Een individueel bezwaar is \u00e9\u00e9n concreet punt van bezwaar dat zelfstandig beantwoord
+      Een individueel bezwaar is een concreet punt van bezwaar dat zelfstandig beantwoord
       kan worden door de vergunningverlenende overheid. Voorbeelden:
       - "De geluidsoverlast door evenementen zal onze nachtrust verstoren" \
-      \u2192 \u00e9\u00e9n bezwaar (geluidshinder)
+      = een bezwaar (geluidshinder)
       - "Het verkeer zal toenemen EN er zijn onvoldoende parkeerplaatsen" \
-      \u2192 TWEE bezwaren (verkeerslast + parkeertekort), ook al staan ze in dezelfde zin
+      = TWEE bezwaren (verkeerslast + parkeertekort), ook al staan ze in dezelfde zin
 
       Splits passages die meerdere bezwaren bevatten altijd op in afzonderlijke items.
-      E\u00e9n passage kan dus leiden tot meerdere bezwaren.
+      Een passage kan dus leiden tot meerdere bezwaren.
 
       ## Per bezwaar lever je:
 
       1. **passage**: De letterlijke tekst uit het bezwaarschrift waaruit dit bezwaar blijkt.
-      2. **samenvatting**: E\u00e9n zin die het bezwaar kernachtig beschrijft in je eigen woorden.
-      3. **categorie**: E\u00e9n van: milieu, mobiliteit, ruimtelijke_ordening, procedure,
+      2. **samenvatting**: Een zin die het bezwaar kernachtig beschrijft in je eigen woorden.
+      3. **categorie**: Een van: milieu, mobiliteit, ruimtelijke_ordening, procedure,
          gezondheid, economisch, sociaal, overig.
 
       Antwoord UITSLUITEND in het volgende JSON-formaat (geen extra tekst):
@@ -55,7 +55,7 @@ public class AiExtractieVerwerker implements ExtractieVerwerker {
 
   private static final String USER_PROMPT_TEMPLATE = """
       Context: Openbaar onderzoek voor het project "Herontwikkeling Gaverbeek Stadion"
-      in Waregem \u2014 bouw van een multifunctioneel stadion met parking, commerci\u00eble ruimtes
+      in Waregem - bouw van een multifunctioneel stadion met parking, commerciele ruimtes
       en publieke groenzones langs de Gaverbeek.
 
       Analyseer het volgende bezwaarschrift en extraheer alle individuele bezwaren:
