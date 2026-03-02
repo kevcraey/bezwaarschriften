@@ -47,6 +47,9 @@ public class ExtractieTaak {
   @Column(name = "heeft_opmerkingen", nullable = false)
   private boolean heeftOpmerkingen = false;
 
+  @Column(name = "heeft_manueel", nullable = false)
+  private boolean heeftManueel = false;
+
   @Column(name = "foutmelding", columnDefinition = "text")
   private String foutmelding;
 
@@ -133,6 +136,14 @@ public class ExtractieTaak {
 
   public void setHeeftOpmerkingen(boolean heeftOpmerkingen) {
     this.heeftOpmerkingen = heeftOpmerkingen;
+  }
+
+  public boolean isHeeftManueel() {
+    return heeftManueel;
+  }
+
+  public void setHeeftManueel(boolean heeftManueel) {
+    this.heeftManueel = heeftManueel;
   }
 
   public String getFoutmelding() {

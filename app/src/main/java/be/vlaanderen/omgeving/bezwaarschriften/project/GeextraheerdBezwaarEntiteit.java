@@ -30,6 +30,9 @@ public class GeextraheerdBezwaarEntiteit {
   @Column(name = "passage_gevonden", nullable = false)
   private boolean passageGevonden = true;
 
+  @Column(name = "manueel", nullable = false)
+  private boolean manueel = false;
+
   public Long getId() {
     return id;
   }
@@ -76,5 +79,13 @@ public class GeextraheerdBezwaarEntiteit {
 
   public void setPassageGevonden(boolean passageGevonden) {
     this.passageGevonden = passageGevonden;
+  }
+
+  public boolean isManueel() {
+    return manueel;
+  }
+
+  public void setManueel(boolean manueel) {
+    this.manueel = manueel;
   }
 }
