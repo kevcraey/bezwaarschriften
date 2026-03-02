@@ -7,5 +7,6 @@
   <include file="config/liquibase/changelog/20260228-extractie-taak.xml"/>
   <include file="config/liquibase/changelog/20260301-kernbezwaar-antwoord.xml"/>
   <include file="config/liquibase/changelog/20260301-kernbezwaar-persistentie.xml"/>
+  <include file="config/liquibase/changelog/20260302-consolidatie-taak.xml"/>
 
 </databaseChangeLog>

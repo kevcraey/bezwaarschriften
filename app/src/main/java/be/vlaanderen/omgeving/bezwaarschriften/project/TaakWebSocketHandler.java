@@ -1,5 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieNotificatie;
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -19,7 +21,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
  */
 @Component
 public class TaakWebSocketHandler extends TextWebSocketHandler
-    implements ExtractieNotificatie {
+    implements ExtractieNotificatie, ConsolidatieNotificatie {
 
   private static final Logger LOG = LoggerFactory.getLogger(TaakWebSocketHandler.class);
 
@@ -45,6 +47,11 @@ public class TaakWebSocketHandler extends TextWebSocketHandler
   @Override
   public void taakGewijzigd(ExtractieTaakDto taak) {
     verstuur(Map.of("type", "taak-update", "taak", taak));
+  }
+
+  @Override
+  public void consolidatieTaakGewijzigd(ConsolidatieTaakDto taak) {
+    verstuur(Map.of("type", "consolidatie-update", "taak", taak));
   }
 
   void verstuur(Map<String, Object> bericht) {
