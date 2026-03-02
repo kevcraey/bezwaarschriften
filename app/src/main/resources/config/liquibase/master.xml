@@ -9,5 +9,6 @@
   <include file="config/liquibase/changelog/20260301-kernbezwaar-persistentie.xml"/>
   <include file="config/liquibase/changelog/20260302-consolidatie-taak.xml"/>
   <include file="config/liquibase/changelog/20260302-extractie-details.xml"/>
+  <include file="config/liquibase/changelog/20260302-passage-validatie.xml"/>
 
 </databaseChangeLog>

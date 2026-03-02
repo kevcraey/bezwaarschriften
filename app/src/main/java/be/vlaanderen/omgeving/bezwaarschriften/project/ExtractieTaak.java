@@ -44,6 +44,9 @@ public class ExtractieTaak {
   @Column(name = "aantal_bezwaren")
   private Integer aantalBezwaren;
 
+  @Column(name = "heeft_opmerkingen", nullable = false)
+  private boolean heeftOpmerkingen = false;
+
   @Column(name = "foutmelding", columnDefinition = "text")
   private String foutmelding;
 
@@ -122,6 +125,14 @@ public class ExtractieTaak {
 
   public void setAantalBezwaren(Integer aantalBezwaren) {
     this.aantalBezwaren = aantalBezwaren;
+  }
+
+  public boolean isHeeftOpmerkingen() {
+    return heeftOpmerkingen;
+  }
+
+  public void setHeeftOpmerkingen(boolean heeftOpmerkingen) {
+    this.heeftOpmerkingen = heeftOpmerkingen;
   }
 
   public String getFoutmelding() {
