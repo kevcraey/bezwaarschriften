@@ -32,4 +32,21 @@ public class ExtractieConfig {
     executor.initialize();
     return executor;
   }
+
+  /**
+   * Creëert een {@link ThreadPoolTaskExecutor} voor het uitvoeren van consolidatie-taken.
+   *
+   * @param maxConcurrent maximum aantal gelijktijdige verwerkingen
+   * @return geconfigureerde task executor
+   */
+  @Bean
+  public ThreadPoolTaskExecutor consolidatieExecutor(
+      @Value("${bezwaarschriften.consolidatie.max-concurrent:3}") int maxConcurrent) {
+    var executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(maxConcurrent);
+    executor.setMaxPoolSize(maxConcurrent);
+    executor.setThreadNamePrefix("consolidatie-");
+    executor.initialize();
+    return executor;
+  }
 }
