@@ -26,7 +26,7 @@ class MockExtractieVerwerkerTest {
 
   @BeforeEach
   void setUp() {
-    verwerker = new MockExtractieVerwerker(ingestiePoort, "input", 0, 0);
+    verwerker = new MockExtractieVerwerker(ingestiePoort, "input", "", 0, 0);
   }
 
   @Test
