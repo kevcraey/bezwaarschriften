@@ -1,0 +1,82 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Middels dit schrijven wens ik formeel bezwaar aan te tekenen tegen infrastructuurwerken met aanleg van parkeertorens die, zowat onvermijdelijk, rampzalige gevolgen voor mobiliteit, stilte en leefkwaliteit in buurtschappen zoals de Biest met zich mee zal dragen."
+    },
+    {
+      "id": 2,
+      "tekst": "Het actuele MER draaft vrolijk de illusie op door te stellen dat \"het sluipverkeer door ANPR-camera's bedwongen zal worden\". Dit tart eigenlijk de complete zin voor realiteit."
+    },
+    {
+      "id": 3,
+      "tekst": "U dient als ruimtelijk uitvoerder te bekijken hoe een meute van liefst zestienduizend autogebonden (conform de 20 tot 30 procent 'modal shift' target, wat in de realiteit op 70 a 80 procent in personenwagens uitdraait) bezoekers navigeert in geval van obstructies."
+    },
+    {
+      "id": 4,
+      "tekst": "Zodra we in november bij regenweer of een ongeval op de noordboog zitten tegen de E17, rolt een stootgolf van gps-geleid sluipverkeer onherroepelijk regelrecht de dichtstbebouwde buurten in om achterlangs alsnog bij die zogenaamd fantastisch ontsloten torens aan te meren."
+    },
+    {
+      "id": 5,
+      "tekst": "Flitsen en achteraf boetes uitschrijven - mocht het lokaal politiekorps de capaciteit hiertoe op structurele basis overigens hebben, iets waaraan hevig wordt getwijfeld - zal aan vooraanstaande frustraties van bewoners niets wijzigen."
+    },
+    {
+      "id": 6,
+      "tekst": "Een geviseerde inlander lapt soms eenmaal per jaar een boete aan z'n broek, de lokale gemeenschap kampt echter tientallen avonden per seizoen met ondoordringbare rijen staal en verblinding langs voorgevels."
+    },
+    {
+      "id": 7,
+      "tekst": "Ik vereis dan ook nadrukkelijk inzage in een robuuster plan voor perimeterinrichting die niet puur camera-geleid is. Waarom geen dynamische en bemande blokkades opgesteld ver in de uitvalzones met strikte controlebewijzen louter voor lokaal verkeer?"
+    },
+    {
+      "id": 8,
+      "tekst": "Daarnaast dring ik erop aan dat minstens zestig procent van dit 'vrij' gereserveerd aantal torenplaatsen exclusief te binden valt aan het reserveren van park en ride locaties buiten Waregem-centrum! Dat levert pas fundamenteel voordelige ademruimte op."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De aanleg van parkeertorens zal rampzalige gevolgen hebben voor mobiliteit, stilte en leefkwaliteit in buurtschap de Biest.",
+      "categorie": "mobiliteit"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Het MER is onrealistisch door te stellen dat ANPR-camera's het sluipverkeer zullen bedwingen.",
+      "categorie": "procedure"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "De modal shift-doelstelling van 20-30% is onrealistisch; in werkelijkheid zal 70-80% van de bezoekers met de auto komen, wat neerkomt op circa zestienduizend autogebonden bezoekers.",
+      "categorie": "mobiliteit"
+    },
+    {
+      "passageId": 4,
+      "samenvatting": "Bij incidenten of slecht weer op de E17-noordboog zal gps-geleid sluipverkeer de dichtstbebouwde woonbuurten binnendringen.",
+      "categorie": "mobiliteit"
+    },
+    {
+      "passageId": 5,
+      "samenvatting": "Het lokaal politiekorps heeft onvoldoende structurele capaciteit om sluipverkeer via ANPR-boetes te handhaven.",
+      "categorie": "mobiliteit"
+    },
+    {
+      "passageId": 6,
+      "samenvatting": "Boetes zijn geen effectieve maatregel omdat bewoners tientallen avonden per seizoen overlast ondervinden van filevorming en lichtverblinding langs hun voorgevels.",
+      "categorie": "sociaal"
+    },
+    {
+      "passageId": 7,
+      "samenvatting": "Bezwaarmaker eist een robuuster plan voor perimeterinrichting met fysieke, bemande blokkades en controlebewijzen voor lokaal verkeer in plaats van enkel camera's.",
+      "categorie": "mobiliteit"
+    },
+    {
+      "passageId": 8,
+      "samenvatting": "Minstens 60% van de parkeertorenplaatsen moet exclusief gebonden worden aan park-and-ride locaties buiten het centrum van Waregem.",
+      "categorie": "mobiliteit"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 307,
+    "documentSamenvatting": "Bezwaarschrift van een bewoonster van de Biest in Waregem tegen de verplaatsing van het voetbalstadion en bijhorend MER, met als kernargument dat de voorgestelde ANPR-camera-aanpak volstrekt ontoereikend is om sluipverkeer in woonbuurten te voorkomen bij een stadion dat overwegend autogebonden bezoekers aantrekt, en met concrete eisen voor fysieke verkeersblokkades en verplicht park-and-ride voor minstens 60% van de parkeertorenplaatsen."
+  }
+}

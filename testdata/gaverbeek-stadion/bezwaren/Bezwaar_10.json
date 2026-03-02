@@ -1,0 +1,37 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Ik betwist de resultaten van het geluidsonderzoek. Dit werd uitgevoerd door een studiebureau gepaaid door de bouwheer, en men berekende gemiddelde decibels op maandbasis om de pieken op zaterdagavond af te zwakken."
+    },
+    {
+      "id": 2,
+      "tekst": "Met de heersende zuidwestenwind en open constructie aan de waterkant, zal het geluid over het vlakke land dragen tot aan de deelgemeente Sint-Eloois-Vijve."
+    },
+    {
+      "id": 3,
+      "tekst": "Dit is onaanvaardbaar zonder een dichte wand van isolerend bouwmateriaal."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Het geluidsonderzoek is onbetrouwbaar omdat het werd uitgevoerd door een studiebureau betaald door de bouwheer en de meetmethode (gemiddelde decibels op maandbasis) de geluidspieken op zaterdagavond verdoezelt.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Door de heersende zuidwestenwind en de open constructie aan de waterkant zal het stadiongeluid over het vlakke land dragen tot de deelgemeente Sint-Eloois-Vijve, wat onvoldoende onderzocht is.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Het stadionontwerp mist een dichte geluidsisolerende wand die noodzakelijk is om de geluidsoverlast voor omwonenden te beperken.",
+      "categorie": "milieu"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 94,
+    "documentSamenvatting": "Bezwaarschrift van Peter Maartens (Watermolenstraat 89) die de betrouwbaarheid van het geluidsonderzoek in de MER betwist. De indiener stelt dat het studiebureau niet onafhankelijk was, dat de meetmethode met maandgemiddelden de zaterdagavondpieken verdoezelt, dat het geluid door zuidwestenwind en open constructie tot Sint-Eloois-Vijve zal reiken, en eist een dichte geluidsisolerende wand."
+  }
+}

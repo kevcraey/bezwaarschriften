@@ -1,0 +1,37 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "In plaats van een stadion buiten de ring te bouwen zou de club moeten inzetten op een duurzame krimping en verhoging van ticketprijzen om louter premium te worden, of fuseren met een naburige ploeg."
+    },
+    {
+      "id": 2,
+      "tekst": "Ruimte-inname op deze schaal in overstromingsgebied is ronduit onverantwoord in tijden van extreme regenval."
+    },
+    {
+      "id": 3,
+      "tekst": "We roepen op tot een moratorium op dergelijke grootschalige betonnering in Oost- en West-Vlaanderen."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De club zou moeten inzetten op krimp, hogere ticketprijzen of fusie met een naburige ploeg in plaats van een nieuw stadion buiten de ring te bouwen.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Grootschalige ruimte-inname in overstromingsgebied is onverantwoord gezien de toenemende extreme regenval.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Er moet een moratorium komen op grootschalige betonnering in Oost- en West-Vlaanderen.",
+      "categorie": "ruimtelijke_ordening"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 76,
+    "documentSamenvatting": "Sara Lievens (Stationsstraat 7) maakt bezwaar tegen het projectvoorstel voor de verplaatsing van het voetbalstadion van Waregem. Zij pleit voor alternatieven zoals krimp van de club of fusie, wijst op het overstromingsrisico van bouwen op deze schaal in overstromingsgebied, en roept op tot een moratorium op grootschalige betonnering in de regio."
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Mijn woning bevindt zich op minder dan 60 meter van de uitgemeten rooilijn ter constructie van de verdomde parkeertoren-A."
+    },
+    {
+      "id": 2,
+      "tekst": "Mijn herkomst en gehele spaarrekening in eigendom hangt vast aan deze rurale plek."
+    },
+    {
+      "id": 3,
+      "tekst": "Een regelrecht monsterlijk verlies van leefgenot en onschatbare vermindering van waarde (waardederving) wegens massale schaduwwerking langs mijn zongerichte gevel, alsmede structurele visuele verontreiniging, is feitelijk."
+    },
+    {
+      "id": 4,
+      "tekst": "Ik eis op straffe van verdere vergunningsgeschillen onvoorwaardelijke garanties voor compensatie wegens structurele, kwantificeerbare waardevermindering, met expliciet het recht of voorrang op koop dan wel onteigening door het stadsbestuur conform reële markttaxatie van de zone ter datum voor de start van de bestemmingswijziging."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De woning van de indiener bevindt zich op minder dan 60 meter van de geplande parkeertoren-A, wat een onaanvaardbare nabijheid vormt.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Het volledige eigendom en spaarvermogen van de indiener is verbonden aan de rurale locatie, die door het project bedreigd wordt.",
+      "categorie": "economisch"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "De parkeertoren veroorzaakt massale schaduwwerking op de zongerichte gevel en structurele visuele verontreiniging, wat leidt tot ernstig verlies van leefgenot en waardederving.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 4,
+      "samenvatting": "De indiener eist onvoorwaardelijke garanties voor compensatie van de kwantificeerbare waardevermindering, inclusief voorrang op aankoop of onteigening door het stadsbestuur tegen reële markttaxatie van voor de bestemmingswijziging.",
+      "categorie": "economisch"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 158,
+    "documentSamenvatting": "Bezwaarschrift van een rechtstreeks betrokken omwonende wiens woning op minder dan 60 meter van de geplande parkeertoren-A ligt. De indiener maakt bezwaar tegen het verlies van leefgenot en de waardederving van het eigendom door massale schaduwwerking op de zongerichte gevel en structurele visuele verontreiniging. Er wordt geëist dat het stadsbestuur onvoorwaardelijke garanties biedt voor compensatie van de waardevermindering, met expliciet recht op voorrang bij koop of onteigening conform reële markttaxatie van voor de bestemmingswijziging. Het document bevat grafisch bewijsmateriaal: een digitale figuur met zicht op de parkeertoren en geplande groenbuffer langs de Gaverbeekstraat, en een gescande afbeelding met ruwe schetslijnen van het stedenbouwkundig info-moment (geen extraheerbare tekst via OCR)."
+  }
+}

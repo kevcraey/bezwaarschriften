@@ -1,0 +1,64 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "wij zien in het verhuizingstraject de volmaakte ontsporing van de schaal versus fragiele omgevingsfactoren."
+    },
+    {
+      "id": 2,
+      "tekst": "theorieën aangaande biodiversiteit worden weggewuifd door middel van het oprichten van zogenaamde moerasrietvelden boven het bufferbekken. Uit analyses van de universiteit (die we verstrekken in ons juridisch dossier aan het omgevingsloket) blijkt zwart op wit dat weadevogels en nachtroofdieren geen schijn van overlevingskans dichten wanneer deze gronden tegelijk fungeren als uitgewerkte as voor luidruchtige en schelle lichtmasten-activiteit."
+    },
+    {
+      "id": 3,
+      "tekst": "De beloftes van 'intelligent dimmende LEDs en directieve speakers' minimaliseert in theorie het strooilicht, maar het effect op de macro-fauna verdwijnt zelden. Vleermuiskolonies die thans actief fourageren in de randbossen zullen dit terrein voor eens en voor altijd als dood verklaard terrein ontwijken."
+    },
+    {
+      "id": 4,
+      "tekst": "weigeren we in theorie de abstractie genuttigd te zien worden in het zgn. 'natuurinclusief bouwen' door het overkappen van betonnen structuren met sedum daken. Dit vervangt absoluut noch het open-kouter perspectief, noch behoudt het een functioneel ecosysteem."
+    },
+    {
+      "id": 5,
+      "tekst": "We bepleiten bij de deputatie van West-Vlaanderen om het MER integraal over te doen met nadruk op avifauna."
+    },
+    {
+      "id": 6,
+      "tekst": "Mocht er daarentegen geen onverklaarbaar onkruid en grovere landschapsbuffers - waarnaar de provincie in haar streekplan streeft - van minstens 50 meter dik gerealiseerd worden grenzend aan de westzijde, overwegen de milieuorganisaties de stap naar de Raad voor Vergunningsbetwistingen zonder pardon."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De schaal van het stadionproject is disproportioneel ten opzichte van de fragiele omgevingsfactoren in het Gaverbeekdal.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "De voorgestelde compenserende moerasrietvelden boven het bufferbekken bieden geen reële overlevingskans voor weidevogels en nachtroofdieren door de combinatie met luidruchtige stadionactiviteit en schelle lichtmasten.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Ondanks beloftes van intelligent dimmende LEDs blijft het effect op de macro-fauna bestaan en zullen vleermuiskolonies die in de randbossen fourageren het terrein permanent verlaten door lichtvervuiling.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 4,
+      "samenvatting": "Natuurinclusief bouwen met sedum daken op betonnen structuren is ontoereikend: het vervangt noch het open-kouterperspectief, noch behoudt het een functioneel ecosysteem.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 5,
+      "samenvatting": "Het MER is onvolledig en moet integraal overgedaan worden met specifieke nadruk op avifauna.",
+      "categorie": "procedure"
+    },
+    {
+      "passageId": 6,
+      "samenvatting": "Er moeten landschapsbuffers van minstens 50 meter breed gerealiseerd worden aan de westzijde, bij gebreke waarvan beroep bij de Raad voor Vergunningsbetwistingen wordt overwogen.",
+      "categorie": "milieu"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 306,
+    "documentSamenvatting": "Bezwaarschrift van Actiegroep Red De Gaver namens verzamelde natuurverenigingen tegen de verplaatsing van het voetbalstadion Waregem. Het bezwaar richt zich op de ecologische impact: ontoereikende biodiversiteitscompensatie (moerasrietvelden), bedreiging van weidevogels, nachtroofdieren en vleermuiskolonies door licht- en geluidsverstoring, het onvoldoende karakter van sedum daken als natuurcompensatie, een onvolledig MER met betrekking tot avifauna, en de eis voor landschapsbuffers van minstens 50 meter aan de westzijde."
+  }
+}

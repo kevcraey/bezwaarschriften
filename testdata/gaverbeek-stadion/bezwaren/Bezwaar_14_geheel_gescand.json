@@ -1,0 +1,29 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "De ingediende plannen, met name katern D aangaande milieueffecten, onthouden ons van essentiële en overtuigende inzage inzake de riolering- en nutsvoorzieningencapaciteit. Voor 20000 mensen in één klap bij de halftijds-rust douches, kranen en toiletten tegelijkertijd laten afvloeien op een reeds kwetsbare lokale grachtenstructuur, gepaard aan een collector nabij de beek, zal zonder te verbleken tot onvermijdelijke lekkages en overstorten van afvalwater leiden tijdens stormen. Waar is de concrete studie aangaande waterzuivering en capaciteitsuitbreiding van het DWA (Droogweerafvoer) en RWA stelsels in relatie tot dit monsterlijk verbruik?"
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De ingediende plannen (katern D milieueffecten) bieden onvoldoende essentiële informatie over de riolering- en nutsvoorzieningencapaciteit voor het stadionproject.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 1,
+      "samenvatting": "Het gelijktijdig waterverbruik van 20.000 bezoekers bij de halftijdrust zal de reeds kwetsbare lokale grachtenstructuur en collector nabij de beek overbelasten, met onvermijdelijke lekkages en overstorten van afvalwater tijdens stormen tot gevolg.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 1,
+      "samenvatting": "Er ontbreekt een concrete studie over waterzuivering en capaciteitsuitbreiding van het DWA (Droogweerafvoer) en RWA (Regenwaterafvoer) stelsel in verhouding tot het verwachte waterverbruik.",
+      "categorie": "procedure"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 86,
+    "documentSamenvatting": "Bezwaarschrift tegen het stadionproject aan de Gaverbeek in Waregem. De indiener stelt dat katern D van de ingediende plannen onvoldoende informatie bevat over de riolering- en nutsvoorzieningencapaciteit. Het gelijktijdig sanitair gebruik door 20.000 stadionbezoekers bij de halftijdrust zal de kwetsbare lokale grachtenstructuur en collector nabij de beek overbelasten, met lekkages en overstorten van afvalwater tijdens stormen als gevolg. Er wordt gevraagd naar een concrete studie over waterzuivering en capaciteitsuitbreiding van de DWA- en RWA-stelsels."
+  }
+}

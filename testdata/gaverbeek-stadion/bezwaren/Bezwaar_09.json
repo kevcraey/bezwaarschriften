@@ -1,0 +1,42 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Het voorziene openbaar park rondom het nieuwe stadion klinkt als greenwashing."
+    },
+    {
+      "id": 2,
+      "tekst": "Een park gelegen tussen een E17-oprit, de autostrade en gigantische parkeertorens is geen ontspanningsruimte maar een groen bufferpaneel."
+    },
+    {
+      "id": 3,
+      "tekst": "Ons dorp heeft meer baat bij kleinschalige groenontwikkeling in plaats van zulk megalomaan project waarbij 'publiek park' als zoethoudertje wordt gebruikt door de bouwheer om bewoners uit het centrum mee in het bad te trekken."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Het voorziene openbaar park rondom het nieuwe stadion is greenwashing en geen oprechte groene ruimte.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "De locatie van het park tussen een E17-oprit, de autostrade en gigantische parkeertorens maakt het ongeschikt als ontspanningsruimte; het fungeert slechts als groen bufferpaneel.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Het dorp heeft meer baat bij kleinschalige groenontwikkeling dan bij een megalomaan stadionproject.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Het concept 'publiek park' wordt als zoethoudertje gebruikt door de bouwheer om bewoners uit het centrum mee te trekken naar het project.",
+      "categorie": "procedure"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 93,
+    "documentSamenvatting": "Bezwaarschrift van Familie D'Hooge (Gaverbeekstraat 45) tegen de verplaatsing van het voetbalstadion van Waregem. Het bezwaar richt zich op het voorziene openbaar park rondom het nieuwe stadion, dat als greenwashing wordt bestempeld. De locatie tussen de E17-oprit, autostrade en parkeertorens maakt het park ongeschikt als ontspanningsruimte. De indiener pleit voor kleinschalige groenontwikkeling en stelt dat het parkconcept als zoethoudertje door de bouwheer wordt ingezet."
+  }
+}

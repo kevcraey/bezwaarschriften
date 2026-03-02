@@ -1,0 +1,51 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Het inplanten van een gigacomplex in de nabijheid van de E17 toont een negentiende-eeuwse visie op mobiliteit."
+    },
+    {
+      "id": 2,
+      "tekst": "Waarom wordt het stadion niet verweven met de site van het treinstation?"
+    },
+    {
+      "id": 3,
+      "tekst": "Supporters komen nu steevast met de auto, wat men juist zou moeten ontraden in de huidige klimaatcontext."
+    },
+    {
+      "id": 4,
+      "tekst": "Een station-site (huidige goederenloods) was bovendien gunstiger voor hergebruik van regenwater en aansluiting op de sporen richting Kortrijk en Gent."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De locatiekeuze nabij de E17 getuigt van een verouderde, autogerichte mobiliteitsvisie die niet past in het huidige klimaatbeleid.",
+      "categorie": "mobiliteit"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Het stadion had verweven moeten worden met de site van het treinstation om duurzaam openbaar vervoer te faciliteren.",
+      "categorie": "mobiliteit"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Supporters komen steevast met de auto, wat in de huidige klimaatcontext juist ontraden zou moeten worden.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 4,
+      "samenvatting": "Een station-site (huidige goederenloods) bood betere mogelijkheden voor hergebruik van regenwater.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 4,
+      "samenvatting": "Een station-site bood betere aansluiting op de spoorlijnen richting Kortrijk en Gent, wat duurzamer vervoer van supporters mogelijk maakt.",
+      "categorie": "mobiliteit"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 66,
+    "documentSamenvatting": "Bezwaarschrift van Emma Devos (Veldstraat 22) tegen de verplaatsing van het voetbalstadion van Waregem. Het bezwaar richt zich op de locatiekeuze nabij de E17, die een verouderde autogerichte mobiliteitsvisie weerspiegelt. De indiener pleit voor een alternatieve locatie bij het treinstation (huidige goederenloods), die gunstiger zou zijn voor duurzaam openbaar vervoer via de spoorlijnen richting Kortrijk en Gent, en voor hergebruik van regenwater."
+  }
+}

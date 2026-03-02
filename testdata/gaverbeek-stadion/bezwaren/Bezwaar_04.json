@@ -1,0 +1,37 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "De financiële participatie van de stad is berekend op 15 miljoen euro. Historisch leert dat openbare infrastructuurwerken bij dergelijke megaprojecten structureel onderschat worden en de kosten vaak verdubbelen."
+    },
+    {
+      "id": 2,
+      "tekst": "Dit is een onaanvaardbaar risico voor de belastingbetaler."
+    },
+    {
+      "id": 3,
+      "tekst": "Wie draait op voor de meerkosten als de nieuwe ringweg en bruggen over de Gaverbeek budgettair ontsporen?"
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De geraamde stedelijke bijdrage van 15 miljoen euro is structureel onderschat; bij vergelijkbare megaprojecten verdubbelen de kosten van openbare infrastructuurwerken historisch gezien.",
+      "categorie": "economisch"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Het financieel risico voor de belastingbetaler is onaanvaardbaar gezien de structurele kostenonderschatting bij megaprojecten.",
+      "categorie": "economisch"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Er is geen duidelijkheid over wie de meerkosten draagt wanneer de nieuwe ringweg en bruggen over de Gaverbeek budgettair ontsporen.",
+      "categorie": "economisch"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 83,
+    "documentSamenvatting": "Bezwaarschrift van Bert De Smet (Kasteelweg 4) tegen het projectvoorstel verplaatsing voetbalstadion Waregem en bijhorende MER. Het bezwaar richt zich uitsluitend op de financiële onderbouwing: de geraamde stedelijke bijdrage van 15 miljoen euro wordt als structureel onderschat beschouwd, het risico voor de belastingbetaler is onaanvaardbaar, en er ontbreekt duidelijkheid over wie opdraait voor budgetoverschrijdingen bij de nieuwe ringweg en bruggen over de Gaverbeek."
+  }
+}

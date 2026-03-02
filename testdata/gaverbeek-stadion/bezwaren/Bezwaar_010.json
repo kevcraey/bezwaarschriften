@@ -1,0 +1,28 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Ik betwist de resultaten van het geluidsonderzoek. Dit werd uitgevoerd door een studiebureau gepaaid door de bouwheer, en men berekende gemiddelde decibels op maandbasis om de pieken op zaterdagavond af te zwakken."
+    },
+    {
+      "id": 2,
+      "tekst": "Met de heersende zuidwestenwind en open constructie aan de waterkant, zal het geluid over het vlakke land dragen tot aan de deelgemeente Sint-Eloois-Vijve."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Het geluidsonderzoek is niet onafhankelijk uitgevoerd: het studiebureau werd betaald door de bouwheer, en de meetmethode (gemiddelde decibels op maandbasis) maskeert de geluidspieken op zaterdagavond.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Door de zuidwestenwind en de open constructie aan de waterkant zal geluidshinder zich verspreiden over het vlakke land tot in de deelgemeente Sint-Eloois-Vijve.",
+      "categorie": "milieu"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 69,
+    "documentSamenvatting": "Peter Maartens (Watermolenstraat 89) dient bezwaar in tegen de verplaatsing van het voetbalstadion van Waregem. Hij betwist de onafhankelijkheid en methodologie van het geluidsonderzoek en waarschuwt dat geluidshinder zich via de zuidwestenwind over het vlakke land zal verspreiden tot in Sint-Eloois-Vijve."
+  }
+}

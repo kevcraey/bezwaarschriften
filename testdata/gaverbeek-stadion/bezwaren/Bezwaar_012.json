@@ -1,0 +1,28 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "De architectuur gaat volledig voorbij aan de visuele integratie. Een constructie 25 meter boven het maaiveld, zelfs met wat 'hout en groenaccenten', zal als een gigantische doos in het landschap detoneren."
+    },
+    {
+      "id": 2,
+      "tekst": "Ik mis een ontwerp voor een ecoduct of de optie om het stadion quasi volledig ondergronds in te bedden in een aangelegde artificiële heuvel, zodat de horizon bewaard blijft."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De architectuur van het stadion mist visuele integratie in het landschap: een constructie van 25 meter hoog zal als een gigantische doos detoneren, ondanks cosmetische hout- en groenaccenten.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Er ontbreekt een alternatief ontwerp zoals een ecoduct of een quasi volledig ondergronds stadion ingebed in een artificiële heuvel, waarmee de horizon bewaard zou kunnen blijven.",
+      "categorie": "ruimtelijke_ordening"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 74,
+    "documentSamenvatting": "Dirk Stevens (Hoogstraat 2) bezwaart tegen het projectvoorstel voor de verplaatsing van het voetbalstadion in Waregem. Hij bekritiseert het gebrek aan visuele landschapsintegratie van een 25 meter hoge constructie en mist alternatieve ontwerpopties zoals een ecoduct of een ondergrondse inbedding in een artificiële heuvel."
+  }
+}

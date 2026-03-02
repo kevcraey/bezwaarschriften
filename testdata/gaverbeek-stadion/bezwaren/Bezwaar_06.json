@@ -1,0 +1,37 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Er is geen bindend akkoord over het stadsvernieuwingsproject na de afbraak van het oude Regenboogstadion."
+    },
+    {
+      "id": 2,
+      "tekst": "Als de private partner failleert, blijft de stad zitten met een bouwput in het centrum enerzijds, en een halfgebouwd stadion in de velden anderzijds."
+    },
+    {
+      "id": 3,
+      "tekst": "Er moet een vastgelegde financiële bankwaarborg liggen van 20 miljoen alvorens een schop in de grond mag."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Er ontbreekt een bindend akkoord over het stadsvernieuwingsproject dat na de afbraak van het Regenboogstadion moet worden gerealiseerd.",
+      "categorie": "procedure"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Bij faillissement van de private partner blijft de stad achter met een bouwput in het centrum en een halfgebouwd stadion in de velden, zonder financiële zekerheid.",
+      "categorie": "economisch"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Er moet een vastgelegde financiële bankwaarborg van 20 miljoen euro worden gesteld voordat de werkzaamheden mogen starten.",
+      "categorie": "economisch"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 56,
+    "documentSamenvatting": "Bezwaarschrift van Luc Van Hove (Oude Vijverlaan 14) tegen de verplaatsing van het voetbalstadion van Waregem. Het bezwaar richt zich op het financieel risico van het project: er ontbreekt een bindend akkoord over het stadsvernieuwingsproject na afbraak van het Regenboogstadion, bij faillissement van de private partner blijft de stad achter met een bouwput en een halfgebouwd stadion, en er wordt een bankwaarborg van 20 miljoen euro geëist alvorens de werken mogen starten."
+  }
+}

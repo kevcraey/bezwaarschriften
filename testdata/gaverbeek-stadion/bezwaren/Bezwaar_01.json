@@ -1,0 +1,73 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "De fundamenten van dit MER wankelen wanneer we de historische data van de laatste vijf decennia combineren met de neerslagcurves voorspeld voor de periode 2030-2050."
+    },
+    {
+      "id": 2,
+      "tekst": "In rapportsectie 6 poogt de stadsdiensten de indruk te wekken dat het inplanten van een T100-bufferbekken alle zorgen met betrekking tot het waterhuishouden als sneeuw voor de zon doet verdwijnen. Dat is een fatale overschatting van sturende wiskundige modellen."
+    },
+    {
+      "id": 3,
+      "tekst": "Een stadion dat om en ronde 15 hectaren vallei - een zone bestemd om stroomafwaarts debieten te milderen door langzame infiltratie - integraal dichtplamuurt met asfalt en zware betonnen fundaties, verhindert permanente bodempenetratie."
+    },
+    {
+      "id": 4,
+      "tekst": "Zelfs indien we er, met bijzonder veel optimisme, op aandringen dat het bekken niet meteen vol zal raken bij een zomerstorm, wat zal er geschieden in perioden van winterse opeenvolgende hoosbuien? Dan arriveert dat bekken aan maximale capaciteit in nauwelijks twee dagen tijd."
+    },
+    {
+      "id": 5,
+      "tekst": "De onvermijdelijke versnelde lozing die volgt, leidt mathematisch onweerlegbaar tot watertekort-in-capaciteit op het kwetsbare knooppunt van de Zulte-beek verderop."
+    },
+    {
+      "id": 6,
+      "tekst": "Het zou het stadsbestuur sieren om ofwel 30% van het project te delokaliseren of substantieel andere, duurdere 'klimaatadaptieve' bestrating te hanteren (holle betonstructuren, grassdallen, gigantische wadi's verdeeld over de parkeer- en ontsluitingszone)."
+    },
+    {
+      "id": 7,
+      "tekst": "Ik wens hiervan een bijkomende hydrologische stresstest ter stutting te eisen, onafhankelijk gevalideerd door specialisten van Universiteit Gent."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Het MER houdt onvoldoende rekening met historische neerslagdata en klimaatprojecties voor 2030-2050 bij de beoordeling van het waterhuishouden.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Het T100-bufferbekken uit rapportsectie 6 wordt als afdoende oplossing voorgesteld, maar de onderliggende wiskundige modellen overschatten de buffercapaciteit.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "De verharding van 15 hectare valleigebied met asfalt en beton vernietigt de natuurlijke infiltratiecapaciteit die essentieel is voor het dempen van stroomafwaartse debieten.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 4,
+      "samenvatting": "Het bufferbekken bereikt bij opeenvolgende winterse hoosbuien binnen twee dagen maximale capaciteit, waardoor het niet bestand is tegen langdurige neerslagperiodes.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 5,
+      "samenvatting": "De versnelde lozing na bufferverzadiging leidt tot overstromingsrisico bij het kwetsbare knooppunt van de Zulte-beek stroomafwaarts.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 6,
+      "samenvatting": "Het project moet deels gedelokaliseerd worden of klimaatadaptieve verharding toepassen (holle betonstructuren, grassdallen, wadi's) om de waterhuishoudkundige impact te beperken.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 7,
+      "samenvatting": "Er moet een bijkomende onafhankelijke hydrologische stresstest komen, gevalideerd door specialisten van Universiteit Gent.",
+      "categorie": "procedure"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 285,
+    "documentSamenvatting": "Bezwaarschrift van een gepensioneerd hydroloog en buurtbewoner (Gaverbeekstraat) die de MER-analyse van het waterhuishouden fundamenteel betwist. De indiener stelt dat het T100-bufferbekken ontoereikend is voor de verharding van 15 hectare valleigebied, dat het bekken bij winterse hoosbuien binnen twee dagen verzadigd raakt met overstromingsrisico voor de Zulte-beek als gevolg, en eist klimaatadaptieve verhardingsmaatregelen alsook een onafhankelijke hydrologische stresstest door UGent."
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Als de club verhuist naar de periferie met een eigen commerciële plint, vrezen we als lokale middenstand de definitieve doodsteek voor het stadscentrum."
+    },
+    {
+      "id": 2,
+      "tekst": "Wedstrijddagen genereren momenteel inkomsten voor tientallen speciaalzaken en cafés rondom De Schakel."
+    },
+    {
+      "id": 3,
+      "tekst": "Het projectvoorstel rept met geen woord over subsidies of economische steunmaatregelen voor de getroffen handelaren in het centrum tenzij vage pendelbusjes waarvan niet eens sprake is wie dit bekostigt."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Verplaatsing van het stadion naar de periferie met commerciële voorzieningen zal het stadscentrum economisch schaden en de lokale middenstand de doodsteek geven.",
+      "categorie": "economisch"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Het huidige stadion genereert op wedstrijddagen inkomsten voor tientallen lokale handelszaken en cafés rondom De Schakel, die verloren dreigen te gaan bij verplaatsing.",
+      "categorie": "economisch"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Het projectvoorstel voorziet geen subsidies of economische steunmaatregelen voor de getroffen centrumhandelaren, en de voorgestelde pendelbusjes zijn vaag en ongedekt qua financiering.",
+      "categorie": "economisch"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 94,
+    "documentSamenvatting": "Bezwaarschrift ingediend door Middenstanders Waregem VZW tegen de verplaatsing van het voetbalstadion van Waregem en de bijhorende MER. De lokale middenstand vreest dat de verhuis van de club naar de periferie met een eigen commerciële plint de doodsteek betekent voor het stadscentrum. Wedstrijddagen brengen momenteel inkomsten voor speciaalzaken en cafés rondom De Schakel. Het projectvoorstel bevat geen economische steunmaatregelen voor getroffen handelaren en de voorgestelde pendelbusjes zijn vaag en financieel ongedekt."
+  }
+}

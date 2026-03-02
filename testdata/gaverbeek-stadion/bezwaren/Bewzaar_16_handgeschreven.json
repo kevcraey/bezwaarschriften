@@ -1,0 +1,28 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Het project voorziet wel luxe VIP-boxen en een business hotspot, maar voor gewone jeugdvoorzieningen of amateursportploegen is niets voorzien. Waarom kan er geen integratie komen met publieke atletiekpistes, skateparken of repetitiekoten?"
+    },
+    {
+      "id": 2,
+      "tekst": "Het miljoenenproject moet de hele gemeenschap dienen en niet enkel de elite of voetbalfans."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Het project voorziet enkel luxe VIP-boxen en een business hotspot maar biedt geen voorzieningen voor jeugd, amateursportploegen of publieke functies zoals atletiekpistes, skateparken of repetitiekoten.",
+      "categorie": "sociaal"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Het miljoenenproject dient enkel de elite en voetbalfans in plaats van de hele gemeenschap.",
+      "categorie": "sociaal"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 45,
+    "documentSamenvatting": "Handgeschreven bezwaarschrift tegen het stadionproject in Waregem. De indiener hekelt dat het project uitsluitend luxevoorzieningen (VIP-boxen, business hotspot) biedt zonder integratie van publieke voorzieningen voor jeugd, amateursport of cultuur (atletiekpistes, skateparken, repetitiekoten). Het miljoenenproject moet de hele gemeenschap dienen en niet enkel de elite of voetbalfans."
+  }
+}

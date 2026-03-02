@@ -1,0 +1,37 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Het project voorziet wel luxueuze VIP-boxen en een dure business-as-usual hotspot, maar voor gewone jeugdvoorzieningen of amateusportploegen uit de wijk is schijnbaar weeral niets voorzien."
+    },
+    {
+      "id": 2,
+      "tekst": "Waarom kan er in dit immense RUP geen verplichte integratie komen met publieke atletiekpistes, toegankelijke voetbalgrasveldjes, skateparken op de geasfalteerde roof-tops of repetitiekoten in de funderingen?"
+    },
+    {
+      "id": 3,
+      "tekst": "Het miljoenenproject moet dan maar de hele gemeenschap dienen en niet enkel gefortuneerde voetbalsupporters."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Het project voorziet enkel luxueuze VIP-boxen en commerciële voorzieningen, maar biedt niets aan voor gewone jeugdvoorzieningen of amateursportploegen uit de wijk.",
+      "categorie": "sociaal"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Het RUP bevat geen verplichte integratie van publieke sportinfrastructuur (atletiekpistes, voetbalveldjes, skateparken) of gemeenschapsruimtes (repetitiekoten) in het stadionproject.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Het miljoenenproject dient enkel gefortuneerde voetbalsupporters in plaats van de hele gemeenschap en moet breder maatschappelijk nut nastreven.",
+      "categorie": "sociaal"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 94,
+    "documentSamenvatting": "Bezwaarschrift van een lokaal jeugdhuis (Kruisstraat 33) dat bezwaar maakt tegen het gebrek aan publieke en gemeenschapsvoorzieningen in het stadionproject. De indiener stelt dat het project enkel luxueuze VIP-boxen en commerciële faciliteiten voorziet, terwijl er geen integratie is van publieke sportinfrastructuur (atletiekpistes, voetbalveldjes, skateparken) of gemeenschapsruimtes (repetitiekoten) voor jongeren en amateursportploegen. Het miljoenenproject moet de hele gemeenschap dienen, niet enkel gefortuneerde voetbalsupporters."
+  }
+}

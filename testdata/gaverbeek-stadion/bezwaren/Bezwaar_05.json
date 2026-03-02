@@ -1,0 +1,52 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Inzake lichtvervuiling schiet dit projectvoorstel schromelijk tekort."
+    },
+    {
+      "id": 2,
+      "tekst": "Een stadion voor 20000 man bevat enorme lichtmasten en een commerciële plint die 7 dagen op 7 verlicht zal zijn."
+    },
+    {
+      "id": 3,
+      "tekst": "Er is geen enkel mitigatieplan voorzien voor verduisteringsmaatregelen buiten de wedstrijduren, wat in een agrarisch buitengebied rampzalige gevolgen heeft voor het bioritme van dieren en de nachtrust van de weinige omwonenden."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Het projectvoorstel schiet schromelijk tekort inzake lichtvervuiling: geen adequate beoordeling van de lichtimpact van het stadioncomplex.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "De enorme lichtmasten van een stadion voor 20.000 toeschouwers veroorzaken aanzienlijke lichtvervuiling in het agrarisch buitengebied.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "De commerciële plint zal 7 dagen op 7 verlicht zijn, wat permanente lichthinder veroorzaakt los van evenementen.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Er is geen enkel mitigatieplan voorzien voor verduisteringsmaatregelen buiten de wedstrijduren.",
+      "categorie": "procedure"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "De lichtvervuiling heeft rampzalige gevolgen voor het bioritme van dieren in het agrarisch buitengebied.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "De lichtvervuiling verstoort de nachtrust van de weinige omwonenden.",
+      "categorie": "gezondheid"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 87,
+    "documentSamenvatting": "Bezwaarschrift van Karien Vermeulen (Nieuwstraat 88) tegen de verplaatsing van het voetbalstadion van Waregem. Het bezwaar richt zich uitsluitend op lichtvervuiling: de enorme lichtmasten en permanent verlichte commerciële plint van het stadioncomplex, het ontbreken van een mitigatieplan voor verduistering buiten wedstrijduren, en de negatieve gevolgen hiervan voor het bioritme van dieren en de nachtrust van omwonenden in het agrarisch buitengebied."
+  }
+}

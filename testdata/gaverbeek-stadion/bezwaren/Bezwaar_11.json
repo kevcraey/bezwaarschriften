@@ -1,0 +1,37 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "In plaats van een nieuw, supermodern stadion buiten de ring te bouwen zou de club moeten inzetten op een duurzame krimping en verhoging van ticketprijzen om louter premium te worden, of fuseren met een naburige ploeg."
+    },
+    {
+      "id": 2,
+      "tekst": "Ruimte-inname op deze massieve schaal in overstromingsgevoelig agrarisch weidegebied is ronduit misdadig in tijden van extreme regenval en stedenbouwkundige verdichting."
+    },
+    {
+      "id": 3,
+      "tekst": "We roepen de bevoegde besturen op tot een onmiddellijk moratorium op dergelijke grootschalige betonnering."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De club zou moeten inzetten op krimp, hogere ticketprijzen of fusie met een naburige ploeg in plaats van een nieuw grootschalig stadion buiten de ring te bouwen.",
+      "categorie": "economisch"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "De ruimte-inname op deze schaal in overstromingsgevoelig agrarisch weidegebied is onverantwoord gezien de toenemende extreme regenval en de nood aan stedenbouwkundige verdichting.",
+      "categorie": "milieu"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Er moet een onmiddellijk moratorium komen op dergelijke grootschalige betonnering van open ruimte.",
+      "categorie": "ruimtelijke_ordening"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 99,
+    "documentSamenvatting": "Bezwaarschrift van Sara Lievens (Stationsstraat 7) die zich verzet tegen de bouw van een nieuw voetbalstadion buiten de ring van Waregem. De indiener stelt dat de club beter zou krimpen, ticketprijzen verhogen of fuseren in plaats van een nieuw stadion te bouwen. Zij wijst op de onaanvaardbare ruimte-inname in overstromingsgevoelig agrarisch weidegebied bij toenemende extreme regenval, en roept op tot een onmiddellijk moratorium op grootschalige betonnering."
+  }
+}

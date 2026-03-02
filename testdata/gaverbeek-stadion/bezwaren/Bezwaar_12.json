@@ -1,0 +1,28 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "De architectuur gaat volledig voorbij aan de visuele integratie op lange afstand. Een constructie 25 tot 30 meter boven het landelijke maaiveld, zelfs met de peperdure beloofde 'geweven membranen', zal als een gigantische lichtgevende doos in het dal detoneren."
+    },
+    {
+      "id": 2,
+      "tekst": "Ik mis een ontwerp voor de optie om het stadion quasi volledig ondergronds in te bedden in een aangelegde artificiële heuvel, zodat de horizon vanuit alle windrichtingen wezenlijk bewaard en gerespecteerd blijft."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "De architectuur van het stadion (25 tot 30 meter hoog) houdt geen rekening met visuele integratie op lange afstand en zal als een gigantische lichtgevende doos in het landelijke dal detoneren, zelfs met de beloofde geweven membranen.",
+      "categorie": "ruimtelijke_ordening"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Er ontbreekt een ontwerpoptie om het stadion quasi volledig ondergronds in te bedden in een artificiële heuvel, waardoor de horizon vanuit alle windrichtingen bewaard zou blijven.",
+      "categorie": "ruimtelijke_ordening"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 100,
+    "documentSamenvatting": "Bezwaarschrift van Dirk Stevens (Hoogstraat 2) tegen de verplaatsing van het voetbalstadion Waregem en de bijhorende MER. De indiener stelt dat de architectuur volledig voorbijgaat aan visuele integratie op lange afstand: een constructie van 25 tot 30 meter boven het maaiveld zal als een lichtgevende doos in het dal detoneren. Hij mist een ontwerp om het stadion quasi volledig ondergronds in te bedden in een artificiële heuvel om de horizon te bewaren."
+  }
+}
