@@ -113,6 +113,11 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           line-height: 1.5;
           color: #687483;
         }
+        .bezwaar-waarschuwing {
+          color: #a5673f;
+          font-size: 0.85rem;
+          margin-bottom: 0.25rem;
+        }
       </style>
       <vl-rich-data-table id="tabel" filter-closable filter-closed>
         <vl-search-filter slot="filter" alt>
@@ -393,13 +398,32 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         })
         .then((data) => {
           inhoud.innerHTML = '';
+
+          // Sorteer: niet-gevonden passages bovenaan
+          const gesorteerd = [...data.bezwaren].sort((a, b) => {
+            if (a.passageGevonden === b.passageGevonden) return 0;
+            return a.passageGevonden ? 1 : -1;
+          });
+
+          const heeftNietGevonden = gesorteerd.some((b) => !b.passageGevonden);
+
           if (titelEl) {
-            titelEl.textContent = `${data.bestandsnaam} - ${data.aantalBezwaren} bezwar${data.aantalBezwaren === 1 ? '' : 'en'} gevonden`;
+            const basisTitel = `${data.bestandsnaam} - ${data.aantalBezwaren} bezwar${data.aantalBezwaren === 1 ? '' : 'en'} gevonden`;
+            titelEl.textContent = heeftNietGevonden ?
+                `${basisTitel} (met opmerkingen)` :
+                basisTitel;
           }
 
-          data.bezwaren.forEach((bezwaar) => {
+          gesorteerd.forEach((bezwaar) => {
             const item = document.createElement('div');
             item.className = 'bezwaar-item';
+
+            if (!bezwaar.passageGevonden) {
+              const waarschuwing = document.createElement('div');
+              waarschuwing.className = 'bezwaar-waarschuwing';
+              waarschuwing.textContent = '\u26A0\uFE0F Passage kon niet gevonden worden';
+              item.appendChild(waarschuwing);
+            }
 
             const samenvatting = document.createElement('div');
             samenvatting.className = 'bezwaar-samenvatting';

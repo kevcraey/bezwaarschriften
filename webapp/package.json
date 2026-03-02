@@ -12,7 +12,9 @@
     "format": "npm run format:source",
     "format:source": "eslint src --ext .js --ext .html -c .eslintrc.json",
     "format:fix": "npm run format:source:fix",
-    "format:source:fix": "eslint src --ext .js --ext .html -c .eslintrc.json --fix"
+    "format:source:fix": "eslint src --ext .js --ext .html -c .eslintrc.json --fix",
+    "test": "cypress run --component",
+    "test:open": "cypress open --component"
   },
   "keywords": [
     "bezwaarschriften"
@@ -23,6 +25,8 @@
   "devDependencies": {
     "copy-webpack-plugin": "11.0.0",
     "css-loader": "6.8.1",
+    "cypress": "^14.3.3",
+    "cypress-lit": "^0.0.8",
     "eslint": "8.43.0",
     "eslint-config-google": "0.14.0",
     "eslint-plugin-html": "7.1.0",

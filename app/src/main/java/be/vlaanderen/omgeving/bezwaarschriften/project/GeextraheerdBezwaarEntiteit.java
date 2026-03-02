@@ -27,6 +27,9 @@ public class GeextraheerdBezwaarEntiteit {
   @Column(name = "categorie", length = 50, nullable = false)
   private String categorie;
 
+  @Column(name = "passage_gevonden", nullable = false)
+  private boolean passageGevonden = true;
+
   public Long getId() {
     return id;
   }
@@ -65,5 +68,13 @@ public class GeextraheerdBezwaarEntiteit {
 
   public void setCategorie(String categorie) {
     this.categorie = categorie;
+  }
+
+  public boolean isPassageGevonden() {
+    return passageGevonden;
+  }
+
+  public void setPassageGevonden(boolean passageGevonden) {
+    this.passageGevonden = passageGevonden;
   }
 }

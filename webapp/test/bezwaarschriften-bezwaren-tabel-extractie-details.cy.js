@@ -1,0 +1,116 @@
+import {html} from 'lit';
+import '../src/js/bezwaarschriften-bezwaren-tabel';
+
+describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
+  const MOCK_DETAILS_MET_OPMERKINGEN = {
+    bestandsnaam: 'bezwaar-001.txt',
+    aantalBezwaren: 3,
+    bezwaren: [
+      {samenvatting: 'Gevonden bezwaar', passage: 'Dit is een gevonden passage.', passageGevonden: true},
+      {samenvatting: 'Niet gevonden bezwaar', passage: 'Deze passage bestaat niet.', passageGevonden: false},
+      {samenvatting: 'Nog een gevonden bezwaar', passage: 'Nog een gevonden passage.', passageGevonden: true},
+    ],
+  };
+
+  const MOCK_DETAILS_ZONDER_OPMERKINGEN = {
+    bestandsnaam: 'bezwaar-002.txt',
+    aantalBezwaren: 2,
+    bezwaren: [
+      {samenvatting: 'Eerste bezwaar', passage: 'Eerste passage.', passageGevonden: true},
+      {samenvatting: 'Tweede bezwaar', passage: 'Tweede passage.', passageGevonden: true},
+    ],
+  };
+
+  beforeEach(() => {
+    cy.mount(html`<bezwaarschriften-bezwaren-tabel></bezwaarschriften-bezwaren-tabel>`);
+  });
+
+  it('toont niet-gevonden bezwaren bovenaan in side-panel', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_MET_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-001.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('.bezwaar-item')
+        .first()
+        .find('.bezwaar-samenvatting')
+        .should('have.text', 'Niet gevonden bezwaar');
+  });
+
+  it('toont waarschuwingstekst bij niet-gevonden passage', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_MET_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-001.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('.bezwaar-waarschuwing')
+        .should('have.length', 1)
+        .and('contain.text', 'Passage kon niet gevonden worden');
+  });
+
+  it('toont geen waarschuwing bij gevonden passages', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-002.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('.bezwaar-waarschuwing')
+        .should('not.exist');
+  });
+
+  it('titel bevat "(met opmerkingen)" bij niet-gevonden passages', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_MET_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-001.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#extractie-side-sheet-titel')
+        .should('contain.text', '(met opmerkingen)');
+  });
+
+  it('titel zonder opmerkingen bij alle passages gevonden', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-002.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#extractie-side-sheet-titel')
+        .should('not.contain.text', '(met opmerkingen)')
+        .and('contain.text', '2 bezwaren gevonden');
+  });
+});

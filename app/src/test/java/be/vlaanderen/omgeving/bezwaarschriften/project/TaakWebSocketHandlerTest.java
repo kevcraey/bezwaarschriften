@@ -37,7 +37,7 @@ class TaakWebSocketHandlerTest {
     var taak = new ExtractieTaakDto(
         1L, "windmolens", "bezwaar-001.txt", "bezig",
         1, "2026-02-28T10:00:00Z", "2026-02-28T10:01:00Z",
-        null, null, null);
+        null, null, null, false);
 
     handler.taakGewijzigd(taak);
 
@@ -58,7 +58,7 @@ class TaakWebSocketHandlerTest {
     var taak = new ExtractieTaakDto(
         2L, "windmolens", "bezwaar-002.txt", "klaar",
         1, "2026-02-28T10:00:00Z", "2026-02-28T10:01:00Z",
-        500, 7, null);
+        500, 7, null, false);
 
     handler.taakGewijzigd(taak);
 

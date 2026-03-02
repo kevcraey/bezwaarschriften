@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
 import java.util.HashMap;
@@ -27,6 +28,9 @@ public class ExtractieTaakService {
   private final ProjectService projectService;
   private final ExtractiePassageRepository passageRepository;
   private final GeextraheerdBezwaarRepository bezwaarRepository;
+  private final ProjectPoort projectPoort;
+  private final IngestiePoort ingestiePoort;
+  private final PassageValidator passageValidator;
   private final int maxConcurrent;
   private final int maxPogingen;
 
@@ -38,6 +42,9 @@ public class ExtractieTaakService {
    * @param projectService service voor projecten en bezwaarbestanden
    * @param passageRepository repository voor extractie-passages
    * @param bezwaarRepository repository voor geextraheerde bezwaren
+   * @param projectPoort poort voor projectbestanden
+   * @param ingestiePoort poort voor het inlezen van brondocumenten
+   * @param passageValidator validator voor passage-verificatie
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
    * @param maxPogingen maximum aantal pogingen per taak
    */
@@ -47,6 +54,9 @@ public class ExtractieTaakService {
       ProjectService projectService,
       ExtractiePassageRepository passageRepository,
       GeextraheerdBezwaarRepository bezwaarRepository,
+      ProjectPoort projectPoort,
+      IngestiePoort ingestiePoort,
+      PassageValidator passageValidator,
       @Value("${bezwaarschriften.extractie.max-concurrent:3}") int maxConcurrent,
       @Value("${bezwaarschriften.extractie.max-pogingen:3}") int maxPogingen) {
     this.repository = repository;
@@ -54,6 +64,9 @@ public class ExtractieTaakService {
     this.projectService = projectService;
     this.passageRepository = passageRepository;
     this.bezwaarRepository = bezwaarRepository;
+    this.projectPoort = projectPoort;
+    this.ingestiePoort = ingestiePoort;
+    this.passageValidator = passageValidator;
     this.maxConcurrent = maxConcurrent;
     this.maxPogingen = maxPogingen;
   }
@@ -146,6 +159,9 @@ public class ExtractieTaakService {
   /**
    * Markeert een taak als succesvol afgerond en slaat passages en bezwaren op.
    *
+   * <p>Voert passage-validatie uit door de passages te vergelijken met het originele
+   * brondocument. Bij niet-gevonden passages wordt {@code heeftOpmerkingen} gezet.
+   *
    * @param taakId id van de taak
    * @param resultaat het volledige extractie-resultaat met passages en bezwaren
    */
@@ -157,25 +173,48 @@ public class ExtractieTaakService {
     taak.setAantalWoorden(resultaat.aantalWoorden());
     taak.setAantalBezwaren(resultaat.aantalBezwaren());
     taak.setAfgerondOp(Instant.now());
-    repository.save(taak);
 
+    var passageMap = new HashMap<Integer, String>();
     for (var passage : resultaat.passages()) {
       var entiteit = new ExtractiePassageEntiteit();
       entiteit.setTaakId(taakId);
       entiteit.setPassageNr(passage.id());
       entiteit.setTekst(passage.tekst());
       passageRepository.save(entiteit);
+      passageMap.put(passage.id(), passage.tekst());
     }
 
+    var bezwaarEntiteiten = new java.util.ArrayList<GeextraheerdBezwaarEntiteit>();
     for (var bezwaar : resultaat.bezwaren()) {
       var entiteit = new GeextraheerdBezwaarEntiteit();
       entiteit.setTaakId(taakId);
       entiteit.setPassageNr(bezwaar.passageId());
       entiteit.setSamenvatting(bezwaar.samenvatting());
       entiteit.setCategorie(bezwaar.categorie());
+      bezwaarEntiteiten.add(entiteit);
+    }
+
+    // Passage-validatie
+    try {
+      var pad = projectPoort.geefBestandsPad(taak.getProjectNaam(), taak.getBestandsnaam());
+      var brondocument = ingestiePoort.leesBestand(pad);
+      var validatie = passageValidator.valideer(bezwaarEntiteiten, passageMap,
+          brondocument.tekst());
+      if (validatie.aantalNietGevonden() > 0) {
+        taak.setHeeftOpmerkingen(true);
+        LOGGER.info("Taak {}: {} van {} passages niet gevonden in brondocument",
+            taakId, validatie.aantalNietGevonden(), bezwaarEntiteiten.size());
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Passage-validatie overgeslagen voor taak {} ({}): {}",
+          taakId, taak.getBestandsnaam(), e.getMessage());
+    }
+
+    for (var entiteit : bezwaarEntiteiten) {
       bezwaarRepository.save(entiteit);
     }
 
+    repository.save(taak);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
     LOGGER.info("Taak {} afgerond: {} woorden, {} bezwaren, {} passages opgeslagen",
         taakId, resultaat.aantalWoorden(), resultaat.aantalBezwaren(),
@@ -321,7 +360,8 @@ public class ExtractieTaakService {
     var details = bezwaren.stream()
         .map(b -> new ExtractieDetailDto.BezwaarDetail(
             b.getSamenvatting(),
-            passageMap.getOrDefault(b.getPassageNr(), "")))
+            passageMap.getOrDefault(b.getPassageNr(), ""),
+            b.isPassageGevonden()))
         .toList();
 
     return new ExtractieDetailDto(bestandsnaam, details.size(), details);

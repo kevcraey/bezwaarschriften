@@ -37,9 +37,9 @@ class ExtractieControllerTest {
     when(extractieTaakService.indienen("windmolens", List.of("a.txt", "b.txt")))
         .thenReturn(List.of(
             new ExtractieTaakDto(1L, "windmolens", "a.txt", "wachtend",
-                0, "2026-02-28T10:00:00Z", null, null, null, null),
+                0, "2026-02-28T10:00:00Z", null, null, null, null, false),
             new ExtractieTaakDto(2L, "windmolens", "b.txt", "wachtend",
-                0, "2026-02-28T10:00:00Z", null, null, null, null)
+                0, "2026-02-28T10:00:00Z", null, null, null, null, false)
         ));
 
     mockMvc.perform(post("/api/v1/projects/windmolens/extracties")
@@ -59,7 +59,7 @@ class ExtractieControllerTest {
         .thenReturn(List.of(
             new ExtractieTaakDto(1L, "windmolens", "bezwaar-001.txt", "klaar",
                 0, "2026-02-28T10:00:00Z", "2026-02-28T10:01:00Z",
-                150, 3, null)
+                150, 3, null, false)
         ));
 
     mockMvc.perform(get("/api/v1/projects/windmolens/extracties"))
@@ -94,9 +94,9 @@ class ExtractieControllerTest {
   void geeftExtractieDetailsVoorBestand() throws Exception {
     var detail = new ExtractieDetailDto("bezwaar-001.txt", 2, List.of(
         new ExtractieDetailDto.BezwaarDetail(
-            "Geluidshinder door evenementen", "De geluidsoverlast zal..."),
+            "Geluidshinder door evenementen", "De geluidsoverlast zal...", true),
         new ExtractieDetailDto.BezwaarDetail(
-            "Parkeertekort", "Er zijn onvoldoende parkeerplaatsen...")));
+            "Parkeertekort", "Er zijn onvoldoende parkeerplaatsen...", true)));
 
     when(extractieTaakService.geefExtractieDetails("windmolens", "bezwaar-001.txt"))
         .thenReturn(detail);
@@ -127,5 +127,22 @@ class ExtractieControllerTest {
     mockMvc.perform(delete("/api/v1/projects/windmolens/extracties/999")
             .with(csrf()))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void geeftExtractieDetailsMetPassageNietGevonden() throws Exception {
+    var detail = new ExtractieDetailDto("bezwaar-002.txt", 2, List.of(
+        new ExtractieDetailDto.BezwaarDetail(
+            "Geluidshinder", "De geluidsoverlast zal...", false),
+        new ExtractieDetailDto.BezwaarDetail(
+            "Parkeertekort", "Er zijn onvoldoende...", true)));
+
+    when(extractieTaakService.geefExtractieDetails("windmolens", "bezwaar-002.txt"))
+        .thenReturn(detail);
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/extracties/bezwaar-002.txt/details"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bezwaren[0].passageGevonden").value(false))
+        .andExpect(jsonPath("$.bezwaren[1].passageGevonden").value(true));
   }
 }
