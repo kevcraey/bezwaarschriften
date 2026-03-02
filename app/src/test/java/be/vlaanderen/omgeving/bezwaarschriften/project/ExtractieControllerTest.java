@@ -128,4 +128,21 @@ class ExtractieControllerTest {
             .with(csrf()))
         .andExpect(status().isNotFound());
   }
+
+  @Test
+  void geeftExtractieDetailsMetPassageNietGevonden() throws Exception {
+    var detail = new ExtractieDetailDto("bezwaar-002.txt", 2, List.of(
+        new ExtractieDetailDto.BezwaarDetail(
+            "Geluidshinder", "De geluidsoverlast zal...", false),
+        new ExtractieDetailDto.BezwaarDetail(
+            "Parkeertekort", "Er zijn onvoldoende...", true)));
+
+    when(extractieTaakService.geefExtractieDetails("windmolens", "bezwaar-002.txt"))
+        .thenReturn(detail);
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/extracties/bezwaar-002.txt/details"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bezwaren[0].passageGevonden").value(false))
+        .andExpect(jsonPath("$.bezwaren[1].passageGevonden").value(true));
+  }
 }
