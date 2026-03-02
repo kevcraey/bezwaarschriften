@@ -8,6 +8,7 @@ import {VlToasterComponent} from '@domg-wc/components/block/toaster/vl-toaster.c
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 import './bezwaarschriften-kernbezwaren.js';
+import './bezwaarschriften-resultaten-tabel.js';
 
 registerWebComponents([VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent, VlToasterComponent]);
 
@@ -50,6 +51,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <vl-tabs-pane id="kernbezwaren" title="Kernbezwaren">
             <bezwaarschriften-kernbezwaren id="kernbezwaren-component"></bezwaarschriften-kernbezwaren>
           </vl-tabs-pane>
+          <vl-tabs-pane id="resultaten" title="Resultaten">
+            <vl-button id="consolideren-knop" hidden>Consolideren</vl-button>
+            <bezwaarschriften-resultaten-tabel id="resultaten-tabel"></bezwaarschriften-resultaten-tabel>
+          </vl-tabs-pane>
         </vl-tabs>
       </div>
       <vl-modal id="verwijder-modal" title="Bestanden verwijderen" closable>
@@ -91,6 +96,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this._wsReconnectDelay = 1000;
     this._teVerwijderenBestanden = [];
     this._teAnnulerenTaak = null;
+    this.__consolidatieDocumenten = [];
   }
 
   connectedCallback() {
@@ -118,6 +124,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       const data = JSON.parse(event.data);
       if (data.type === 'taak-update') {
         this._verwerkTaakUpdate(data.taak);
+      }
+      if (data.type === 'consolidatie-update') {
+        this._verwerkConsolidatieUpdate(data.taak);
       }
     };
 
@@ -237,6 +246,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
     this.shadowRoot.addEventListener('antwoord-voortgang', (e) => {
       this._werkKernbezwarenTabTitelBij(e.detail.aantalMetAntwoord, e.detail.totaal);
+      if (this.__geselecteerdProject) {
+        this._laadConsolidaties(this.__geselecteerdProject);
+      }
     });
 
     this.shadowRoot.addEventListener('selectie-gewijzigd', (e) => {
@@ -250,6 +262,38 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       }
       this._werkVerwerkenKnopBij();
     });
+
+    // Consolidatie-events
+    this.shadowRoot.addEventListener('start-consolidatie', (e) => {
+      const {bestandsnaam} = e.detail;
+      if (this.__geselecteerdProject) {
+        this._dienConsolidatiesIn(this.__geselecteerdProject, [bestandsnaam]);
+      }
+    });
+
+    this.shadowRoot.addEventListener('herstart-consolidatie', (e) => {
+      const {bestandsnaam} = e.detail;
+      if (this.__geselecteerdProject) {
+        this._dienConsolidatiesIn(this.__geselecteerdProject, [bestandsnaam]);
+      }
+    });
+
+    this.shadowRoot.addEventListener('annuleer-consolidatie', (e) => {
+      const {taakId} = e.detail;
+      this._annuleerConsolidatieTaak(taakId);
+    });
+
+    const consoliderenKnop = this.shadowRoot && this.shadowRoot.querySelector('#consolideren-knop');
+    if (consoliderenKnop) {
+      consoliderenKnop.addEventListener('vl-click', () => {
+        if (!this.__geselecteerdProject) return;
+        const tabel = this.shadowRoot.querySelector('#resultaten-tabel');
+        const geselecteerd = tabel ? tabel.geefGeselecteerdeBestandsnamen() : [];
+        if (geselecteerd.length > 0) {
+          this._dienConsolidatiesIn(this.__geselecteerdProject, geselecteerd);
+        }
+      });
+    }
 
     if (verwerkenKnop) {
       verwerkenKnop.addEventListener('vl-click', () => {
@@ -321,6 +365,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this._werkVerwerkenKnopBij();
           this._syncExtracties(projectNaam);
           this._werkKernbezwarenBij(projectNaam, data.bezwaren);
+          this._laadConsolidaties(projectNaam);
         })
         .catch(() => {
           this._toonFout('Bezwaren konden niet worden geladen.');
@@ -572,6 +617,127 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           this._zetBezig(false);
           this._teAnnulerenTaak = null;
         });
+  }
+
+  _laadConsolidaties(projectNaam) {
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/consolidaties`)
+        .then((response) => {
+          if (!response.ok) return null;
+          return response.json();
+        })
+        .then((data) => {
+          if (data && data.documenten) {
+            this.__consolidatieDocumenten = data.documenten;
+            this._werkResultatenTabelBij();
+            this._werkResultatenTabTitelBij();
+            this._werkConsoliderenKnopBij();
+          }
+        })
+        .catch(() => {/* stille fout bij laden consolidaties */});
+  }
+
+  _dienConsolidatiesIn(projectNaam, bestandsnamen) {
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/consolidaties`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bestandsnamen}),
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Indienen consolidaties mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          if (data && data.taken) {
+            const tabel = this.shadowRoot.querySelector('#resultaten-tabel');
+            if (tabel) {
+              data.taken.forEach((taak) => tabel.werkBijMetTaakUpdate(taak));
+            }
+            this._werkResultatenTabTitelBij();
+            this._werkConsoliderenKnopBij();
+          }
+        })
+        .catch(() => {
+          this._toonToast('error', 'Consolidatie kon niet worden ingediend.');
+        });
+  }
+
+  _annuleerConsolidatieTaak(taakId) {
+    if (!this.__geselecteerdProject) return;
+    fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/consolidaties/${taakId}`, {
+      method: 'DELETE',
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Annuleren mislukt');
+          this._toonToast('success', 'Consolidatie geannuleerd.');
+          this._laadConsolidaties(this.__geselecteerdProject);
+        })
+        .catch(() => {
+          this._toonToast('error', 'Annuleren van consolidatie mislukt.');
+        });
+  }
+
+  _verwerkConsolidatieUpdate(taak) {
+    if (!this.__geselecteerdProject || taak.projectNaam !== this.__geselecteerdProject) {
+      return;
+    }
+    const tabel = this.shadowRoot.querySelector('#resultaten-tabel');
+    if (tabel) {
+      tabel.werkBijMetTaakUpdate(taak);
+    }
+    // Update local state
+    this.__consolidatieDocumenten = this.__consolidatieDocumenten.map((d) =>
+      d.bestandsnaam === taak.bestandsnaam ? {...d, status: taak.status} : d,
+    );
+    this._werkResultatenTabTitelBij();
+    this._werkConsoliderenKnopBij();
+  }
+
+  _werkResultatenTabelBij() {
+    const tabel = this.shadowRoot && this.shadowRoot.querySelector('#resultaten-tabel');
+    if (tabel && this.__consolidatieDocumenten) {
+      tabel.projectNaam = this.__geselecteerdProject;
+      tabel.documenten = this.__consolidatieDocumenten;
+    }
+  }
+
+  _werkResultatenTabTitelBij() {
+    if (!this.__consolidatieDocumenten || this.__consolidatieDocumenten.length === 0) return;
+    const totaal = this.__consolidatieDocumenten.length;
+    const aantalKlaar = this.__consolidatieDocumenten.filter(
+        (d) => d.status === 'klaar').length;
+    const isBezig = this.__consolidatieDocumenten.some(
+        (d) => d.status === 'wachtend' || d.status === 'bezig');
+    const allesKlaar = aantalKlaar === totaal;
+
+    let titel = `Resultaten (${aantalKlaar}/${totaal})`;
+    if (allesKlaar) titel = `\u2714\uFE0F Resultaten (${totaal}/${totaal})`;
+    if (isBezig) titel += ' \u23F3';
+
+    const tabs = this.shadowRoot.querySelector('vl-tabs');
+    const slot = tabs && tabs.shadowRoot &&
+        tabs.shadowRoot.querySelector(`slot[name="resultaten-title-slot"]`);
+    if (slot) {
+      slot.innerHTML = titel;
+      slot.style.color = allesKlaar ? '#0e7c3a' : '';
+    }
+  }
+
+  _werkConsoliderenKnopBij() {
+    const consoliderenKnop = this.shadowRoot && this.shadowRoot.querySelector('#consolideren-knop');
+    if (!consoliderenKnop || !this.__consolidatieDocumenten) return;
+    const tabel = this.shadowRoot.querySelector('#resultaten-tabel');
+    const geselecteerd = tabel ? tabel.geefGeselecteerdeBestandsnamen() : [];
+    if (geselecteerd.length > 0) {
+      consoliderenKnop.hidden = false;
+      consoliderenKnop.textContent = `Consolideren (${geselecteerd.length})`;
+    } else {
+      const aantalVolledig = this.__consolidatieDocumenten.filter(
+          (d) => d.status === 'volledig' || d.status === 'fout').length;
+      consoliderenKnop.hidden = aantalVolledig === 0;
+      if (aantalVolledig > 0) {
+        consoliderenKnop.textContent = `Consolideren (${aantalVolledig})`;
+      }
+    }
   }
 
   _zetBezig(bezig) {
