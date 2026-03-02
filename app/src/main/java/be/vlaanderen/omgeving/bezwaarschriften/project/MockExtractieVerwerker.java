@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
  * Bestanden met "2" in de naam slagen enkel bij elke 3e aanroep (aanroep 3, 6, 9, ...).
  */
 @Component
+@Profile("dev")
 public class MockExtractieVerwerker implements ExtractieVerwerker {
 
   private static final Logger LOGGER =
