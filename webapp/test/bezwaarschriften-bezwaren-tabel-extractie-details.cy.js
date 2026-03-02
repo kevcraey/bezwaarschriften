@@ -156,4 +156,380 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .find('#extractie-side-sheet-titel')
         .should('contain.text', '2 bezwaren gevonden');
   });
+
+  // --- Task 7: ✍️ emoji in tabel + heeftManueel ---
+
+  it('toont ✍️ emoji bij bestandsnaam als heeftManueel true is', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3,
+              heeftOpmerkingen: false, heeftManueel: true},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('span[title="Bevat manueel toegevoegde bezwaren"]')
+        .should('have.length', 1)
+        .and('contain.text', '\u270D\uFE0F');
+  });
+
+  it('toont geen ✍️ emoji als heeftManueel false is', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3,
+              heeftOpmerkingen: false, heeftManueel: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('span[title="Bevat manueel toegevoegde bezwaren"]')
+        .should('not.exist');
+  });
+
+  it('toont beide iconen als heeftOpmerkingen en heeftManueel true zijn', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3,
+              heeftOpmerkingen: true, heeftManueel: true},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('span[title="Niet alle passages konden gevonden worden"]')
+        .should('have.length', 1);
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('span[title="Bevat manueel toegevoegde bezwaren"]')
+        .should('have.length', 1);
+  });
+
+  // --- Task 8: Side-panel bezwaar rendering met manueel label en verwijder-knop ---
+
+  it('toont "Manueel" label bij manueel bezwaar', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: {
+        bestandsnaam: 'bezwaar-001.txt',
+        aantalBezwaren: 2,
+        bezwaren: [
+          {id: 1, samenvatting: 'AI bezwaar', passage: 'Passage 1', passageGevonden: true, manueel: false},
+          {id: 2, samenvatting: 'Manueel bezwaar', passage: 'Passage 2', passageGevonden: true, manueel: true},
+        ],
+      },
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-001.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('.bezwaar-manueel-label')
+        .should('have.length', 1)
+        .and('have.text', 'Manueel');
+  });
+
+  it('toont verwijder-knop alleen bij manueel bezwaar', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: {
+        bestandsnaam: 'bezwaar-001.txt',
+        aantalBezwaren: 2,
+        bezwaren: [
+          {id: 1, samenvatting: 'AI bezwaar', passage: 'Passage 1', passageGevonden: true, manueel: false},
+          {id: 2, samenvatting: 'Manueel bezwaar', passage: 'Passage 2', passageGevonden: true, manueel: true},
+        ],
+      },
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-001.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('.bezwaar-verwijder-knop')
+        .should('have.length', 1);
+  });
+
+  it('verwijdert manueel bezwaar na klik op verwijder-knop', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: {
+        bestandsnaam: 'bezwaar-001.txt',
+        aantalBezwaren: 1,
+        bezwaren: [
+          {id: 10, samenvatting: 'Manueel bezwaar', passage: 'Passage.', passageGevonden: true, manueel: true},
+        ],
+      },
+    }).as('details');
+
+    cy.intercept('DELETE', '/api/v1/projects/windmolens/extracties/bezwaar-001.txt/bezwaren/10', {
+      statusCode: 204,
+    }).as('verwijder');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-001.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('.bezwaar-verwijder-knop')
+        .click();
+
+    cy.wait('@verwijder');
+  });
+
+  // --- Task 9: + knop en inline formulier in side-panel ---
+
+  it('toont + knop in side-panel header bij extractie-klaar', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftOpmerkingen: false, heeftManueel: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-002.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#bezwaar-toevoegen-knop')
+        .should('exist');
+  });
+
+  it('toont inline formulier na klik op + knop', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftOpmerkingen: false, heeftManueel: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-002.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#bezwaar-toevoegen-knop')
+        .click();
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-bezwaar-formulier')
+        .should('exist');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-samenvatting')
+        .should('exist');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-passage')
+        .should('exist');
+  });
+
+  it('opslaan-knop disabled bij lege velden', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftOpmerkingen: false, heeftManueel: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-002.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#bezwaar-toevoegen-knop')
+        .click();
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-opslaan')
+        .should('have.attr', 'disabled');
+  });
+
+  it('slaat manueel bezwaar op en herlaadt side-panel', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
+    }).as('details');
+
+    cy.intercept('POST', '/api/v1/projects/windmolens/extracties/bezwaar-002.txt/bezwaren', {
+      statusCode: 201,
+      body: {id: 10, samenvatting: 'Nieuw bezwaar', passage: 'Eerste passage.', passageGevonden: true, manueel: true},
+    }).as('opslaan');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftOpmerkingen: false, heeftManueel: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-002.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#bezwaar-toevoegen-knop')
+        .click();
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-samenvatting')
+        .shadow()
+        .find('textarea')
+        .type('Nieuw bezwaar');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-passage')
+        .shadow()
+        .find('textarea')
+        .type('Eerste passage.');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-opslaan')
+        .click();
+
+    cy.wait('@opslaan');
+  });
+
+  it('toont foutmelding bij ongeldige passage', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
+    }).as('details');
+
+    cy.intercept('POST', '/api/v1/projects/windmolens/extracties/bezwaar-002.txt/bezwaren', {
+      statusCode: 400,
+      body: {fout: 'Passage komt niet voor in het originele document'},
+    }).as('opslaan');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftOpmerkingen: false, heeftManueel: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-002.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#bezwaar-toevoegen-knop')
+        .click();
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-samenvatting')
+        .shadow()
+        .find('textarea')
+        .type('Samenvatting');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-passage')
+        .shadow()
+        .find('textarea')
+        .type('Onbekende passage');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-opslaan')
+        .click();
+
+    cy.wait('@opslaan');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-foutmelding')
+        .should('contain.text', 'Passage komt niet voor in het originele document');
+  });
+
+  it('annuleert formulier bij klik op annuleer-knop', () => {
+    cy.intercept('GET', '/api/v1/projects/*/extracties/*/details', {
+      statusCode: 200,
+      body: MOCK_DETAILS_ZONDER_OPMERKINGEN,
+    }).as('details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftOpmerkingen: false, heeftManueel: false},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .invoke('toonExtractieDetails', 'windmolens', 'bezwaar-002.txt');
+
+    cy.wait('@details');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#bezwaar-toevoegen-knop')
+        .click();
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-bezwaar-formulier')
+        .should('exist');
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-annuleer')
+        .click();
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('#manueel-bezwaar-formulier')
+        .should('not.exist');
+  });
 });

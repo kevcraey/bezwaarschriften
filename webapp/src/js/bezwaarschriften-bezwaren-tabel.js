@@ -8,13 +8,15 @@ import {VlInputFieldComponent} from '@domg-wc/components/form/input-field/vl-inp
 import {VlFormLabelComponent} from '@domg-wc/components/form/form-label/vl-form-label.component.js';
 import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
+import {VlTextareaComponent} from '@domg-wc/components/form/textarea/vl-textarea.component.js';
+import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
 registerWebComponents([
   VlRichDataTable, VlRichDataField, VlPillComponent,
   VlSearchFilterComponent, VlPagerComponent,
   VlInputFieldComponent, VlFormLabelComponent, VlSelectComponent,
-  VlSideSheet,
+  VlSideSheet, VlTextareaComponent, VlButtonComponent,
 ]);
 
 const STATUS_LABELS = {
@@ -122,6 +124,58 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           border-left: 3px solid #a5673f;
           border-radius: 2px;
         }
+        .bezwaar-manueel-label {
+          display: inline-block;
+          font-size: 0.75rem;
+          color: #687483;
+          background: #f3f5f6;
+          padding: 0.1rem 0.4rem;
+          border-radius: 2px;
+          margin-bottom: 0.25rem;
+        }
+        .bezwaar-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+        .bezwaar-verwijder-knop {
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #db3434;
+          font-size: 1rem;
+          padding: 0;
+          line-height: 1;
+          flex-shrink: 0;
+          opacity: 0.6;
+        }
+        .bezwaar-verwijder-knop:hover { opacity: 1; }
+        #manueel-bezwaar-formulier {
+          background: #f3f5f6;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          border-radius: 4px;
+          border: 1px solid #e8ebee;
+        }
+        #manueel-bezwaar-formulier label {
+          display: block;
+          font-weight: bold;
+          margin-bottom: 0.25rem;
+          font-size: 0.875rem;
+        }
+        #manueel-bezwaar-formulier .formulier-veld {
+          margin-bottom: 0.75rem;
+        }
+        .formulier-acties {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+        #manueel-foutmelding {
+          color: #db3434;
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+        }
       </style>
       <vl-rich-data-table id="tabel" filter-closable filter-closed>
         <vl-search-filter slot="filter" alt>
@@ -149,6 +203,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         <div class="side-sheet-wrapper">
           <div class="side-sheet-header">
             <div id="extractie-side-sheet-titel" class="side-sheet-titel"></div>
+            <button id="bezwaar-toevoegen-knop" class="side-sheet-sluit-knop"
+                aria-label="Bezwaar toevoegen" style="display:none;" title="Bezwaar toevoegen">+</button>
             <button id="extractie-side-sheet-sluit" class="side-sheet-sluit-knop"
                 aria-label="Sluiten">&times;</button>
           </div>
@@ -202,6 +258,13 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       });
     }
 
+    const toevoegKnop = this.shadowRoot.querySelector('#bezwaar-toevoegen-knop');
+    if (toevoegKnop) {
+      toevoegKnop.addEventListener('click', () => {
+        this._toonManueelBezwaarFormulier();
+      });
+    }
+
     // vl-rich-data-table gebruikt webComponentPromised: registratie is asynchroon.
     // Wacht tot het component volledig geüpgraded is voordat we renderers, data en
     // statusopties configureren — anders worden property setters niet aangeroepen.
@@ -230,6 +293,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         aantalWoorden: taak.aantalWoorden,
         aantalBezwaren: taak.aantalBezwaren,
         heeftOpmerkingen: taak.heeftOpmerkingen,
+        heeftManueel: taak.heeftManueel,
       } : b,
     );
     this._herbereken();
@@ -283,6 +347,13 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               icon.title = 'Niet alle passages konden gevonden worden';
               icon.style.marginRight = '0.4rem';
               td.appendChild(icon);
+            }
+            if (rij.heeftManueel) {
+              const manueelIcon = document.createElement('span');
+              manueelIcon.textContent = '\u270D\uFE0F';
+              manueelIcon.title = 'Bevat manueel toegevoegde bezwaren';
+              manueelIcon.style.marginRight = '0.4rem';
+              td.appendChild(manueelIcon);
             }
             if (this._projectNaam) {
               const a = document.createElement('a');
@@ -398,10 +469,15 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const titelEl = this.shadowRoot.querySelector('#extractie-side-sheet-titel');
     if (!sideSheet || !inhoud) return;
 
+    this._huidigeBestandsnaam = bestandsnaam;
+
     inhoud.innerHTML = '<p>Laden...</p>';
     if (titelEl) titelEl.textContent = bestandsnaam;
     sideSheet.open();
     this.classList.add('side-sheet-open');
+
+    const toevoegKnop = this.shadowRoot.querySelector('#bezwaar-toevoegen-knop');
+    if (toevoegKnop) toevoegKnop.style.display = 'none';
 
     fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/${encodeURIComponent(bestandsnaam)}/details`)
         .then((response) => {
@@ -421,6 +497,12 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             titelEl.textContent = `${data.bestandsnaam} - ${data.aantalBezwaren} bezwar${data.aantalBezwaren === 1 ? '' : 'en'} gevonden`;
           }
 
+          // Toon + knop
+          const toevoegKnop = this.shadowRoot.querySelector('#bezwaar-toevoegen-knop');
+          if (toevoegKnop) {
+            toevoegKnop.style.display = 'inline-block';
+          }
+
           gesorteerd.forEach((bezwaar) => {
             const item = document.createElement('div');
             item.className = 'bezwaar-item';
@@ -432,15 +514,38 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               item.appendChild(waarschuwing);
             }
 
+            if (bezwaar.manueel) {
+              const label = document.createElement('div');
+              label.className = 'bezwaar-manueel-label';
+              label.textContent = 'Manueel';
+              item.appendChild(label);
+            }
+
+            const header = document.createElement('div');
+            header.className = 'bezwaar-header';
+
             const samenvatting = document.createElement('div');
             samenvatting.className = 'bezwaar-samenvatting';
             samenvatting.textContent = bezwaar.samenvatting;
+            header.appendChild(samenvatting);
+
+            if (bezwaar.manueel) {
+              const verwijderKnop = document.createElement('button');
+              verwijderKnop.className = 'bezwaar-verwijder-knop';
+              verwijderKnop.innerHTML = '\uD83D\uDDD1\uFE0F';
+              verwijderKnop.title = 'Manueel bezwaar verwijderen';
+              verwijderKnop.addEventListener('click', () => {
+                this._verwijderManueelBezwaar(projectNaam, bestandsnaam, bezwaar.id);
+              });
+              header.appendChild(verwijderKnop);
+            }
+
+            item.appendChild(header);
 
             const passage = document.createElement('div');
             passage.className = 'bezwaar-passage';
             passage.textContent = `\u201C${bezwaar.passage}\u201D`;
 
-            item.appendChild(samenvatting);
             item.appendChild(passage);
             inhoud.appendChild(item);
           });
@@ -448,6 +553,113 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         .catch(() => {
           inhoud.innerHTML = '<p>Kon extractie-details niet laden.</p>';
         });
+  }
+
+  _verwijderManueelBezwaar(projectNaam, bestandsnaam, bezwaarId) {
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/${encodeURIComponent(bestandsnaam)}/bezwaren/${bezwaarId}`, {
+      method: 'DELETE',
+    }).then((response) => {
+      if (!response.ok) throw new Error('Verwijderen mislukt');
+      // Herlaad side-panel en tabeldata
+      this.toonExtractieDetails(projectNaam, bestandsnaam);
+      this.dispatchEvent(new CustomEvent('bezwaar-gewijzigd', {
+        bubbles: true, composed: true,
+      }));
+    }).catch(() => {
+      // Foutmelding in side-panel
+      const inhoud = this.shadowRoot.querySelector('#extractie-side-sheet-inhoud');
+      if (inhoud) {
+        const fout = document.createElement('div');
+        fout.className = 'bezwaar-waarschuwing';
+        fout.textContent = 'Verwijderen mislukt, probeer opnieuw.';
+        inhoud.prepend(fout);
+      }
+    });
+  }
+
+  _toonManueelBezwaarFormulier() {
+    const inhoud = this.shadowRoot.querySelector('#extractie-side-sheet-inhoud');
+    if (!inhoud || inhoud.querySelector('#manueel-bezwaar-formulier')) return;
+
+    const formulier = document.createElement('div');
+    formulier.id = 'manueel-bezwaar-formulier';
+
+    formulier.innerHTML = `
+      <div class="formulier-veld">
+        <label for="manueel-samenvatting">Samenvatting</label>
+        <vl-textarea id="manueel-samenvatting" rows="2" block></vl-textarea>
+      </div>
+      <div class="formulier-veld">
+        <label for="manueel-passage">Passage</label>
+        <vl-textarea id="manueel-passage" rows="4" block></vl-textarea>
+      </div>
+      <div class="formulier-acties">
+        <vl-button id="manueel-opslaan" disabled>Opslaan</vl-button>
+        <button id="manueel-annuleer" class="side-sheet-sluit-knop"
+            aria-label="Annuleren" title="Annuleren">&times;</button>
+      </div>
+      <div id="manueel-foutmelding"></div>
+    `;
+
+    inhoud.prepend(formulier);
+
+    // Enable/disable opslaan-knop op basis van input
+    const samenvatting = formulier.querySelector('#manueel-samenvatting');
+    const passage = formulier.querySelector('#manueel-passage');
+    const opslaanKnop = formulier.querySelector('#manueel-opslaan');
+
+    const updateOpslaanStatus = () => {
+      const samenvattingWaarde = samenvatting.value || '';
+      const passageWaarde = passage.value || '';
+      if (samenvattingWaarde.trim() && passageWaarde.trim()) {
+        opslaanKnop.removeAttribute('disabled');
+      } else {
+        opslaanKnop.setAttribute('disabled', '');
+      }
+    };
+
+    samenvatting.addEventListener('input', updateOpslaanStatus);
+    passage.addEventListener('input', updateOpslaanStatus);
+
+    // Annuleer
+    formulier.querySelector('#manueel-annuleer').addEventListener('click', () => {
+      formulier.remove();
+    });
+
+    // Opslaan
+    opslaanKnop.addEventListener('click', () => {
+      this._slaManueelBezwaarOp(samenvatting.value, passage.value);
+    });
+  }
+
+  _slaManueelBezwaarOp(samenvatting, passage) {
+    const projectNaam = this._projectNaam;
+    const bestandsnaam = this._huidigeBestandsnaam;
+
+    const foutEl = this.shadowRoot.querySelector('#manueel-foutmelding');
+    if (foutEl) foutEl.textContent = '';
+
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/${encodeURIComponent(bestandsnaam)}/bezwaren`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({samenvatting, passage}),
+    }).then((response) => {
+      if (response.ok) {
+        // Herlaad side-panel
+        this.toonExtractieDetails(projectNaam, bestandsnaam);
+        this.dispatchEvent(new CustomEvent('bezwaar-gewijzigd', {
+          bubbles: true, composed: true,
+        }));
+      } else {
+        return response.json().then((data) => {
+          if (foutEl) {
+            foutEl.textContent = data.fout || 'Opslaan mislukt, probeer opnieuw.';
+          }
+        });
+      }
+    }).catch(() => {
+      if (foutEl) foutEl.textContent = 'Opslaan mislukt, probeer opnieuw.';
+    });
   }
 
   _onTabelChange(event) {
