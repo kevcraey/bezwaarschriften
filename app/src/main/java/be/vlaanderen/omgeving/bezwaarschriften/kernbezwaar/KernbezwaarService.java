@@ -34,6 +34,7 @@ public class KernbezwaarService {
   private final ThemaRepository themaRepository;
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarReferentieRepository referentieRepository;
+  private final ClusteringTaakService clusteringTaakService;
 
   /**
    * Constructor met alle benodigde afhankelijkheden.
@@ -47,6 +48,7 @@ public class KernbezwaarService {
    * @param themaRepository repository voor thema's
    * @param kernbezwaarRepository repository voor kernbezwaren
    * @param referentieRepository repository voor kernbezwaar-referenties
+   * @param clusteringTaakService service voor clustering-taak levenscyclus
    */
   public KernbezwaarService(EmbeddingPoort embeddingPoort,
       ClusteringPoort clusteringPoort,
@@ -56,7 +58,8 @@ public class KernbezwaarService {
       KernbezwaarAntwoordRepository antwoordRepository,
       ThemaRepository themaRepository,
       KernbezwaarRepository kernbezwaarRepository,
-      KernbezwaarReferentieRepository referentieRepository) {
+      KernbezwaarReferentieRepository referentieRepository,
+      ClusteringTaakService clusteringTaakService) {
     this.embeddingPoort = embeddingPoort;
     this.clusteringPoort = clusteringPoort;
     this.bezwaarRepository = bezwaarRepository;
@@ -66,11 +69,14 @@ public class KernbezwaarService {
     this.themaRepository = themaRepository;
     this.kernbezwaarRepository = kernbezwaarRepository;
     this.referentieRepository = referentieRepository;
+    this.clusteringTaakService = clusteringTaakService;
   }
 
   /**
    * Groepeert de individuele bezwaren van een project tot thema's en kernbezwaren
    * via embedding-generatie en HDBSCAN-clustering.
+   *
+   * <p>Delegeert naar {@link #clusterEenCategorie} per categorie.
    *
    * @param projectNaam naam van het project
    * @return lijst van thema's met kernbezwaren
@@ -79,31 +85,66 @@ public class KernbezwaarService {
   public List<Thema> groepeer(String projectNaam) {
     var alleBezwaren = bezwaarRepository.findByProjectNaam(projectNaam);
 
+    // Groepeer bezwaren per categorie
+    var categorien = alleBezwaren.stream()
+        .map(GeextraheerdBezwaarEntiteit::getCategorie)
+        .distinct()
+        .toList();
+
+    // Verwijder bestaande thema-data (cascade ruimt kernbezwaren, referenties en antwoorden op)
+    themaRepository.deleteByProjectNaam(projectNaam);
+
+    // Cluster per categorie via clusterEenCategorie (zonder taakId)
+    var resultaat = new ArrayList<Thema>();
+    for (var categorie : categorien) {
+      var thema = clusterEenCategorie(projectNaam, categorie, null);
+      resultaat.add(thema);
+    }
+    return resultaat;
+  }
+
+  /**
+   * Clustert de bezwaren binnen een enkele categorie van een project tot een thema
+   * met kernbezwaren via embedding-generatie en HDBSCAN-clustering.
+   *
+   * <p>Als een taakId meegegeven wordt, wordt periodiek gecontroleerd of de taak
+   * geannuleerd is. Bij annulering wordt een {@link ClusteringGeannuleerdException} geworpen.
+   *
+   * @param projectNaam naam van het project
+   * @param categorie naam van de categorie
+   * @param taakId optioneel ID van de clustering-taak (null bij synchrone groepering)
+   * @return het thema met kernbezwaren
+   * @throws ClusteringGeannuleerdException als de taak geannuleerd is
+   */
+  @Transactional
+  public Thema clusterEenCategorie(String projectNaam, String categorie, Long taakId) {
+    var bezwaren = bezwaarRepository.findByProjectNaamAndCategorie(projectNaam, categorie);
+
     // Bouw lookups voor originele passage-teksten en bestandsnamen
-    var taakIds = alleBezwaren.stream()
+    var taakIds = bezwaren.stream()
         .map(GeextraheerdBezwaarEntiteit::getTaakId)
         .distinct()
         .toList();
     var passageLookup = bouwPassageLookup(taakIds);
     var bestandsnaamLookup = bouwBestandsnaamLookup(taakIds);
 
-    // Groepeer bezwaren per categorie
-    var perCategorie = alleBezwaren.stream()
-        .collect(Collectors.groupingBy(GeextraheerdBezwaarEntiteit::getCategorie));
+    // Verwijder bestaand thema voor deze categorie
+    themaRepository.deleteByProjectNaamAndNaam(projectNaam, categorie);
 
-    // Verwijder bestaande thema-data (cascade ruimt kernbezwaren, referenties en antwoorden op)
-    themaRepository.deleteByProjectNaam(projectNaam);
-
-    // Cluster per categorie en bouw thema's
-    var resultaat = new ArrayList<Thema>();
-    for (var entry : perCategorie.entrySet()) {
-      var categorieNaam = entry.getKey();
-      var bezwaren = entry.getValue();
-      var thema = clusterCategorie(
-          projectNaam, categorieNaam, bezwaren, passageLookup, bestandsnaamLookup);
-      resultaat.add(thema);
+    // Controleer annulering voor embedding-generatie
+    if (taakId != null && clusteringTaakService.isGeannuleerd(taakId)) {
+      throw new ClusteringGeannuleerdException();
     }
-    return resultaat;
+
+    var thema = clusterCategorie(
+        projectNaam, categorie, bezwaren, passageLookup, bestandsnaamLookup);
+
+    // Controleer annulering na embedding-generatie
+    if (taakId != null && clusteringTaakService.isGeannuleerd(taakId)) {
+      throw new ClusteringGeannuleerdException();
+    }
+
+    return thema;
   }
 
   /**

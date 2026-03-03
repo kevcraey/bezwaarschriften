@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -56,6 +57,9 @@ class KernbezwaarServiceTest {
   @Mock
   private KernbezwaarReferentieRepository referentieRepository;
 
+  @Mock
+  private ClusteringTaakService clusteringTaakService;
+
   private KernbezwaarService service;
 
   @BeforeEach
@@ -64,7 +68,8 @@ class KernbezwaarServiceTest {
         embeddingPoort, clusteringPoort,
         bezwaarRepository, passageRepository, taakRepository,
         antwoordRepository, themaRepository,
-        kernbezwaarRepository, referentieRepository);
+        kernbezwaarRepository, referentieRepository,
+        clusteringTaakService);
   }
 
   @Test
@@ -73,6 +78,8 @@ class KernbezwaarServiceTest {
     var bezwaar1 = maakBezwaar(1L, 10L, 1, "samenvatting geluid 1", "Geluid");
     var bezwaar2 = maakBezwaar(2L, 10L, 2, "samenvatting geluid 2", "Geluid");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(bezwaar1, bezwaar2));
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
 
     // Passages: originele tekst voor elke passage
@@ -135,6 +142,8 @@ class KernbezwaarServiceTest {
     // Arrange: 1 bezwaar dat als noise wordt geclassificeerd
     var bezwaar = maakBezwaar(5L, 20L, 1, "uniek bezwaar", "Mobiliteit");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(bezwaar));
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Mobiliteit"))
         .thenReturn(List.of(bezwaar));
 
     // Passage: originele tekst
@@ -242,6 +251,8 @@ class KernbezwaarServiceTest {
     var bezwaar = maakBezwaar(7L, 30L, 99, "fallback samenvatting", "Natuur");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar));
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Natuur"))
+        .thenReturn(List.of(bezwaar));
 
     // Geen passages voor dit taakId
     when(passageRepository.findByTaakId(30L)).thenReturn(List.of());
@@ -280,6 +291,66 @@ class KernbezwaarServiceTest {
     assertThat(themas).hasSize(1);
     assertThat(themas.get(0).kernbezwaren().get(0).samenvatting())
         .isEqualTo("fallback samenvatting");
+  }
+
+  @Test
+  void clusterEenCategorie_stoptBijAnnulering() {
+    // Arrange: taak is geannuleerd
+    when(clusteringTaakService.isGeannuleerd(42L)).thenReturn(true);
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(List.of(maakBezwaar(1L, 10L, 1, "bezwaar", "Geluid")));
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+    when(taakRepository.findById(10L)).thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
+
+    // Act & Assert
+    assertThatThrownBy(() -> service.clusterEenCategorie("windmolens", "Geluid", 42L))
+        .isInstanceOf(ClusteringGeannuleerdException.class)
+        .hasMessage("Clustering is geannuleerd");
+  }
+
+  @Test
+  void clusterEenCategorie_clustertEenCategorieSuccesvol() {
+    // Arrange: 1 bezwaar in categorie "Geluid"
+    var bezwaar = maakBezwaar(1L, 10L, 1, "geluidshinder", "Geluid");
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(List.of(bezwaar));
+
+    var passage = maakPassage(10L, 1, "originele geluidstekst");
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of(passage));
+
+    var taak = maakTaak(10L, "windmolens", "brief.pdf");
+    when(taakRepository.findById(10L)).thenReturn(Optional.of(taak));
+
+    float[] emb = {1.0f, 0.0f};
+    when(embeddingPoort.genereerEmbeddings(anyList())).thenReturn(List.of(emb));
+    when(bezwaarRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Clustering: noise item
+    var resultaat = new ClusteringResultaat(List.of(), List.of(1L));
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    // taakId = null: geen annuleringscontrole
+    var thema = service.clusterEenCategorie("windmolens", "Geluid", null);
+
+    assertThat(thema.naam()).isEqualTo("Geluid");
+    assertThat(thema.kernbezwaren()).hasSize(1);
+    verify(themaRepository).deleteByProjectNaamAndNaam("windmolens", "Geluid");
   }
 
   // --- Hulpmethoden ---
