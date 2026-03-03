@@ -46,7 +46,7 @@ class ClusteringTaakServiceTest {
   void setUp() {
     service = new ClusteringTaakService(
         taakRepository, themaRepository, kernbezwaarRepository,
-        antwoordRepository, bezwaarRepository, notificatie);
+        antwoordRepository, bezwaarRepository, notificatie, 2);
   }
 
   @Test
@@ -285,6 +285,34 @@ class ClusteringTaakServiceTest {
     assertThat(taken.get(0).aantalKernbezwaren()).isEqualTo(3);
     assertThat(taken.get(1).aantalBezwaren()).isEqualTo(5);
     assertThat(taken.get(1).aantalKernbezwaren()).isNull();
+  }
+
+  @Test
+  void pakOpVoorVerwerking_paktWachtendeTakenOp() {
+    var taak1 = maakTaak(1L, "windmolens", "Geluid", ClusteringTaakStatus.WACHTEND);
+    var taak2 = maakTaak(2L, "windmolens", "Mobiliteit", ClusteringTaakStatus.WACHTEND);
+    when(taakRepository.countByStatus(ClusteringTaakStatus.BEZIG)).thenReturn(0);
+    when(taakRepository.findByStatusOrderByAangemaaktOpAsc(ClusteringTaakStatus.WACHTEND))
+        .thenReturn(List.of(taak1, taak2));
+    when(taakRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(bezwaarRepository.countByProjectNaamAndCategorie(any(), any())).thenReturn(5);
+
+    var resultaat = service.pakOpVoorVerwerking();
+
+    assertThat(resultaat).hasSize(2);
+    assertThat(resultaat.get(0).getStatus()).isEqualTo(ClusteringTaakStatus.BEZIG);
+    assertThat(resultaat.get(0).getVerwerkingGestartOp()).isNotNull();
+    assertThat(resultaat.get(1).getStatus()).isEqualTo(ClusteringTaakStatus.BEZIG);
+  }
+
+  @Test
+  void pakOpVoorVerwerking_respecteertMaxConcurrent() {
+    when(taakRepository.countByStatus(ClusteringTaakStatus.BEZIG)).thenReturn(2);
+
+    var resultaat = service.pakOpVoorVerwerking();
+
+    assertThat(resultaat).isEmpty();
+    verify(taakRepository, never()).findByStatusOrderByAangemaaktOpAsc(any());
   }
 
   // --- Hulpmethoden ---

@@ -49,4 +49,21 @@ public class ExtractieConfig {
     executor.initialize();
     return executor;
   }
+
+  /**
+   * Creëert een {@link ThreadPoolTaskExecutor} voor het uitvoeren van clustering-taken.
+   *
+   * @param maxConcurrent maximum aantal gelijktijdige verwerkingen
+   * @return geconfigureerde task executor
+   */
+  @Bean
+  public ThreadPoolTaskExecutor clusteringExecutor(
+      @Value("${bezwaarschriften.clustering.max-concurrent:2}") int maxConcurrent) {
+    var executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(maxConcurrent);
+    executor.setMaxPoolSize(maxConcurrent);
+    executor.setThreadNamePrefix("clustering-");
+    executor.initialize();
+    return executor;
+  }
 }

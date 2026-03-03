@@ -1,8 +1,12 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import java.lang.invoke.MethodHandles;
 import java.time.Instant;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,25 +17,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ClusteringTaakService {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
   private final ClusteringTaakRepository taakRepository;
   private final ThemaRepository themaRepository;
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarAntwoordRepository antwoordRepository;
   private final GeextraheerdBezwaarRepository bezwaarRepository;
   private final ClusteringNotificatie notificatie;
+  private final int maxConcurrent;
 
   public ClusteringTaakService(ClusteringTaakRepository taakRepository,
       ThemaRepository themaRepository,
       KernbezwaarRepository kernbezwaarRepository,
       KernbezwaarAntwoordRepository antwoordRepository,
       GeextraheerdBezwaarRepository bezwaarRepository,
-      ClusteringNotificatie notificatie) {
+      ClusteringNotificatie notificatie,
+      @Value("${bezwaarschriften.clustering.max-concurrent:2}") int maxConcurrent) {
     this.taakRepository = taakRepository;
     this.themaRepository = themaRepository;
     this.kernbezwaarRepository = kernbezwaarRepository;
     this.antwoordRepository = antwoordRepository;
     this.bezwaarRepository = bezwaarRepository;
     this.notificatie = notificatie;
+    this.maxConcurrent = maxConcurrent;
   }
 
   /**
@@ -64,6 +74,43 @@ public class ClusteringTaakService {
     var dto = ClusteringTaakDto.van(taak, aantalBezwaren, null);
     notificatie.clusteringTaakGewijzigd(dto);
     return dto;
+  }
+
+  /**
+   * Pakt wachtende clustering-taken op voor verwerking tot het maximum
+   * aantal gelijktijdige taken. Zet de status op BEZIG.
+   *
+   * @return lijst van opgepakte taken, leeg als geen slots beschikbaar
+   */
+  @Transactional
+  public List<ClusteringTaak> pakOpVoorVerwerking() {
+    int aantalBezig = taakRepository.countByStatus(ClusteringTaakStatus.BEZIG);
+    int beschikbareSlots = maxConcurrent - aantalBezig;
+
+    if (beschikbareSlots <= 0) {
+      LOGGER.debug("Geen clustering-slots beschikbaar (bezig={}, max={})",
+          aantalBezig, maxConcurrent);
+      return List.of();
+    }
+
+    var wachtend = taakRepository.findByStatusOrderByAangemaaktOpAsc(
+        ClusteringTaakStatus.WACHTEND);
+    var opTePakken = wachtend.stream().limit(beschikbareSlots).toList();
+
+    for (var taak : opTePakken) {
+      taak.setStatus(ClusteringTaakStatus.BEZIG);
+      taak.setVerwerkingGestartOp(Instant.now());
+      taakRepository.save(taak);
+
+      int aantalBezwaren = bezwaarRepository.countByProjectNaamAndCategorie(
+          taak.getProjectNaam(), taak.getCategorie());
+      notificatie.clusteringTaakGewijzigd(
+          ClusteringTaakDto.van(taak, aantalBezwaren, null));
+      LOGGER.info("Clustering-taak {} opgepakt: project='{}', categorie='{}'",
+          taak.getId(), taak.getProjectNaam(), taak.getCategorie());
+    }
+
+    return opTePakken;
   }
 
   /**
