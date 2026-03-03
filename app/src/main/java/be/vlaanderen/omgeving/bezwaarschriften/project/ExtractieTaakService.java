@@ -471,13 +471,17 @@ public class ExtractieTaakService {
     int huidigAantal = taak.getAantalBezwaren() != null ? taak.getAantalBezwaren() : 0;
     taak.setAantalBezwaren(Math.max(0, huidigAantal - 1));
 
+    var overigeBezwaren = bezwaarRepository.findByTaakId(taak.getId());
+
     if (wasAiBezwaar) {
       taak.setHeeftManueel(true);
     } else {
-      var overigeBezwaren = bezwaarRepository.findByTaakId(taak.getId());
       boolean nogManueel = overigeBezwaren.stream().anyMatch(GeextraheerdBezwaarEntiteit::isManueel);
       taak.setHeeftManueel(nogManueel);
     }
+
+    boolean nogNietGevonden = overigeBezwaren.stream().anyMatch(b -> !b.isPassageGevonden());
+    taak.setHeeftOpmerkingen(nogNietGevonden);
 
     repository.save(taak);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));

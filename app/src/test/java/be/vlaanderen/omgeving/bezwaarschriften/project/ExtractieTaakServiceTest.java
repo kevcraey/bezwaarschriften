@@ -596,6 +596,7 @@ class ExtractieTaakServiceTest {
     bezwaar.setManueel(false); // AI-bezwaar
     when(bezwaarRepository.findById(10L)).thenReturn(Optional.of(bezwaar));
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of());
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
@@ -604,6 +605,31 @@ class ExtractieTaakServiceTest {
     assertThat(taak.getAantalBezwaren()).isEqualTo(2);
     assertThat(taak.isHeeftManueel()).isTrue();
     verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));
+  }
+
+  @Test
+  void verwijderBezwaarMetNietGevondenPassageZetHeeftOpmeerkingenUit() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    taak.setAantalBezwaren(2);
+    taak.setHeeftOpmerkingen(true);
+    taak.setHeeftManueel(false);
+
+    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    bezwaar.setId(10L);
+    bezwaar.setTaakId(1L);
+    bezwaar.setManueel(false);
+    bezwaar.setPassageGevonden(false); // dit bezwaar veroorzaakte de ⚠️ flag
+    when(bezwaarRepository.findById(10L)).thenReturn(Optional.of(bezwaar));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+
+    // Na verwijdering: geen bezwaren meer met passageGevonden = false
+    when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of());
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
+
+    assertThat(taak.isHeeftOpmerkingen()).isFalse();
+    assertThat(taak.isHeeftManueel()).isTrue(); // AI-bezwaar verwijderd → manuele wijziging flag
   }
 
   @Test
