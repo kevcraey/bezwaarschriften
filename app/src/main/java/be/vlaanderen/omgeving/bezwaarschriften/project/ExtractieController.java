@@ -134,7 +134,7 @@ public class ExtractieController {
    * @param naam projectnaam
    * @param bestandsnaam naam van het bestand
    * @param bezwaarId id van het te verwijderen bezwaar
-   * @return 204 No Content bij succes, 403 als bezwaar niet manueel is, 404 als niet gevonden
+   * @return 204 No Content bij succes, 404 als niet gevonden
    */
   @DeleteMapping("/{naam}/extracties/{bestandsnaam}/bezwaren/{bezwaarId}")
   public ResponseEntity<Void> verwijderBezwaar(

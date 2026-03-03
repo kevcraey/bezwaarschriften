@@ -456,11 +456,15 @@ public class ExtractieTaakService {
     var bezwaar = bezwaarRepository.findById(bezwaarId)
         .orElseThrow(() -> new IllegalArgumentException("Bezwaar niet gevonden: " + bezwaarId));
 
-    boolean wasAiBezwaar = !bezwaar.isManueel();
-
     var taak = repository.findById(bezwaar.getTaakId())
         .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden"));
 
+    if (!taak.getProjectNaam().equals(projectNaam)) {
+      throw new IllegalArgumentException(
+          "Bezwaar " + bezwaarId + " behoort niet tot project: " + projectNaam);
+    }
+
+    boolean wasAiBezwaar = !bezwaar.isManueel();
     bezwaarRepository.delete(bezwaar);
 
     // Werk aantalBezwaren bij

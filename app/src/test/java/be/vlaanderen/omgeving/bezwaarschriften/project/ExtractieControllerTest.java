@@ -179,7 +179,7 @@ class ExtractieControllerTest {
   }
 
   @Test
-  void verwijderManueelBezwaar() throws Exception {
+  void verwijderBezwaarGeeft204() throws Exception {
     mockMvc.perform(delete("/api/v1/projects/windmolens/extracties/bezwaar-001.txt/bezwaren/10")
             .with(csrf()))
         .andExpect(status().isNoContent());

@@ -558,6 +558,7 @@ class ExtractieTaakServiceTest {
     verify(bezwaarRepository).delete(bezwaar);
     assertThat(taak.getAantalBezwaren()).isEqualTo(2);
     assertThat(taak.isHeeftManueel()).isTrue();
+    verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));
   }
 
   @Test
@@ -580,6 +581,7 @@ class ExtractieTaakServiceTest {
     service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
 
     assertThat(taak.isHeeftManueel()).isFalse();
+    verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));
   }
 
   @Test
@@ -601,6 +603,24 @@ class ExtractieTaakServiceTest {
     verify(bezwaarRepository).delete(bezwaar);
     assertThat(taak.getAantalBezwaren()).isEqualTo(2);
     assertThat(taak.isHeeftManueel()).isTrue();
+    verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));
+  }
+
+  @Test
+  void verwijderBezwaarGooitExceptieBijVerkeerdeProject() {
+    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    bezwaar.setId(10L);
+    bezwaar.setTaakId(1L);
+    bezwaar.setManueel(true);
+    when(bezwaarRepository.findById(10L)).thenReturn(Optional.of(bezwaar));
+
+    var taak = maakTaak(1L, "ander-project", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("behoort niet tot project");
   }
 
   private ExtractiePassageEntiteit maakPassage(Long taakId, int passageNr) {
