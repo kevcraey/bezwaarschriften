@@ -1,10 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,14 +19,11 @@ public class ClusteringTaakController {
 
   private final ClusteringTaakService taakService;
   private final ClusteringWorker clusteringWorker;
-  private final GeextraheerdBezwaarRepository bezwaarRepository;
 
   public ClusteringTaakController(ClusteringTaakService taakService,
-      ClusteringWorker clusteringWorker,
-      GeextraheerdBezwaarRepository bezwaarRepository) {
+      ClusteringWorker clusteringWorker) {
     this.taakService = taakService;
     this.clusteringWorker = clusteringWorker;
-    this.bezwaarRepository = bezwaarRepository;
   }
 
   /**
@@ -40,29 +33,7 @@ public class ClusteringTaakController {
   @GetMapping("/{naam}/clustering-taken")
   public ResponseEntity<CategorieOverzichtResponse> geefOverzicht(
       @PathVariable String naam) {
-    var alleCategorien = bezwaarRepository.findDistinctCategorienByProjectNaam(naam);
-    var taken = taakService.geefTaken(naam);
-
-    var taakPerCategorie = taken.stream()
-        .collect(Collectors.toMap(ClusteringTaakDto::categorie, dto -> dto));
-
-    var items = new ArrayList<CategorieStatusDto>();
-    for (var categorie : alleCategorien) {
-      var taak = taakPerCategorie.get(categorie);
-      if (taak != null) {
-        items.add(new CategorieStatusDto(
-            taak.categorie(), taak.status(), taak.id(),
-            taak.aantalBezwaren(), taak.aantalKernbezwaren(),
-            taak.foutmelding()));
-      } else {
-        int aantalBezwaren = bezwaarRepository.countByProjectNaamAndCategorie(
-            naam, categorie);
-        items.add(new CategorieStatusDto(
-            categorie, "todo", null,
-            aantalBezwaren, null, null));
-      }
-    }
-
+    var items = taakService.geefCategorieOverzicht(naam);
     return ResponseEntity.ok(new CategorieOverzichtResponse(items));
   }
 
@@ -83,22 +54,7 @@ public class ClusteringTaakController {
   @PostMapping("/{naam}/clustering-taken")
   public ResponseEntity<List<ClusteringTaakDto>> startAlleCategorieen(
       @PathVariable String naam) {
-    var alleCategorien = bezwaarRepository.findDistinctCategorienByProjectNaam(naam);
-    var bestaandeTaken = taakService.geefTaken(naam);
-
-    var actieveStatussen = Set.of("klaar", "bezig", "wachtend");
-    var actieveCategorieen = bestaandeTaken.stream()
-        .filter(t -> actieveStatussen.contains(t.status()))
-        .map(ClusteringTaakDto::categorie)
-        .collect(Collectors.toSet());
-
-    var ingediend = new ArrayList<ClusteringTaakDto>();
-    for (var categorie : alleCategorien) {
-      if (!actieveCategorieen.contains(categorie)) {
-        ingediend.add(taakService.indienen(naam, categorie));
-      }
-    }
-
+    var ingediend = taakService.indienenAlleNietActieve(naam);
     return ResponseEntity.accepted().body(ingediend);
   }
 
@@ -140,16 +96,8 @@ public class ClusteringTaakController {
   }
 
   /** Response DTO voor het categorieoverzicht. */
-  record CategorieOverzichtResponse(List<CategorieStatusDto> categorieen) {}
-
-  /** Status per categorie in het overzicht. */
-  record CategorieStatusDto(
-      String categorie,
-      String status,
-      Long taakId,
-      int aantalBezwaren,
-      Integer aantalKernbezwaren,
-      String foutmelding) {}
+  record CategorieOverzichtResponse(
+      List<ClusteringTaakService.CategorieStatus> categorieen) {}
 
   /** Response bij 409 Conflict: bevestiging vereist om antwoorden te verwijderen. */
   record BevestigingResponse(long aantalAntwoorden) {}

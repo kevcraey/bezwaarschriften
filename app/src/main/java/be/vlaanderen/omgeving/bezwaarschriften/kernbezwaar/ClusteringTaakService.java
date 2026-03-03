@@ -3,12 +3,15 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Beheert de levenscyclus van clustering-taken: indienen, statusupdates,
@@ -258,6 +261,75 @@ public class ClusteringTaakService {
 
     return VerwijderResultaat.succesvolVerwijderd();
   }
+
+  /**
+   * Geeft een overzicht van alle categorien met hun clustering-status.
+   * Categorien zonder taak krijgen status "todo".
+   *
+   * @param projectNaam naam van het project
+   * @return lijst van status-items per categorie
+   */
+  public List<CategorieStatus> geefCategorieOverzicht(String projectNaam) {
+    var alleCategorien = bezwaarRepository
+        .findDistinctCategorienByProjectNaam(projectNaam);
+    var taken = geefTaken(projectNaam);
+    var taakPerCategorie = taken.stream()
+        .collect(Collectors.toMap(ClusteringTaakDto::categorie, dto -> dto));
+
+    var items = new ArrayList<CategorieStatus>();
+    for (var categorie : alleCategorien) {
+      var taak = taakPerCategorie.get(categorie);
+      if (taak != null) {
+        items.add(new CategorieStatus(
+            taak.categorie(), taak.status(), taak.id(),
+            taak.aantalBezwaren(), taak.aantalKernbezwaren(),
+            taak.foutmelding()));
+      } else {
+        int aantalBezwaren = bezwaarRepository
+            .countByProjectNaamAndCategorie(projectNaam, categorie);
+        items.add(new CategorieStatus(
+            categorie, "todo", null,
+            aantalBezwaren, null, null));
+      }
+    }
+    return items;
+  }
+
+  /**
+   * Dient clustering-taken in voor alle categorien die nog niet actief zijn
+   * (niet klaar, bezig of wachtend).
+   *
+   * @param projectNaam naam van het project
+   * @return lijst van ingediende DTOs
+   */
+  public List<ClusteringTaakDto> indienenAlleNietActieve(String projectNaam) {
+    var alleCategorien = bezwaarRepository
+        .findDistinctCategorienByProjectNaam(projectNaam);
+    var bestaandeTaken = geefTaken(projectNaam);
+
+    var actieveStatussen = Set.of("klaar", "bezig", "wachtend");
+    var actieveCategorieen = bestaandeTaken.stream()
+        .filter(t -> actieveStatussen.contains(t.status()))
+        .map(ClusteringTaakDto::categorie)
+        .collect(Collectors.toSet());
+
+    var ingediend = new ArrayList<ClusteringTaakDto>();
+    for (var categorie : alleCategorien) {
+      if (!actieveCategorieen.contains(categorie)) {
+        ingediend.add(indienen(projectNaam, categorie));
+      }
+    }
+    return ingediend;
+  }
+
+  /** Status per categorie in het overzicht. */
+  public record CategorieStatus(
+      String categorie,
+      String status,
+      Long taakId,
+      int aantalBezwaren,
+      Integer aantalKernbezwaren,
+      String foutmelding) {}
 
   private Integer telKernbezwaren(String projectNaam, String categorie) {
     return themaRepository.findByProjectNaamAndNaam(projectNaam, categorie)

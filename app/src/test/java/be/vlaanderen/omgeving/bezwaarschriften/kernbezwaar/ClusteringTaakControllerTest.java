@@ -5,7 +5,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,28 +23,23 @@ class ClusteringTaakControllerTest {
   @Mock
   private ClusteringWorker clusteringWorker;
 
-  @Mock
-  private GeextraheerdBezwaarRepository bezwaarRepository;
-
   private ClusteringTaakController controller;
 
   @BeforeEach
   void setUp() {
-    controller = new ClusteringTaakController(
-        taakService, clusteringWorker, bezwaarRepository);
+    controller = new ClusteringTaakController(taakService, clusteringWorker);
   }
 
   @Test
-  void geefOverzicht_toontAlleCategorienMetStatus() {
-    when(bezwaarRepository.findDistinctCategorienByProjectNaam("windmolens"))
-        .thenReturn(List.of("Geluid", "Mobiliteit", "Natuur"));
-
-    var taakGeluid = maakDto(1L, "Geluid", "klaar", 10, 3);
-    var taakMobiliteit = maakDto(2L, "Mobiliteit", "bezig", 5, null);
-    when(taakService.geefTaken("windmolens"))
-        .thenReturn(List.of(taakGeluid, taakMobiliteit));
-    when(bezwaarRepository.countByProjectNaamAndCategorie("windmolens", "Natuur"))
-        .thenReturn(7);
+  void geefOverzicht_delegeertNaarService() {
+    var statussen = List.of(
+        new ClusteringTaakService.CategorieStatus(
+            "Geluid", "klaar", 1L, 10, 3, null),
+        new ClusteringTaakService.CategorieStatus(
+            "Mobiliteit", "bezig", 2L, 5, null, null),
+        new ClusteringTaakService.CategorieStatus(
+            "Natuur", "todo", null, 7, null, null));
+    when(taakService.geefCategorieOverzicht("windmolens")).thenReturn(statussen);
 
     var response = controller.geefOverzicht("windmolens");
 
@@ -53,15 +47,14 @@ class ClusteringTaakControllerTest {
     var items = response.getBody().categorieen();
     assertThat(items).hasSize(3);
 
-    var geluid = items.stream().filter(i -> i.categorie().equals("Geluid")).findFirst().get();
+    var geluid = items.stream()
+        .filter(i -> i.categorie().equals("Geluid")).findFirst().get();
     assertThat(geluid.status()).isEqualTo("klaar");
     assertThat(geluid.taakId()).isEqualTo(1L);
     assertThat(geluid.aantalKernbezwaren()).isEqualTo(3);
 
-    var mobiliteit = items.stream().filter(i -> i.categorie().equals("Mobiliteit")).findFirst().get();
-    assertThat(mobiliteit.status()).isEqualTo("bezig");
-
-    var natuur = items.stream().filter(i -> i.categorie().equals("Natuur")).findFirst().get();
+    var natuur = items.stream()
+        .filter(i -> i.categorie().equals("Natuur")).findFirst().get();
     assertThat(natuur.status()).isEqualTo("todo");
     assertThat(natuur.taakId()).isNull();
     assertThat(natuur.aantalBezwaren()).isEqualTo(7);
@@ -80,25 +73,17 @@ class ClusteringTaakControllerTest {
   }
 
   @Test
-  void startAlleCategorieen_startEnkelNietActieve() {
-    when(bezwaarRepository.findDistinctCategorienByProjectNaam("windmolens"))
-        .thenReturn(List.of("Geluid", "Mobiliteit", "Natuur"));
-
-    var taakGeluid = maakDto(1L, "Geluid", "klaar", 10, 3);
-    when(taakService.geefTaken("windmolens")).thenReturn(List.of(taakGeluid));
-
+  void startAlleCategorieen_delegeertNaarService() {
     var dtoMobiliteit = maakDto(2L, "Mobiliteit", "wachtend", 5, null);
     var dtoNatuur = maakDto(3L, "Natuur", "wachtend", 7, null);
-    when(taakService.indienen("windmolens", "Mobiliteit")).thenReturn(dtoMobiliteit);
-    when(taakService.indienen("windmolens", "Natuur")).thenReturn(dtoNatuur);
+    when(taakService.indienenAlleNietActieve("windmolens"))
+        .thenReturn(List.of(dtoMobiliteit, dtoNatuur));
 
     var response = controller.startAlleCategorieen("windmolens");
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     assertThat(response.getBody()).hasSize(2);
-    verify(taakService, never()).indienen("windmolens", "Geluid");
-    verify(taakService).indienen("windmolens", "Mobiliteit");
-    verify(taakService).indienen("windmolens", "Natuur");
+    verify(taakService).indienenAlleNietActieve("windmolens");
   }
 
   @Test

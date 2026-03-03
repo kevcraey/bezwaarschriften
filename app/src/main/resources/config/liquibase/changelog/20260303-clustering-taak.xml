@@ -29,6 +29,10 @@
         <constraints nullable="false"/>
       </column>
     </createTable>
+
+    <addUniqueConstraint tableName="clustering_taak"
+        columnNames="project_naam, categorie"
+        constraintName="uq_clustering_taak_project_categorie"/>
   </changeSet>
 
 </databaseChangeLog>
