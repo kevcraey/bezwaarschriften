@@ -9,6 +9,14 @@ bezwaarschriften:
     mock:
       min-delay-seconden: 1
       max-delay-seconden: 10
+  clustering:
+    min-cluster-size: 5
+    min-samples: 3
+  embedding:
+    provider: ollama
+    model: bge-m3
+    dimensions: 1024
+    ollama-url: http://localhost:11434
 
 spring:
   datasource:
