@@ -128,6 +128,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       if (data.type === 'consolidatie-update') {
         this._verwerkConsolidatieUpdate(data.taak);
       }
+      if (data.type === 'clustering-update') {
+        this._verwerkClusteringUpdate(data.taak);
+      }
     };
 
     this._ws.onclose = () => {
@@ -360,8 +363,16 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
 
     const tabs = this.shadowRoot && this.shadowRoot.querySelector('vl-tabs');
     if (tabs) {
-      tabs.addEventListener('change', () => {
+      tabs.addEventListener('change', (e) => {
         tabs.scrollIntoView({behavior: 'smooth', block: 'start'});
+        const activeTab = e.detail && e.detail.activeTab;
+        if (activeTab === 'kernbezwaren' && this.__geselecteerdProject) {
+          const kernComp = this.shadowRoot.querySelector('#kernbezwaren-component');
+          if (kernComp) {
+            kernComp.laadClusteringTaken(this.__geselecteerdProject);
+            kernComp.laadKernbezwaren(this.__geselecteerdProject);
+          }
+        }
       });
     }
   }
@@ -527,6 +538,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     kernComp.setAantalBezwaren(totaalBezwaren);
     kernComp.setExtractieKlaar(aantalKlaar > 0);
     kernComp.laadKernbezwaren(projectNaam);
+    kernComp.laadClusteringTaken(projectNaam);
   }
 
   _verzendUpload() {
@@ -706,6 +718,16 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     );
     this._werkResultatenTabTitelBij();
     this._werkConsoliderenKnopBij();
+  }
+
+  _verwerkClusteringUpdate(taak) {
+    if (!this.__geselecteerdProject || taak.projectNaam !== this.__geselecteerdProject) {
+      return;
+    }
+    const kernComp = this.shadowRoot.querySelector('#kernbezwaren-component');
+    if (kernComp) {
+      kernComp.werkBijMetClusteringUpdate(taak);
+    }
   }
 
   _werkResultatenTabelBij() {
