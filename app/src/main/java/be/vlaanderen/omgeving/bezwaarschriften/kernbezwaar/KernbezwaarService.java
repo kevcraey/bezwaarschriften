@@ -16,7 +16,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Orchestreert de clustering van individuele bezwaren tot thema's en kernbezwaren
@@ -35,6 +36,7 @@ public class KernbezwaarService {
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarReferentieRepository referentieRepository;
   private final ClusteringTaakService clusteringTaakService;
+  private final TransactionTemplate transactionTemplate;
 
   /**
    * Constructor met alle benodigde afhankelijkheden.
@@ -49,6 +51,7 @@ public class KernbezwaarService {
    * @param kernbezwaarRepository repository voor kernbezwaren
    * @param referentieRepository repository voor kernbezwaar-referenties
    * @param clusteringTaakService service voor clustering-taak levenscyclus
+   * @param transactionManager transaction manager voor korte transactieblokken
    */
   public KernbezwaarService(EmbeddingPoort embeddingPoort,
       ClusteringPoort clusteringPoort,
@@ -59,7 +62,8 @@ public class KernbezwaarService {
       ThemaRepository themaRepository,
       KernbezwaarRepository kernbezwaarRepository,
       KernbezwaarReferentieRepository referentieRepository,
-      ClusteringTaakService clusteringTaakService) {
+      ClusteringTaakService clusteringTaakService,
+      PlatformTransactionManager transactionManager) {
     this.embeddingPoort = embeddingPoort;
     this.clusteringPoort = clusteringPoort;
     this.bezwaarRepository = bezwaarRepository;
@@ -70,6 +74,7 @@ public class KernbezwaarService {
     this.kernbezwaarRepository = kernbezwaarRepository;
     this.referentieRepository = referentieRepository;
     this.clusteringTaakService = clusteringTaakService;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
   /**
@@ -81,7 +86,6 @@ public class KernbezwaarService {
    * @param projectNaam naam van het project
    * @return lijst van thema's met kernbezwaren
    */
-  @Transactional
   public List<Thema> groepeer(String projectNaam) {
     var alleBezwaren = bezwaarRepository.findByProjectNaam(projectNaam);
 
@@ -91,8 +95,9 @@ public class KernbezwaarService {
         .distinct()
         .toList();
 
-    // Verwijder bestaande thema-data (cascade ruimt kernbezwaren, referenties en antwoorden op)
-    themaRepository.deleteByProjectNaam(projectNaam);
+    // Verwijder bestaande thema-data in eigen transactie
+    transactionTemplate.executeWithoutResult(status ->
+        themaRepository.deleteByProjectNaam(projectNaam));
 
     // Cluster per categorie via clusterEenCategorie (zonder taakId)
     var resultaat = new ArrayList<Thema>();
@@ -116,7 +121,6 @@ public class KernbezwaarService {
    * @return het thema met kernbezwaren
    * @throws ClusteringGeannuleerdException als de taak geannuleerd is
    */
-  @Transactional
   public Thema clusterEenCategorie(String projectNaam, String categorie, Long taakId) {
     var bezwaren = bezwaarRepository.findByProjectNaamAndCategorie(projectNaam, categorie);
 
@@ -128,21 +132,17 @@ public class KernbezwaarService {
     var passageLookup = bouwPassageLookup(taakIds);
     var bestandsnaamLookup = bouwBestandsnaamLookup(taakIds);
 
-    // Verwijder bestaand thema voor deze categorie
-    themaRepository.deleteByProjectNaamAndNaam(projectNaam, categorie);
+    // Verwijder bestaand thema voor deze categorie in eigen transactie
+    transactionTemplate.executeWithoutResult(status ->
+        themaRepository.deleteByProjectNaamAndNaam(projectNaam, categorie));
 
-    // Controleer annulering voor embedding-generatie
+    // Controleer annulering voor embedding-generatie (buiten transactie: ziet altijd verse data)
     if (taakId != null && clusteringTaakService.isGeannuleerd(taakId)) {
       throw new ClusteringGeannuleerdException();
     }
 
     var thema = clusterCategorie(
-        projectNaam, categorie, bezwaren, passageLookup, bestandsnaamLookup);
-
-    // Controleer annulering na embedding-generatie
-    if (taakId != null && clusteringTaakService.isGeannuleerd(taakId)) {
-      throw new ClusteringGeannuleerdException();
-    }
+        projectNaam, categorie, bezwaren, passageLookup, bestandsnaamLookup, taakId);
 
     return thema;
   }
@@ -214,61 +214,75 @@ public class KernbezwaarService {
   private Thema clusterCategorie(String projectNaam, String categorieNaam,
       List<GeextraheerdBezwaarEntiteit> bezwaren,
       Map<Long, Map<Integer, String>> passageLookup,
-      Map<Long, String> bestandsnaamLookup) {
+      Map<Long, String> bestandsnaamLookup,
+      Long taakId) {
 
     // Bepaal de tekst per bezwaar: originele passage of fallback naar samenvatting
-    var bezwaarById = bezwaren.stream()
-        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
     var teksten = bezwaren.stream()
         .map(b -> geefPassageTekst(b, passageLookup))
         .toList();
 
-    // Genereer embeddings en sla ze op bij de bezwaar-entiteiten
+    // Externe call: genereer embeddings (buiten transactie)
     var embeddings = embeddingPoort.genereerEmbeddings(teksten);
-    for (int i = 0; i < bezwaren.size(); i++) {
-      bezwaren.get(i).setEmbedding(embeddings.get(i));
+
+    // Sla embeddings op in korte transactie
+    transactionTemplate.executeWithoutResult(status -> {
+      for (int i = 0; i < bezwaren.size(); i++) {
+        bezwaren.get(i).setEmbedding(embeddings.get(i));
+      }
+      bezwaarRepository.saveAll(bezwaren);
+    });
+
+    // Controleer annulering na embedding-generatie (buiten transactie: ziet verse data)
+    if (taakId != null && clusteringTaakService.isGeannuleerd(taakId)) {
+      throw new ClusteringGeannuleerdException();
     }
-    bezwaarRepository.saveAll(bezwaren);
 
-    // Maak thema-entiteit
-    var themaEntiteit = new ThemaEntiteit();
-    themaEntiteit.setProjectNaam(projectNaam);
-    themaEntiteit.setNaam(categorieNaam);
-    themaEntiteit = themaRepository.save(themaEntiteit);
-
-    // Bouw clustering-invoer en cluster
+    // Externe call: HDBSCAN-clustering (buiten transactie)
     var invoer = new ArrayList<ClusteringInvoer>();
     for (int i = 0; i < bezwaren.size(); i++) {
       invoer.add(new ClusteringInvoer(bezwaren.get(i).getId(), embeddings.get(i)));
     }
     var clusterResultaat = clusteringPoort.cluster(invoer);
 
-    var kernbezwaren = new ArrayList<Kernbezwaar>();
+    // Lookup voor bezwaren op ID (nodig bij opslaan thema/kernbezwaren)
+    var bezwaarById = bezwaren.stream()
+        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
 
-    // Verwerk clusters: vind representatief bezwaar (dichtst bij centroid)
-    for (var cluster : clusterResultaat.clusters()) {
-      var clusterBezwaren = cluster.bezwaarIds().stream()
-          .map(bezwaarById::get)
-          .toList();
-      var representatief = vindDichtstBijCentroid(clusterBezwaren, cluster.centroid());
-      var samenvatting = representatief.getSamenvatting();
+    // Sla thema + kernbezwaren + referenties op in één transactie
+    return transactionTemplate.execute(status -> {
+      var themaEntiteit = new ThemaEntiteit();
+      themaEntiteit.setProjectNaam(projectNaam);
+      themaEntiteit.setNaam(categorieNaam);
+      var opgeslagenThema = themaRepository.save(themaEntiteit);
 
-      var referenties = bouwReferenties(clusterBezwaren, passageLookup, bestandsnaamLookup);
-      var kern = slaKernbezwaarOp(themaEntiteit.getId(), samenvatting, referenties);
-      kernbezwaren.add(kern);
-    }
+      var kernbezwaren = new ArrayList<Kernbezwaar>();
 
-    // Verwerk noise items: elk wordt een eigen kernbezwaar met originele tekst
-    for (var noiseId : clusterResultaat.noiseIds()) {
-      var bezwaar = bezwaarById.get(noiseId);
-      var tekst = geefPassageTekst(bezwaar, passageLookup);
-      var referenties = bouwReferenties(
-          List.of(bezwaar), passageLookup, bestandsnaamLookup);
-      var kern = slaKernbezwaarOp(themaEntiteit.getId(), tekst, referenties);
-      kernbezwaren.add(kern);
-    }
+      // Verwerk clusters: vind representatief bezwaar (dichtst bij centroid)
+      for (var cluster : clusterResultaat.clusters()) {
+        var clusterBezwaren = cluster.bezwaarIds().stream()
+            .map(bezwaarById::get)
+            .toList();
+        var representatief = vindDichtstBijCentroid(clusterBezwaren, cluster.centroid());
+        var samenvatting = representatief.getSamenvatting();
 
-    return new Thema(categorieNaam, kernbezwaren);
+        var referenties = bouwReferenties(clusterBezwaren, passageLookup, bestandsnaamLookup);
+        var kern = slaKernbezwaarOp(opgeslagenThema.getId(), samenvatting, referenties);
+        kernbezwaren.add(kern);
+      }
+
+      // Verwerk noise items: elk wordt een eigen kernbezwaar met originele tekst
+      for (var noiseId : clusterResultaat.noiseIds()) {
+        var bezwaar = bezwaarById.get(noiseId);
+        var tekst = geefPassageTekst(bezwaar, passageLookup);
+        var referenties = bouwReferenties(
+            List.of(bezwaar), passageLookup, bestandsnaamLookup);
+        var kern = slaKernbezwaarOp(opgeslagenThema.getId(), tekst, referenties);
+        kernbezwaren.add(kern);
+      }
+
+      return new Thema(categorieNaam, kernbezwaren);
+    });
   }
 
   private GeextraheerdBezwaarEntiteit vindDichtstBijCentroid(

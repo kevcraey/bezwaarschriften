@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +28,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
 class KernbezwaarServiceTest {
@@ -60,16 +64,21 @@ class KernbezwaarServiceTest {
   @Mock
   private ClusteringTaakService clusteringTaakService;
 
+  @Mock
+  private PlatformTransactionManager transactionManager;
+
   private KernbezwaarService service;
 
   @BeforeEach
   void setUp() {
+    lenient().when(transactionManager.getTransaction(any()))
+        .thenReturn(mock(TransactionStatus.class));
     service = new KernbezwaarService(
         embeddingPoort, clusteringPoort,
         bezwaarRepository, passageRepository, taakRepository,
         antwoordRepository, themaRepository,
         kernbezwaarRepository, referentieRepository,
-        clusteringTaakService);
+        clusteringTaakService, transactionManager);
   }
 
   @Test
