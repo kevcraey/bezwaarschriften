@@ -21,7 +21,7 @@ class BezwaarBestandTest {
 
     assertThat(bestand.aantalWoorden()).isEqualTo(42);
     assertThat(bestand.aantalBezwaren()).isEqualTo(3);
-    assertThat(bestand.heeftOpmerkingen()).isFalse();
+    assertThat(bestand.heeftPassagesDieNietInTekstVoorkomen()).isFalse();
     assertThat(bestand.heeftManueel()).isFalse();
   }
 
@@ -31,15 +31,15 @@ class BezwaarBestandTest {
 
     assertThat(bestand.aantalWoorden()).isNull();
     assertThat(bestand.aantalBezwaren()).isNull();
-    assertThat(bestand.heeftOpmerkingen()).isFalse();
+    assertThat(bestand.heeftPassagesDieNietInTekstVoorkomen()).isFalse();
     assertThat(bestand.heeftManueel()).isFalse();
   }
 
   @Test
-  void maaktRecordAanMetHeeftOpmerkingen() {
+  void maaktRecordAanMetHeeftPassagesDieNietInTekstVoorkomen() {
     var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR,
         42, 3, true, false);
 
-    assertThat(bestand.heeftOpmerkingen()).isTrue();
+    assertThat(bestand.heeftPassagesDieNietInTekstVoorkomen()).isTrue();
   }
 }

@@ -387,7 +387,7 @@ class ExtractieTaakServiceTest {
 
     service.markeerKlaar(1L, resultaat);
 
-    assertThat(taak.isHeeftOpmerkingen()).isFalse();
+    assertThat(taak.isHeeftPassagesDieNietInTekstVoorkomen()).isFalse();
     verify(passageValidator).valideer(any(), any(), any());
   }
 
@@ -413,7 +413,7 @@ class ExtractieTaakServiceTest {
 
     service.markeerKlaar(1L, resultaat);
 
-    assertThat(taak.isHeeftOpmerkingen()).isTrue();
+    assertThat(taak.isHeeftPassagesDieNietInTekstVoorkomen()).isTrue();
   }
 
   @Test
@@ -433,7 +433,7 @@ class ExtractieTaakServiceTest {
     service.markeerKlaar(1L, resultaat);
 
     assertThat(taak.getStatus()).isEqualTo(ExtractieTaakStatus.KLAAR);
-    assertThat(taak.isHeeftOpmerkingen()).isFalse();
+    assertThat(taak.isHeeftPassagesDieNietInTekstVoorkomen()).isFalse();
     verify(passageValidator, org.mockito.Mockito.never()).valideer(any(), any(), any());
   }
 
@@ -608,10 +608,10 @@ class ExtractieTaakServiceTest {
   }
 
   @Test
-  void verwijderBezwaarMetNietGevondenPassageZetHeeftOpmeerkingenUit() {
+  void verwijderBezwaarMetNietGevondenPassageZetHeeftPassagesDieNietInTekstVoorkomendUit() {
     var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
     taak.setAantalBezwaren(2);
-    taak.setHeeftOpmerkingen(true);
+    taak.setHeeftPassagesDieNietInTekstVoorkomen(true);
     taak.setHeeftManueel(false);
 
     var bezwaar = new GeextraheerdBezwaarEntiteit();
@@ -628,7 +628,7 @@ class ExtractieTaakServiceTest {
 
     service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
 
-    assertThat(taak.isHeeftOpmerkingen()).isFalse();
+    assertThat(taak.isHeeftPassagesDieNietInTekstVoorkomen()).isFalse();
     assertThat(taak.isHeeftManueel()).isTrue(); // AI-bezwaar verwijderd → manuele wijziging flag
   }
 

@@ -44,8 +44,8 @@ public class ExtractieTaak {
   @Column(name = "aantal_bezwaren")
   private Integer aantalBezwaren;
 
-  @Column(name = "heeft_opmerkingen", nullable = false)
-  private boolean heeftOpmerkingen = false;
+  @Column(name = "heeft_passages_die_niet_in_tekst_voorkomen", nullable = false)
+  private boolean heeftPassagesDieNietInTekstVoorkomen = false;
 
   @Column(name = "heeft_manueel", nullable = false)
   private boolean heeftManueel = false;
@@ -130,12 +130,12 @@ public class ExtractieTaak {
     this.aantalBezwaren = aantalBezwaren;
   }
 
-  public boolean isHeeftOpmerkingen() {
-    return heeftOpmerkingen;
+  public boolean isHeeftPassagesDieNietInTekstVoorkomen() {
+    return heeftPassagesDieNietInTekstVoorkomen;
   }
 
-  public void setHeeftOpmerkingen(boolean heeftOpmerkingen) {
-    this.heeftOpmerkingen = heeftOpmerkingen;
+  public void setHeeftPassagesDieNietInTekstVoorkomen(boolean heeftPassagesDieNietInTekstVoorkomen) {
+    this.heeftPassagesDieNietInTekstVoorkomen = heeftPassagesDieNietInTekstVoorkomen;
   }
 
   public boolean isHeeftManueel() {

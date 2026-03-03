@@ -11,5 +11,6 @@
   <include file="config/liquibase/changelog/20260302-extractie-details.xml"/>
   <include file="config/liquibase/changelog/20260302-passage-validatie.xml"/>
   <include file="config/liquibase/changelog/20260302-manueel-bezwaar.xml"/>
+  <include file="config/liquibase/changelog/20260303-hernoem-heeft-opmerkingen.xml"/>
 
 </databaseChangeLog>

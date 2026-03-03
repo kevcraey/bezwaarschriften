@@ -79,7 +79,7 @@ public class ProjectService {
               vanExtractieTaakStatus(laatsteTaak.getStatus()),
               laatsteTaak.getAantalWoorden(),
               laatsteTaak.getAantalBezwaren(),
-              laatsteTaak.isHeeftOpmerkingen(),
+              laatsteTaak.isHeeftPassagesDieNietInTekstVoorkomen(),
               laatsteTaak.isHeeftManueel());
         })
         .toList();

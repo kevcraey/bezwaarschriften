@@ -160,7 +160,7 @@ public class ExtractieTaakService {
    * Markeert een taak als succesvol afgerond en slaat passages en bezwaren op.
    *
    * <p>Voert passage-validatie uit door de passages te vergelijken met het originele
-   * brondocument. Bij niet-gevonden passages wordt {@code heeftOpmerkingen} gezet.
+   * brondocument. Bij niet-gevonden passages wordt {@code heeftPassagesDieNietInTekstVoorkomen} gezet.
    *
    * @param taakId id van de taak
    * @param resultaat het volledige extractie-resultaat met passages en bezwaren
@@ -201,7 +201,7 @@ public class ExtractieTaakService {
       var validatie = passageValidator.valideer(bezwaarEntiteiten, passageMap,
           brondocument.tekst());
       if (validatie.aantalNietGevonden() > 0) {
-        taak.setHeeftOpmerkingen(true);
+        taak.setHeeftPassagesDieNietInTekstVoorkomen(true);
         LOGGER.info("Taak {}: {} van {} passages niet gevonden in brondocument",
             taakId, validatie.aantalNietGevonden(), bezwaarEntiteiten.size());
       }
@@ -481,7 +481,7 @@ public class ExtractieTaakService {
     }
 
     boolean nogNietGevonden = overigeBezwaren.stream().anyMatch(b -> !b.isPassageGevonden());
-    taak.setHeeftOpmerkingen(nogNietGevonden);
+    taak.setHeeftPassagesDieNietInTekstVoorkomen(nogNietGevonden);
 
     repository.save(taak);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));

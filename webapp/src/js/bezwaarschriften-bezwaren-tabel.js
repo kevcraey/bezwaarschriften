@@ -269,7 +269,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         status: taak.status,
         aantalWoorden: taak.aantalWoorden,
         aantalBezwaren: taak.aantalBezwaren,
-        heeftOpmerkingen: taak.heeftOpmerkingen,
+        heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
         heeftManueel: taak.heeftManueel,
       } : b,
     );
@@ -318,7 +318,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           veld.renderer = (td, rij) => {
             td.style.verticalAlign = 'middle';
             td.style.width = '100%';
-            if (rij.heeftOpmerkingen) {
+            if (rij.heeftPassagesDieNietInTekstVoorkomen) {
               const icon = document.createElement('span');
               icon.textContent = '\u26A0\uFE0F';
               icon.title = 'Niet alle passages konden gevonden worden';

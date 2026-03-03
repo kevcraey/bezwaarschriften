@@ -1,7 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 public record BezwaarBestand(String bestandsnaam, BezwaarBestandStatus status,
-    Integer aantalWoorden, Integer aantalBezwaren, boolean heeftOpmerkingen,
+    Integer aantalWoorden, Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen,
     boolean heeftManueel) {
 
   public BezwaarBestand(String bestandsnaam, BezwaarBestandStatus status) {

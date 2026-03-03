@@ -194,14 +194,14 @@ public class ProjectController {
     static BezwarenResponse van(List<BezwaarBestand> bezwaren) {
       return new BezwarenResponse(bezwaren.stream()
           .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b.status()),
-              b.aantalWoorden(), b.aantalBezwaren(), b.heeftOpmerkingen()))
+              b.aantalWoorden(), b.aantalBezwaren(), b.heeftPassagesDieNietInTekstVoorkomen()))
           .toList());
     }
   }
 
   /** DTO voor een enkel bezwaarbestand in de response. */
   record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden,
-      Integer aantalBezwaren, boolean heeftOpmerkingen) {}
+      Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen) {}
 
   /** Response DTO voor upload-resultaat. */
   record UploadResponse(List<String> geupload, List<UploadFoutDto> fouten) {}

@@ -155,7 +155,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         status: taak.status,
         aantalWoorden: taak.aantalWoorden,
         aantalBezwaren: taak.aantalBezwaren,
-        heeftOpmerkingen: taak.heeftOpmerkingen,
+        heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
       } : b,
     );
     const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
@@ -189,7 +189,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
                   status: taak.status,
                   aantalWoorden: taak.aantalWoorden,
                   aantalBezwaren: taak.aantalBezwaren,
-                  heeftOpmerkingen: taak.heeftOpmerkingen,
+                  heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
                 } : b,
               );
               tabel.werkBijMetTaakUpdate(taak);
@@ -410,7 +410,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
                   status: taak.status,
                   aantalWoorden: taak.aantalWoorden,
                   aantalBezwaren: taak.aantalBezwaren,
-                  heeftOpmerkingen: taak.heeftOpmerkingen,
+                  heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
                 } : b,
               );
               tabel.werkBijMetTaakUpdate(taak);
