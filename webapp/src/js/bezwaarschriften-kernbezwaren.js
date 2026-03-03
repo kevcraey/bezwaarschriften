@@ -3,10 +3,11 @@ import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.compo
 import {VlAccordionComponent} from '@domg-wc/components/block/accordion/vl-accordion.component.js';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
+import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import '@domg-wc/components/form/textarea-rich';
 
-registerWebComponents([VlButtonComponent, VlAccordionComponent, VlModalComponent, VlSideSheet]);
+registerWebComponents([VlButtonComponent, VlAccordionComponent, VlModalComponent, VlSideSheet, VlPillComponent]);
 
 export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   constructor() {
@@ -16,6 +17,25 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         ${vlGridStyles}
         :host { display: block; padding: 1.5rem; transition: margin-right 0.2s ease; }
         :host(.side-sheet-open) { margin-right: 33.3%; }
+        .clustering-header {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 1.5rem;
+        }
+        .categorie-wrapper {
+          margin-bottom: 0.5rem;
+        }
+        .categorie-header {
+          display: flex;
+          align-items: center;
+          padding: 0.75rem 0;
+          border-bottom: 1px solid #e8ebee;
+          gap: 0.75rem;
+        }
+        .categorie-label {
+          font-weight: bold;
+          flex: 1;
+        }
         .kernbezwaar-item {
           display: flex;
           flex-wrap: wrap;
@@ -125,12 +145,18 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         <div slot="content" id="consolidatie-waarschuwing-inhoud"></div>
         <vl-button slot="button" id="consolidatie-waarschuwing-bevestig" error="">Doorgaan en verwijderen</vl-button>
       </vl-modal>
+      <vl-modal id="verwijder-bevestiging" title="Clustering verwijderen" closable not-auto-closable>
+        <div slot="content" id="verwijder-bevestiging-inhoud"></div>
+        <vl-button slot="button" id="verwijder-bevestiging-bevestig" error="">Verwijderen</vl-button>
+      </vl-modal>
     `);
     this._projectNaam = null;
     this._aantalBezwaren = 0;
     this._extractieKlaar = false;
     this._themas = null;
     this._bezig = false;
+    this._clusteringTaken = [];
+    this._timerInterval = null;
   }
 
   connectedCallback() {
@@ -145,7 +171,12 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     }
   }
 
-  // Public methods called by parent
+  disconnectedCallback() {
+    this._stopTimer();
+  }
+
+  // --- Public methods called by parent ---
+
   laadKernbezwaren(projectNaam) {
     this._projectNaam = projectNaam;
     fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/kernbezwaren`)
@@ -170,26 +201,99 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
   }
 
+  laadClusteringTaken(projectNaam) {
+    this._projectNaam = projectNaam;
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/clustering-taken`)
+        .then((response) => {
+          if (!response.ok) throw new Error('Ophalen clustering-taken mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          if (data && data.categorieen) {
+            this._clusteringTaken = data.categorieen;
+            this._renderInhoud();
+            this._beheerTimer();
+          }
+        })
+        .catch(() => {
+          this._clusteringTaken = [];
+          this._renderInhoud();
+        });
+  }
+
+  werkBijMetClusteringUpdate(taak) {
+    let gevonden = false;
+    this._clusteringTaken = this._clusteringTaken.map((ct) => {
+      if (ct.categorie === taak.categorie) {
+        gevonden = true;
+        return {
+          ...ct,
+          taakId: taak.id,
+          status: taak.status,
+          aantalBezwaren: taak.aantalBezwaren,
+          aantalKernbezwaren: taak.aantalKernbezwaren,
+          aangemaaktOp: taak.aangemaaktOp,
+          verwerkingGestartOp: taak.verwerkingGestartOp,
+          verwerkingVoltooidOp: taak.verwerkingVoltooidOp,
+          foutmelding: taak.foutmelding,
+        };
+      }
+      return ct;
+    });
+
+    if (!gevonden) {
+      this._clusteringTaken.push({
+        categorie: taak.categorie,
+        status: taak.status,
+        taakId: taak.id,
+        aantalBezwaren: taak.aantalBezwaren,
+        aantalKernbezwaren: taak.aantalKernbezwaren,
+        aangemaaktOp: taak.aangemaaktOp,
+        verwerkingGestartOp: taak.verwerkingGestartOp,
+        verwerkingVoltooidOp: taak.verwerkingVoltooidOp,
+        foutmelding: taak.foutmelding,
+      });
+    }
+
+    // Als een clustering klaar is, herlaad de kernbezwaren
+    if (taak.status === 'klaar' && this._projectNaam) {
+      this.laadKernbezwaren(this._projectNaam);
+    }
+
+    this._renderInhoud();
+    this._beheerTimer();
+  }
+
   setAantalBezwaren(aantal) {
     this._aantalBezwaren = aantal;
-    if (!this._themas) this._renderInhoud();
+    if (!this._themas && this._clusteringTaken.length === 0) this._renderInhoud();
   }
 
   setExtractieKlaar(klaar) {
     this._extractieKlaar = klaar;
-    if (!this._themas) this._renderInhoud();
+    if (!this._themas && this._clusteringTaken.length === 0) this._renderInhoud();
   }
 
   reset() {
     this._themas = null;
+    this._clusteringTaken = [];
+    this._stopTimer();
     this._renderInhoud();
   }
 
-  // Private rendering
+  // --- Rendering ---
+
   _renderInhoud() {
     const inhoud = this.shadowRoot.querySelector('#inhoud');
     if (!inhoud) return;
 
+    // Als er clustering-taken zijn, toon per-categorie layout
+    if (this._clusteringTaken.length > 0) {
+      this._renderCategorieOverzicht(inhoud);
+      return;
+    }
+
+    // Legacy: als er themas zijn (van oude groepering)
     if (this._themas) {
       this._renderThemas(inhoud);
       return;
@@ -215,6 +319,388 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       knop.addEventListener('vl-click', () => this._groepeer());
     }
   }
+
+  _renderCategorieOverzicht(inhoud) {
+    inhoud.innerHTML = '';
+
+    // Globale knop bovenaan rechts
+    const header = document.createElement('div');
+    header.className = 'clustering-header';
+
+    const clusterAllesKnop = document.createElement('vl-button');
+    clusterAllesKnop.id = 'cluster-alles-knop';
+    clusterAllesKnop.textContent = 'Cluster alle categorie\u00EBn';
+    clusterAllesKnop.addEventListener('click', () => this._clusterAlles());
+    header.appendChild(clusterAllesKnop);
+    inhoud.appendChild(header);
+
+    // Per categorie
+    this._clusteringTaken.forEach((ct) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'categorie-wrapper';
+      wrapper.dataset.categorie = ct.categorie;
+
+      const categorieHeader = document.createElement('div');
+      categorieHeader.className = 'categorie-header';
+
+      // Label: "Geluid (42 bezwaren)"
+      const label = document.createElement('span');
+      label.className = 'categorie-label';
+      label.textContent = `${ct.categorie} (${ct.aantalBezwaren} bezwaren)`;
+      categorieHeader.appendChild(label);
+
+      // Pill met status
+      const pill = this._maakStatusPill(ct);
+      categorieHeader.appendChild(pill);
+
+      // Actieknop
+      const actieKnop = this._maakActieKnop(ct);
+      if (actieKnop) {
+        categorieHeader.appendChild(actieKnop);
+      }
+
+      wrapper.appendChild(categorieHeader);
+
+      // Accordion met kernbezwaren voor klare categorien
+      if (ct.status === 'klaar' && this._themas) {
+        const thema = this._themas.find((t) => t.naam === ct.categorie);
+        if (thema && thema.kernbezwaren.length > 0) {
+          const accordion = document.createElement('vl-accordion');
+          const aantalKern = thema.kernbezwaren.length;
+          const kernLabel = aantalKern === 1 ? '1 kernbezwaar' : `${aantalKern} kernbezwaren`;
+          accordion.setAttribute('toggle-text', `${ct.categorie} (${kernLabel})`);
+          accordion.setAttribute('default-open', '');
+
+          const kernWrapper = document.createElement('div');
+          thema.kernbezwaren.forEach((kern) => {
+            kernWrapper.appendChild(this._maakKernbezwaarItem(kern));
+          });
+
+          accordion.appendChild(kernWrapper);
+          wrapper.appendChild(accordion);
+        }
+      }
+
+      inhoud.appendChild(wrapper);
+    });
+
+    this._dispatchVoortgang();
+  }
+
+  _maakKernbezwaarItem(kern) {
+    const item = document.createElement('div');
+    item.className = 'kernbezwaar-item';
+
+    const samenvatting = document.createElement('div');
+    samenvatting.className = 'kernbezwaar-samenvatting';
+    samenvatting.textContent = kern.antwoord ? `\u2714 ${kern.samenvatting}` : kern.samenvatting;
+    if (kern.antwoord) samenvatting.style.color = '#0e7c3a';
+
+    const penKnop = document.createElement('vl-button');
+    penKnop.setAttribute('tertiary', '');
+    penKnop.setAttribute('icon', 'pencil');
+    if (kern.antwoord) {
+      penKnop.classList.add('heeft-antwoord');
+    }
+    penKnop.addEventListener('vl-click', () => this._toggleEditor(item, kern, penKnop));
+
+    const actie = document.createElement('div');
+    actie.className = 'kernbezwaar-actie';
+    const knop = document.createElement('vl-button');
+    knop.setAttribute('tertiary', '');
+    knop.setAttribute('icon', 'search');
+    knop.textContent = `(${kern.individueleBezwaren.length})`;
+    knop.addEventListener('vl-click', () => this._toonPassages(kern));
+
+    actie.appendChild(knop);
+    actie.appendChild(penKnop);
+    item.appendChild(samenvatting);
+    item.appendChild(actie);
+    return item;
+  }
+
+  _maakStatusPill(ct) {
+    const pill = document.createElement('vl-pill');
+    pill.dataset.categorie = ct.categorie;
+    pill.style.fontVariantNumeric = 'tabular-nums';
+    pill.style.minWidth = '120px';
+    pill.style.display = 'inline-block';
+
+    switch (ct.status) {
+      case 'todo':
+        pill.textContent = 'Te clusteren';
+        break;
+      case 'wachtend': {
+        pill.setAttribute('type', 'warning');
+        const span = document.createElement('span');
+        span.className = 'timer-tekst';
+        span.textContent = this._formatClusteringStatus(ct);
+        pill.appendChild(span);
+        break;
+      }
+      case 'bezig': {
+        pill.setAttribute('type', 'warning');
+        const span = document.createElement('span');
+        span.className = 'timer-tekst';
+        span.textContent = this._formatClusteringStatus(ct);
+        pill.appendChild(span);
+        break;
+      }
+      case 'klaar': {
+        pill.setAttribute('type', 'success');
+        pill.textContent = this._formatClusteringStatus(ct);
+        break;
+      }
+      case 'fout':
+        pill.setAttribute('type', 'error');
+        pill.textContent = 'Fout';
+        break;
+      default:
+        pill.textContent = ct.status;
+    }
+
+    return pill;
+  }
+
+  _maakActieKnop(ct) {
+    switch (ct.status) {
+      case 'todo':
+        return this._maakPillKnop('\u25b6', 'Clustering starten', () =>
+          this._startClustering(ct.categorie));
+      case 'wachtend':
+      case 'bezig':
+        return this._maakPillKnop('\u00d7', 'Clustering annuleren', () =>
+          this._annuleerClustering(ct.categorie));
+      case 'klaar':
+        return this._maakPillKnop('\ud83d\uddd1', 'Clustering verwijderen', () =>
+          this._toonVerwijderBevestiging(ct.categorie));
+      case 'fout':
+        return this._maakPillKnop('\u21bb', 'Opnieuw proberen', () =>
+          this._startClustering(ct.categorie));
+      default:
+        return null;
+    }
+  }
+
+  _maakPillKnop(symbool, titel, onClick) {
+    const btn = document.createElement('button');
+    btn.title = titel;
+    btn.textContent = symbool;
+    Object.assign(btn.style, {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '14px',
+      color: 'inherit',
+      padding: '0',
+      marginLeft: '6px',
+      lineHeight: '1',
+      opacity: '0.6',
+    });
+    btn.addEventListener('mouseenter', () => {
+      btn.style.opacity = '1';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.opacity = '0.6';
+    });
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
+  }
+
+  // --- Timer management ---
+
+  _beheerTimer() {
+    const heeftActief = this._clusteringTaken.some(
+        (ct) => ct.status === 'wachtend' || ct.status === 'bezig',
+    );
+    if (heeftActief && !this._timerInterval) {
+      this._timerInterval = setInterval(() => this._updateTimers(), 1000);
+    } else if (!heeftActief && this._timerInterval) {
+      this._stopTimer();
+    }
+  }
+
+  _stopTimer() {
+    if (this._timerInterval) {
+      clearInterval(this._timerInterval);
+      this._timerInterval = null;
+    }
+  }
+
+  _updateTimers() {
+    const inhoud = this.shadowRoot.querySelector('#inhoud');
+    if (!inhoud) return;
+
+    this._clusteringTaken.forEach((ct) => {
+      if (ct.status !== 'wachtend' && ct.status !== 'bezig') return;
+      const pill = inhoud.querySelector(`vl-pill[data-categorie="${CSS.escape(ct.categorie)}"]`);
+      if (!pill) return;
+      const timerTekst = pill.querySelector('.timer-tekst');
+      if (timerTekst) {
+        timerTekst.textContent = this._formatClusteringStatus(ct);
+      }
+    });
+  }
+
+  _formatClusteringStatus(ct, nu) {
+    nu = nu || Date.now();
+
+    if (ct.status === 'wachtend' && ct.aangemaaktOp) {
+      const wachtMs = nu - new Date(ct.aangemaaktOp).getTime();
+      return `Wachtend (${this._formatTijd(wachtMs)})`;
+    }
+
+    if (ct.status === 'bezig') {
+      const wachtMs = ct.verwerkingGestartOp && ct.aangemaaktOp ?
+        new Date(ct.verwerkingGestartOp).getTime() -
+            new Date(ct.aangemaaktOp).getTime() :
+        0;
+      const verwerkMs = ct.verwerkingGestartOp ?
+        nu - new Date(ct.verwerkingGestartOp).getTime() :
+        0;
+      return `Bezig (${this._formatTijd(wachtMs)}+${this._formatTijd(verwerkMs)})`;
+    }
+
+    if (ct.status === 'klaar') {
+      const wachtMs = ct.verwerkingGestartOp && ct.aangemaaktOp ?
+        new Date(ct.verwerkingGestartOp).getTime() -
+            new Date(ct.aangemaaktOp).getTime() :
+        0;
+      const verwerkMs = ct.verwerkingVoltooidOp && ct.verwerkingGestartOp ?
+        new Date(ct.verwerkingVoltooidOp).getTime() -
+            new Date(ct.verwerkingGestartOp).getTime() :
+        0;
+      return `Klaar (${this._formatTijd(wachtMs)}+${this._formatTijd(verwerkMs)})`;
+    }
+
+    return ct.status;
+  }
+
+  _formatTijd(ms) {
+    const totaalSeconden = Math.floor(ms / 1000);
+    const minuten = Math.floor(totaalSeconden / 60);
+    const seconden = totaalSeconden % 60;
+    return `${minuten}:${String(seconden).padStart(2, '0')}`;
+  }
+
+  // --- API methods ---
+
+  _startClustering(categorie) {
+    if (!this._projectNaam) return;
+    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}`, {
+      method: 'POST',
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Starten clustering mislukt');
+          return response.json();
+        })
+        .then((taak) => {
+          this.werkBijMetClusteringUpdate(taak);
+        })
+        .catch(() => {
+          // Stille fout
+        });
+  }
+
+  _annuleerClustering(categorie) {
+    if (!this._projectNaam) return;
+    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}`, {
+      method: 'DELETE',
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Annuleren clustering mislukt');
+          // Herlaad clustering-taken
+          this.laadClusteringTaken(this._projectNaam);
+        })
+        .catch(() => {
+          // Stille fout
+        });
+  }
+
+  _verwijderClustering(categorie, bevestigd = false) {
+    if (!this._projectNaam) return;
+    const url = bevestigd ?
+      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}?bevestigd=true` :
+      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}`;
+
+    fetch(url, {method: 'DELETE'})
+        .then((response) => {
+          if (response.status === 409) {
+            return response.json().then((data) => {
+              this._toonVerwijderBevestigingModal(
+                  categorie,
+                  data.aantalAntwoorden || 0,
+                  () => this._verwijderClustering(categorie, true),
+              );
+              return null;
+            });
+          }
+          if (!response.ok) throw new Error('Verwijderen clustering mislukt');
+          // Herlaad alles
+          this.laadClusteringTaken(this._projectNaam);
+          this.laadKernbezwaren(this._projectNaam);
+          return null;
+        })
+        .catch(() => {
+          // Stille fout
+        });
+  }
+
+  _toonVerwijderBevestiging(categorie) {
+    this._verwijderClustering(categorie);
+  }
+
+  _toonVerwijderBevestigingModal(categorie, aantalAntwoorden, onBevestig) {
+    const modal = this.shadowRoot.querySelector('#verwijder-bevestiging');
+    const inhoud = this.shadowRoot.querySelector('#verwijder-bevestiging-inhoud');
+    const bevestigKnop = this.shadowRoot.querySelector('#verwijder-bevestiging-bevestig');
+    if (!modal || !inhoud) return;
+
+    inhoud.innerHTML = '';
+    const p = document.createElement('p');
+    p.textContent = `De clustering voor "${categorie}" bevat ${aantalAntwoorden} antwoord(en) ` +
+        'die verloren gaan als u doorgaat.';
+    inhoud.appendChild(p);
+
+    const afhandelen = (bevestigd) => {
+      bevestigKnop.removeEventListener('vl-click', bevestigHandler);
+      modal.off('close', sluitHandler);
+      modal.close();
+      if (bevestigd) {
+        onBevestig();
+      }
+    };
+    const bevestigHandler = () => afhandelen(true);
+    const sluitHandler = () => afhandelen(false);
+
+    bevestigKnop.addEventListener('vl-click', bevestigHandler);
+    modal.on('close', sluitHandler);
+    modal.open();
+  }
+
+  _clusterAlles() {
+    if (!this._projectNaam) return;
+    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`, {
+      method: 'POST',
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Cluster alles mislukt');
+          return response.json();
+        })
+        .then((taken) => {
+          if (Array.isArray(taken)) {
+            taken.forEach((taak) => this.werkBijMetClusteringUpdate(taak));
+          }
+        })
+        .catch(() => {
+          // Stille fout
+        });
+  }
+
+  // --- Legacy groepeer (voor oude flow zonder categorien) ---
 
   _groepeer() {
     if (this._bezig || !this._projectNaam) return;
@@ -248,20 +734,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
   }
 
-  _maakOpnieuwKnop() {
-    const knop = document.createElement('vl-button');
-    knop.setAttribute('secondary', '');
-    knop.textContent = 'Opnieuw verwerken';
-    knop.addEventListener('vl-click', () => this._groepeer());
-    return knop;
-  }
+  // --- Legacy rendering (zonder categorien) ---
 
   _renderThemas(inhoud) {
     inhoud.innerHTML = '';
-
-    const knopBoven = this._maakOpnieuwKnop();
-    knopBoven.style.marginBottom = '1.5rem';
-    inhoud.appendChild(knopBoven);
 
     this._themas.forEach((thema) => {
       const accordion = document.createElement('vl-accordion');
@@ -272,47 +748,17 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
       const wrapper = document.createElement('div');
       thema.kernbezwaren.forEach((kern) => {
-        const item = document.createElement('div');
-        item.className = 'kernbezwaar-item';
-
-        const samenvatting = document.createElement('div');
-        samenvatting.className = 'kernbezwaar-samenvatting';
-        samenvatting.textContent = kern.antwoord ? `\u2714 ${kern.samenvatting}` : kern.samenvatting;
-        if (kern.antwoord) samenvatting.style.color = '#0e7c3a';
-
-        const penKnop = document.createElement('vl-button');
-        penKnop.setAttribute('tertiary', '');
-        penKnop.setAttribute('icon', 'pencil');
-        if (kern.antwoord) {
-          penKnop.classList.add('heeft-antwoord');
-        }
-        penKnop.addEventListener('vl-click', () => this._toggleEditor(item, kern, penKnop));
-
-        const actie = document.createElement('div');
-        actie.className = 'kernbezwaar-actie';
-        const knop = document.createElement('vl-button');
-        knop.setAttribute('tertiary', '');
-        knop.setAttribute('icon', 'search');
-        knop.textContent = `(${kern.individueleBezwaren.length})`;
-        knop.addEventListener('vl-click', () => this._toonPassages(kern));
-
-        actie.appendChild(knop);
-        actie.appendChild(penKnop);
-        item.appendChild(samenvatting);
-        item.appendChild(actie);
-        wrapper.appendChild(item);
+        wrapper.appendChild(this._maakKernbezwaarItem(kern));
       });
 
       accordion.appendChild(wrapper);
       inhoud.appendChild(accordion);
     });
 
-    const knopOnder = this._maakOpnieuwKnop();
-    knopOnder.style.marginTop = '1.5rem';
-    inhoud.appendChild(knopOnder);
-
     this._dispatchVoortgang();
   }
+
+  // --- Kernbezwaar item interactions ---
 
   _toggleEditor(item, kern, penKnop) {
     const bestaandeEditor = item.querySelector('.antwoord-editor-wrapper');
