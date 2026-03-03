@@ -18,4 +18,12 @@ public interface GeextraheerdBezwaarRepository
       + "  WHERE t.projectNaam = :projectNaam AND t.status = 'KLAAR')")
   List<GeextraheerdBezwaarEntiteit> findByProjectNaam(
       @Param("projectNaam") String projectNaam);
+
+  @Query("SELECT COUNT(b) FROM GeextraheerdBezwaarEntiteit b "
+      + "WHERE b.categorie = :categorie AND b.taakId IN ("
+      + "  SELECT t.id FROM ExtractieTaak t "
+      + "  WHERE t.projectNaam = :projectNaam AND t.status = 'KLAAR')")
+  int countByProjectNaamAndCategorie(
+      @Param("projectNaam") String projectNaam,
+      @Param("categorie") String categorie);
 }

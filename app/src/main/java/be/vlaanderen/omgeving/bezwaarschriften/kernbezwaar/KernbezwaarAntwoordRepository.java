@@ -12,4 +12,6 @@ public interface KernbezwaarAntwoordRepository
 
   @Query("SELECT a.kernbezwaarId FROM KernbezwaarAntwoordEntiteit a WHERE a.kernbezwaarId IN :ids")
   List<Long> findKernbezwaarIdsMetAntwoord(@Param("ids") List<Long> kernbezwaarIds);
+
+  long countByKernbezwaarIdIn(List<Long> kernbezwaarIds);
 }

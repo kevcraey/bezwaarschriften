@@ -6,4 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface KernbezwaarRepository extends JpaRepository<KernbezwaarEntiteit, Long> {
 
   List<KernbezwaarEntiteit> findByThemaIdIn(List<Long> themaIds);
+
+  List<KernbezwaarEntiteit> findByThemaId(Long themaId);
+
+  int countByThemaId(Long themaId);
 }
