@@ -184,16 +184,7 @@ class ExtractieControllerTest {
             .with(csrf()))
         .andExpect(status().isNoContent());
 
-    verify(extractieTaakService).verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L);
+    verify(extractieTaakService).verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
   }
 
-  @Test
-  void verwijderNietManueelBezwaarGeeft403() throws Exception {
-    doThrow(new IllegalStateException("Bezwaar is niet manueel toegevoegd"))
-        .when(extractieTaakService).verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L);
-
-    mockMvc.perform(delete("/api/v1/projects/windmolens/extracties/bezwaar-001.txt/bezwaren/10")
-            .with(csrf()))
-        .andExpect(status().isForbidden());
-  }
 }

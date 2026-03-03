@@ -553,7 +553,7 @@ class ExtractieTaakServiceTest {
     when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of(anderManueel));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-    service.verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L);
+    service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
 
     verify(bezwaarRepository).delete(bezwaar);
     assertThat(taak.getAantalBezwaren()).isEqualTo(2);
@@ -577,23 +577,30 @@ class ExtractieTaakServiceTest {
     when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of());
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-    service.verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L);
+    service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
 
     assertThat(taak.isHeeftManueel()).isFalse();
   }
 
   @Test
-  void verwijderNietManueelBezwaarGooitForbidden() {
+  void verwijderAiBezwaarZetHeeftManueelOp() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    taak.setAantalBezwaren(3);
+    taak.setHeeftManueel(false);
+
     var bezwaar = new GeextraheerdBezwaarEntiteit();
     bezwaar.setId(10L);
     bezwaar.setTaakId(1L);
-    bezwaar.setManueel(false);
+    bezwaar.setManueel(false); // AI-bezwaar
     when(bezwaarRepository.findById(10L)).thenReturn(Optional.of(bezwaar));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-        service.verwijderManueelBezwaar("windmolens", "bezwaar-001.txt", 10L))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("niet manueel");
+    service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
+
+    verify(bezwaarRepository).delete(bezwaar);
+    assertThat(taak.getAantalBezwaren()).isEqualTo(2);
+    assertThat(taak.isHeeftManueel()).isTrue();
   }
 
   private ExtractiePassageEntiteit maakPassage(Long taakId, int passageNr) {

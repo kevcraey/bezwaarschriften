@@ -141,10 +141,8 @@ public class ExtractieController {
       @PathVariable String naam, @PathVariable String bestandsnaam,
       @PathVariable Long bezwaarId) {
     try {
-      extractieTaakService.verwijderManueelBezwaar(naam, bestandsnaam, bezwaarId);
+      extractieTaakService.verwijderBezwaar(naam, bestandsnaam, bezwaarId);
       return ResponseEntity.noContent().build();
-    } catch (IllegalStateException e) {
-      return ResponseEntity.status(403).build();
     } catch (IllegalArgumentException e) {
       return ResponseEntity.notFound().build();
     }

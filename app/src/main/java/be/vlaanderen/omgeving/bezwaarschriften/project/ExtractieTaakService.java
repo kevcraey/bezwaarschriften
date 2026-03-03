@@ -444,22 +444,19 @@ public class ExtractieTaakService {
   }
 
   /**
-   * Verwijdert een manueel toegevoegd bezwaar.
+   * Verwijdert een bezwaar (manueel of AI).
    *
    * @param projectNaam naam van het project
    * @param bestandsnaam naam van het bestand
    * @param bezwaarId id van het te verwijderen bezwaar
    * @throws IllegalArgumentException als het bezwaar niet gevonden wordt
-   * @throws IllegalStateException als het bezwaar niet manueel is
    */
   @Transactional
-  public void verwijderManueelBezwaar(String projectNaam, String bestandsnaam, Long bezwaarId) {
+  public void verwijderBezwaar(String projectNaam, String bestandsnaam, Long bezwaarId) {
     var bezwaar = bezwaarRepository.findById(bezwaarId)
         .orElseThrow(() -> new IllegalArgumentException("Bezwaar niet gevonden: " + bezwaarId));
 
-    if (!bezwaar.isManueel()) {
-      throw new IllegalStateException("Bezwaar " + bezwaarId + " is niet manueel toegevoegd");
-    }
+    boolean wasAiBezwaar = !bezwaar.isManueel();
 
     var taak = repository.findById(bezwaar.getTaakId())
         .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden"));
@@ -470,10 +467,13 @@ public class ExtractieTaakService {
     int huidigAantal = taak.getAantalBezwaren() != null ? taak.getAantalBezwaren() : 0;
     taak.setAantalBezwaren(Math.max(0, huidigAantal - 1));
 
-    // Check of er nog manuele bezwaren over zijn
-    var overigeBezwaren = bezwaarRepository.findByTaakId(taak.getId());
-    boolean nogManueel = overigeBezwaren.stream().anyMatch(GeextraheerdBezwaarEntiteit::isManueel);
-    taak.setHeeftManueel(nogManueel);
+    if (wasAiBezwaar) {
+      taak.setHeeftManueel(true);
+    } else {
+      var overigeBezwaren = bezwaarRepository.findByTaakId(taak.getId());
+      boolean nogManueel = overigeBezwaren.stream().anyMatch(GeextraheerdBezwaarEntiteit::isManueel);
+      taak.setHeeftManueel(nogManueel);
+    }
 
     repository.save(taak);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
