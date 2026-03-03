@@ -8,15 +8,19 @@ import {VlInputFieldComponent} from '@domg-wc/components/form/input-field/vl-inp
 import {VlFormLabelComponent} from '@domg-wc/components/form/form-label/vl-form-label.component.js';
 import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
+import {VlTabsComponent} from '@domg-wc/components/block/tabs/vl-tabs.component.js';
+import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.component.js';
 import {VlTextareaComponent} from '@domg-wc/components/form/textarea/vl-textarea.component.js';
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
+import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
 registerWebComponents([
   VlRichDataTable, VlRichDataField, VlPillComponent,
   VlSearchFilterComponent, VlPagerComponent,
   VlInputFieldComponent, VlFormLabelComponent, VlSelectComponent,
-  VlSideSheet, VlTextareaComponent, VlButtonComponent,
+  VlSideSheet, VlTabsComponent, VlTabsPaneComponent,
+  VlTextareaComponent, VlButtonComponent, VlModalComponent,
 ]);
 
 const STATUS_LABELS = {
@@ -84,17 +88,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           flex: 1;
           margin-right: 1rem;
         }
-        .side-sheet-sluit-knop {
-          background: none;
-          border: none;
-          font-size: 1.5rem;
-          cursor: pointer;
-          padding: 0;
-          color: #333;
-          line-height: 1;
-          flex-shrink: 0;
-        }
-        .side-sheet-sluit-knop:hover { color: #000; }
         .side-sheet-body {
           flex: 1;
           overflow-y: auto;
@@ -179,18 +172,23 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         <vl-rich-data-field name="acties" label="Acties"></vl-rich-data-field>
         <vl-pager slot="pager" total-items="0" items-per-page="${ITEMS_PER_PAGINA}" current-page="1"></vl-pager>
       </vl-rich-data-table>
-      <vl-side-sheet id="extractie-side-sheet" hide-toggle-button>
+      <vl-side-sheet id="extractie-side-sheet" hide-toggle-button absolute>
         <div class="side-sheet-wrapper">
           <div class="side-sheet-header">
             <div id="extractie-side-sheet-titel" class="side-sheet-titel"></div>
-            <vl-button id="bezwaar-toevoegen-knop" icon="add" ghost
-                label="Bezwaar toevoegen" style="display:none;"></vl-button>
-            <button id="extractie-side-sheet-sluit" class="side-sheet-sluit-knop"
-                aria-label="Sluiten">&times;</button>
+            <vl-button id="extractie-side-sheet-sluit" icon="close" ghost label="Sluiten"></vl-button>
           </div>
           <div id="extractie-side-sheet-inhoud" class="side-sheet-body"></div>
         </div>
       </vl-side-sheet>
+      <vl-modal id="verwijder-bezwaar-modal" title="Bezwaar verwijderen" closable>
+        <div slot="content">
+          <p>Weet je zeker dat je dit bezwaar wil verwijderen? Deze actie kan niet ongedaan gemaakt worden.</p>
+        </div>
+        <div slot="button">
+          <vl-button id="verwijder-bezwaar-bevestig" error="">Verwijderen</vl-button>
+        </div>
+      </vl-modal>
     `);
     this.__bronBezwaren = [];
     this.__takenData = {};
@@ -200,6 +198,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     this.__sorting = [];
     this.__huidigePagina = 1;
     this.__herberekenGepland = false;
+    this.__teVerwijderenBezwaar = null;
     this.__tabelKlaar = false;
   }
 
@@ -232,17 +231,15 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const sluitKnop = this.shadowRoot.querySelector('#extractie-side-sheet-sluit');
     const sideSheet = this.shadowRoot.querySelector('#extractie-side-sheet');
     if (sluitKnop && sideSheet) {
-      sluitKnop.addEventListener('click', () => {
+      sluitKnop.addEventListener('vl-click', () => {
         sideSheet.close();
         this.classList.remove('side-sheet-open');
       });
     }
 
-    const toevoegKnop = this.shadowRoot.querySelector('#bezwaar-toevoegen-knop');
-    if (toevoegKnop) {
-      toevoegKnop.addEventListener('vl-click', () => {
-        this._toonManueelBezwaarFormulier();
-      });
+    const bevestigKnop = this.shadowRoot.querySelector('#verwijder-bezwaar-bevestig');
+    if (bevestigKnop) {
+      bevestigKnop.addEventListener('click', () => this._voerVerwijderingUit());
     }
 
     // vl-rich-data-table gebruikt webComponentPromised: registratie is asynchroon.
@@ -443,7 +440,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     });
   }
 
-  toonExtractieDetails(projectNaam, bestandsnaam) {
+  toonExtractieDetails(projectNaam, bestandsnaam, actieveTab = 'automatisch') {
     const sideSheet = this.shadowRoot.querySelector('#extractie-side-sheet');
     const inhoud = this.shadowRoot.querySelector('#extractie-side-sheet-inhoud');
     const titelEl = this.shadowRoot.querySelector('#extractie-side-sheet-titel');
@@ -456,9 +453,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     sideSheet.open();
     this.classList.add('side-sheet-open');
 
-    const toevoegKnop = this.shadowRoot.querySelector('#bezwaar-toevoegen-knop');
-    if (toevoegKnop) toevoegKnop.style.display = 'none';
-
     fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/${encodeURIComponent(bestandsnaam)}/details`)
         .then((response) => {
           if (!response.ok) throw new Error('Ophalen details mislukt');
@@ -467,8 +461,11 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         .then((data) => {
           inhoud.innerHTML = '';
 
-          // Sorteer: niet-gevonden passages bovenaan
-          const gesorteerd = [...data.bezwaren].sort((a, b) => {
+          const automatisch = data.bezwaren.filter((b) => !b.manueel);
+          const manueel = data.bezwaren.filter((b) => b.manueel);
+
+          // Sorteer automatisch: niet-gevonden passages bovenaan
+          automatisch.sort((a, b) => {
             if (a.passageGevonden === b.passageGevonden) return 0;
             return a.passageGevonden ? 1 : -1;
           });
@@ -477,77 +474,117 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             titelEl.textContent = `${data.bestandsnaam} - ${data.aantalBezwaren} bezwar${data.aantalBezwaren === 1 ? '' : 'en'} gevonden`;
           }
 
-          // Toon + knop
-          const toevoegKnop = this.shadowRoot.querySelector('#bezwaar-toevoegen-knop');
-          if (toevoegKnop) {
-            toevoegKnop.style.display = 'inline-block';
-          }
+          // Bouw tabs
+          const tabs = document.createElement('vl-tabs');
+          tabs.setAttribute('disable-links', '');
+          tabs.setAttribute('active-tab', actieveTab);
 
-          gesorteerd.forEach((bezwaar) => {
-            const item = document.createElement('div');
-            item.className = 'bezwaar-item';
+          const autoPane = document.createElement('vl-tabs-pane');
+          autoPane.setAttribute('id', 'automatisch');
+          autoPane.setAttribute('title', `Automatisch (${automatisch.length})`);
 
-            if (!bezwaar.passageGevonden) {
-              const waarschuwing = document.createElement('div');
-              waarschuwing.className = 'bezwaar-waarschuwing';
-              waarschuwing.textContent = '\u26A0\uFE0F Passage kon niet gevonden worden';
-              item.appendChild(waarschuwing);
-            }
-
-            if (bezwaar.manueel) {
-              const label = document.createElement('vl-pill');
-              label.className = 'bezwaar-manueel-label';
-              label.textContent = 'Manueel';
-              item.appendChild(label);
-            }
-
-            const header = document.createElement('div');
-            header.className = 'bezwaar-header';
-
-            const samenvatting = document.createElement('div');
-            samenvatting.className = 'bezwaar-samenvatting';
-            samenvatting.textContent = bezwaar.samenvatting;
-            header.appendChild(samenvatting);
-
-            if (bezwaar.manueel) {
-              const verwijderKnop = document.createElement('vl-button');
-              verwijderKnop.setAttribute('icon', 'bin');
-              verwijderKnop.setAttribute('error', '');
-              verwijderKnop.setAttribute('ghost', '');
-              verwijderKnop.setAttribute('label', 'Manueel bezwaar verwijderen');
-              verwijderKnop.addEventListener('vl-click', () => {
-                this._verwijderManueelBezwaar(projectNaam, bestandsnaam, bezwaar.id);
-              });
-              header.appendChild(verwijderKnop);
-            }
-
-            item.appendChild(header);
-
-            const passage = document.createElement('div');
-            passage.className = 'bezwaar-passage';
-            passage.textContent = `\u201C${bezwaar.passage}\u201D`;
-
-            item.appendChild(passage);
-            inhoud.appendChild(item);
+          automatisch.forEach((bezwaar) => {
+            autoPane.appendChild(this._maakBezwaarItem(bezwaar, projectNaam, bestandsnaam, false));
           });
+
+          const manueelPane = document.createElement('vl-tabs-pane');
+          manueelPane.setAttribute('id', 'manueel');
+          manueelPane.setAttribute('title', `Manueel (${manueel.length})`);
+
+          manueel.forEach((bezwaar) => {
+            manueelPane.appendChild(this._maakBezwaarItem(bezwaar, projectNaam, bestandsnaam, true));
+          });
+
+          // Toevoeg-knop onderaan manueel-tab
+          const toevoegKnop = document.createElement('vl-button');
+          toevoegKnop.id = 'bezwaar-toevoegen-knop';
+          toevoegKnop.setAttribute('icon', 'add');
+          toevoegKnop.textContent = 'Toevoegen';
+          toevoegKnop.addEventListener('click', () => {
+            this._toonManueelBezwaarFormulier();
+          });
+          manueelPane.appendChild(toevoegKnop);
+
+          tabs.appendChild(autoPane);
+          tabs.appendChild(manueelPane);
+          inhoud.appendChild(tabs);
         })
         .catch(() => {
           inhoud.innerHTML = '<p>Kon extractie-details niet laden.</p>';
         });
   }
 
-  _verwijderManueelBezwaar(projectNaam, bestandsnaam, bezwaarId) {
-    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/extracties/${encodeURIComponent(bestandsnaam)}/bezwaren/${bezwaarId}`, {
+  _maakBezwaarItem(bezwaar, projectNaam, bestandsnaam, isManueelTab) {
+    const item = document.createElement('div');
+    item.className = 'bezwaar-item';
+
+    if (!bezwaar.passageGevonden) {
+      const waarschuwing = document.createElement('div');
+      waarschuwing.className = 'bezwaar-waarschuwing';
+      waarschuwing.textContent = '\u26A0\uFE0F Passage kon niet gevonden worden';
+      item.appendChild(waarschuwing);
+    }
+
+    if (bezwaar.manueel && !isManueelTab) {
+      const label = document.createElement('vl-pill');
+      label.className = 'bezwaar-manueel-label';
+      label.textContent = 'Manueel';
+      item.appendChild(label);
+    }
+
+    const header = document.createElement('div');
+    header.className = 'bezwaar-header';
+
+    const samenvatting = document.createElement('div');
+    samenvatting.className = 'bezwaar-samenvatting';
+    samenvatting.textContent = bezwaar.samenvatting;
+    header.appendChild(samenvatting);
+
+    const verwijderKnop = document.createElement('vl-button');
+    verwijderKnop.setAttribute('icon', 'bin');
+    verwijderKnop.setAttribute('error', '');
+    verwijderKnop.setAttribute('ghost', '');
+    verwijderKnop.setAttribute('label', 'Bezwaar verwijderen');
+    verwijderKnop.addEventListener('vl-click', () => {
+      const actieveTab = isManueelTab ? 'manueel' : 'automatisch';
+      this._vraagBevestigingVerwijder(projectNaam, bestandsnaam, bezwaar.id, actieveTab);
+    });
+    header.appendChild(verwijderKnop);
+
+    item.appendChild(header);
+
+    const passage = document.createElement('div');
+    passage.className = 'bezwaar-passage';
+    passage.textContent = `\u201C${bezwaar.passage}\u201D`;
+    item.appendChild(passage);
+
+    return item;
+  }
+
+  _vraagBevestigingVerwijder(projectNaam, bestandsnaam, bezwaarId, actieveTab) {
+    this.__teVerwijderenBezwaar = {projectNaam, bestandsnaam, bezwaarId, actieveTab};
+    const modal = this.shadowRoot.querySelector('#verwijder-bezwaar-modal');
+    if (modal) modal.open();
+  }
+
+  _voerVerwijderingUit() {
+    const data = this.__teVerwijderenBezwaar;
+    if (!data) return;
+
+    const modal = this.shadowRoot.querySelector('#verwijder-bezwaar-modal');
+    if (modal) modal.close();
+
+    fetch(`/api/v1/projects/${encodeURIComponent(data.projectNaam)}/extracties/${encodeURIComponent(data.bestandsnaam)}/bezwaren/${data.bezwaarId}`, {
       method: 'DELETE',
     }).then((response) => {
       if (!response.ok) throw new Error('Verwijderen mislukt');
-      // Herlaad side-panel en tabeldata
-      this.toonExtractieDetails(projectNaam, bestandsnaam);
+      this.__teVerwijderenBezwaar = null;
+      this.toonExtractieDetails(data.projectNaam, data.bestandsnaam, data.actieveTab);
       this.dispatchEvent(new CustomEvent('bezwaar-gewijzigd', {
         bubbles: true, composed: true,
       }));
     }).catch(() => {
-      // Foutmelding in side-panel
+      this.__teVerwijderenBezwaar = null;
       const inhoud = this.shadowRoot.querySelector('#extractie-side-sheet-inhoud');
       if (inhoud) {
         const fout = document.createElement('div');
@@ -560,7 +597,10 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   _toonManueelBezwaarFormulier() {
     const inhoud = this.shadowRoot.querySelector('#extractie-side-sheet-inhoud');
-    if (!inhoud || inhoud.querySelector('#manueel-bezwaar-formulier')) return;
+    if (!inhoud) return;
+    const manueelPane = inhoud.querySelector('vl-tabs-pane#manueel');
+    const target = manueelPane || inhoud;
+    if (target.querySelector('#manueel-bezwaar-formulier')) return;
 
     const formulier = document.createElement('div');
     formulier.id = 'manueel-bezwaar-formulier';
@@ -581,7 +621,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       <div id="manueel-foutmelding"></div>
     `;
 
-    inhoud.prepend(formulier);
+    target.prepend(formulier);
 
     // Enable/disable opslaan-knop op basis van input
     const samenvatting = formulier.querySelector('#manueel-samenvatting');
@@ -625,8 +665,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       body: JSON.stringify({samenvatting, passage}),
     }).then((response) => {
       if (response.ok) {
-        // Herlaad side-panel
-        this.toonExtractieDetails(projectNaam, bestandsnaam);
+        // Herlaad side-panel, blijf op manueel-tab
+        this.toonExtractieDetails(projectNaam, bestandsnaam, 'manueel');
         this.dispatchEvent(new CustomEvent('bezwaar-gewijzigd', {
           bubbles: true, composed: true,
         }));
