@@ -6,6 +6,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import org.hibernate.annotations.Type;
 
 @Entity
 @Table(name = "geextraheerd_bezwaar")
@@ -32,6 +33,10 @@ public class GeextraheerdBezwaarEntiteit {
 
   @Column(name = "manueel", nullable = false)
   private boolean manueel = false;
+
+  @Type(type = "be.vlaanderen.omgeving.bezwaarschriften.config.VectorType")
+  @Column(name = "embedding", columnDefinition = "vector(1024)")
+  private float[] embedding;
 
   public Long getId() {
     return id;
@@ -87,5 +92,13 @@ public class GeextraheerdBezwaarEntiteit {
 
   public void setManueel(boolean manueel) {
     this.manueel = manueel;
+  }
+
+  public float[] getEmbedding() {
+    return embedding;
+  }
+
+  public void setEmbedding(float[] embedding) {
+    this.embedding = embedding;
   }
 }
