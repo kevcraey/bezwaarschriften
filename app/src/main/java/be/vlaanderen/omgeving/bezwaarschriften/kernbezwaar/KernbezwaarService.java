@@ -1,35 +1,67 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectService;
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort;
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.ClusteringInvoer;
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
+import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
+import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
+import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Orchestreert de groepering van individuele bezwaren tot thema's en kernbezwaren.
+ * Orchestreert de groepering van individuele bezwaren tot thema's en kernbezwaren
+ * via HDBSCAN-clustering op embedding-vectoren.
  */
 @Service
 public class KernbezwaarService {
 
-  private final KernbezwaarPoort kernbezwaarPoort;
-  private final ProjectService projectService;
+  private final EmbeddingPoort embeddingPoort;
+  private final ClusteringPoort clusteringPoort;
+  private final GeextraheerdBezwaarRepository bezwaarRepository;
+  private final ExtractiePassageRepository passageRepository;
+  private final ExtractieTaakRepository taakRepository;
   private final KernbezwaarAntwoordRepository antwoordRepository;
   private final ThemaRepository themaRepository;
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarReferentieRepository referentieRepository;
 
-  public KernbezwaarService(KernbezwaarPoort kernbezwaarPoort,
-      ProjectService projectService,
+  /**
+   * Constructor met alle benodigde afhankelijkheden.
+   *
+   * @param embeddingPoort port voor het genereren van embeddings
+   * @param clusteringPoort port voor HDBSCAN-clustering
+   * @param bezwaarRepository repository voor geextraheerde bezwaren
+   * @param passageRepository repository voor extractie-passages
+   * @param taakRepository repository voor extractie-taken
+   * @param antwoordRepository repository voor kernbezwaar-antwoorden
+   * @param themaRepository repository voor thema's
+   * @param kernbezwaarRepository repository voor kernbezwaren
+   * @param referentieRepository repository voor kernbezwaar-referenties
+   */
+  public KernbezwaarService(EmbeddingPoort embeddingPoort,
+      ClusteringPoort clusteringPoort,
+      GeextraheerdBezwaarRepository bezwaarRepository,
+      ExtractiePassageRepository passageRepository,
+      ExtractieTaakRepository taakRepository,
       KernbezwaarAntwoordRepository antwoordRepository,
       ThemaRepository themaRepository,
       KernbezwaarRepository kernbezwaarRepository,
       KernbezwaarReferentieRepository referentieRepository) {
-    this.kernbezwaarPoort = kernbezwaarPoort;
-    this.projectService = projectService;
+    this.embeddingPoort = embeddingPoort;
+    this.clusteringPoort = clusteringPoort;
+    this.bezwaarRepository = bezwaarRepository;
+    this.passageRepository = passageRepository;
+    this.taakRepository = taakRepository;
     this.antwoordRepository = antwoordRepository;
     this.themaRepository = themaRepository;
     this.kernbezwaarRepository = kernbezwaarRepository;
@@ -37,50 +69,39 @@ public class KernbezwaarService {
   }
 
   /**
-   * Groepeert de individuele bezwaren van een project tot thema's en kernbezwaren.
+   * Groepeert de individuele bezwaren van een project tot thema's en kernbezwaren
+   * via embedding-generatie en HDBSCAN-clustering.
    *
-   * @param projectNaam Naam van het project
-   * @return Lijst van thema's met kernbezwaren
+   * @param projectNaam naam van het project
+   * @return lijst van thema's met kernbezwaren
    */
   @Transactional
   public List<Thema> groepeer(String projectNaam) {
-    var invoer = projectService.geefBezwaartekstenVoorGroepering(projectNaam);
-    var themas = kernbezwaarPoort.groepeer(invoer);
+    var alleBezwaren = bezwaarRepository.findByProjectNaam(projectNaam);
 
-    // Verwijder bestaande data (cascade ruimt kernbezwaren, referenties en antwoorden op)
+    // Bouw lookups voor originele passage-teksten en bestandsnamen
+    var taakIds = alleBezwaren.stream()
+        .map(GeextraheerdBezwaarEntiteit::getTaakId)
+        .distinct()
+        .toList();
+    var passageLookup = bouwPassageLookup(taakIds);
+    var bestandsnaamLookup = bouwBestandsnaamLookup(taakIds);
+
+    // Groepeer bezwaren per categorie
+    var perCategorie = alleBezwaren.stream()
+        .collect(Collectors.groupingBy(GeextraheerdBezwaarEntiteit::getCategorie));
+
+    // Verwijder bestaande thema-data (cascade ruimt kernbezwaren, referenties en antwoorden op)
     themaRepository.deleteByProjectNaam(projectNaam);
 
-    // Sla nieuwe thema's op en bouw domain records met DB-IDs
+    // Cluster per categorie en bouw thema's
     var resultaat = new ArrayList<Thema>();
-    for (var thema : themas) {
-      var themaEntiteit = new ThemaEntiteit();
-      themaEntiteit.setProjectNaam(projectNaam);
-      themaEntiteit.setNaam(thema.naam());
-      themaEntiteit = themaRepository.save(themaEntiteit);
-
-      var kernbezwaren = new ArrayList<Kernbezwaar>();
-      for (var kern : thema.kernbezwaren()) {
-        var kernEntiteit = new KernbezwaarEntiteit();
-        kernEntiteit.setThemaId(themaEntiteit.getId());
-        kernEntiteit.setSamenvatting(kern.samenvatting());
-        kernEntiteit = kernbezwaarRepository.save(kernEntiteit);
-
-        var referenties = new ArrayList<IndividueelBezwaarReferentie>();
-        for (var ref : kern.individueleBezwaren()) {
-          var refEntiteit = new KernbezwaarReferentieEntiteit();
-          refEntiteit.setKernbezwaarId(kernEntiteit.getId());
-          refEntiteit.setBezwaarId(ref.bezwaarId());
-          refEntiteit.setBestandsnaam(ref.bestandsnaam());
-          refEntiteit.setPassage(ref.passage());
-          referentieRepository.save(refEntiteit);
-          referenties.add(new IndividueelBezwaarReferentie(
-              ref.bezwaarId(), ref.bestandsnaam(), ref.passage()));
-        }
-
-        kernbezwaren.add(new Kernbezwaar(
-            kernEntiteit.getId(), kern.samenvatting(), referenties, null));
-      }
-      resultaat.add(new Thema(thema.naam(), kernbezwaren));
+    for (var entry : perCategorie.entrySet()) {
+      var categorieNaam = entry.getKey();
+      var bezwaren = entry.getValue();
+      var thema = clusterCategorie(
+          projectNaam, categorieNaam, bezwaren, passageLookup, bestandsnaamLookup);
+      resultaat.add(thema);
     }
     return resultaat;
   }
@@ -88,8 +109,8 @@ public class KernbezwaarService {
   /**
    * Geeft eerder berekende kernbezwaren voor een project.
    *
-   * @param projectNaam Naam van het project
-   * @return Optional met de lijst van thema's, of leeg als nog niet gegroepeerd
+   * @param projectNaam naam van het project
+   * @return optional met de lijst van thema's, of leeg als nog niet gegroepeerd
    */
   public Optional<List<Thema>> geefKernbezwaren(String projectNaam) {
     var themaEntiteiten = themaRepository.findByProjectNaam(projectNaam);
@@ -129,26 +150,6 @@ public class KernbezwaarService {
     return Optional.of(verrijkMetAntwoorden(themas));
   }
 
-  private List<Thema> verrijkMetAntwoorden(List<Thema> themas) {
-    var alleIds = themas.stream()
-        .flatMap(t -> t.kernbezwaren().stream())
-        .map(Kernbezwaar::id)
-        .toList();
-    var antwoorden = antwoordRepository.findByKernbezwaarIdIn(alleIds);
-    var antwoordMap = antwoorden.stream()
-        .collect(Collectors.toMap(
-            KernbezwaarAntwoordEntiteit::getKernbezwaarId,
-            KernbezwaarAntwoordEntiteit::getInhoud));
-    return themas.stream()
-        .map(thema -> new Thema(thema.naam(),
-            thema.kernbezwaren().stream()
-                .map(kern -> new Kernbezwaar(kern.id(), kern.samenvatting(),
-                    kern.individueleBezwaren(),
-                    antwoordMap.get(kern.id())))
-                .toList()))
-        .toList();
-  }
-
   /**
    * Slaat een antwoord op voor een kernbezwaar.
    *
@@ -167,5 +168,180 @@ public class KernbezwaarService {
     entiteit.setInhoud(inhoud);
     entiteit.setBijgewerktOp(Instant.now());
     antwoordRepository.save(entiteit);
+  }
+
+  private Thema clusterCategorie(String projectNaam, String categorieNaam,
+      List<GeextraheerdBezwaarEntiteit> bezwaren,
+      Map<Long, Map<Integer, String>> passageLookup,
+      Map<Long, String> bestandsnaamLookup) {
+
+    // Bepaal de tekst per bezwaar: originele passage of fallback naar samenvatting
+    var bezwaarById = bezwaren.stream()
+        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
+    var teksten = bezwaren.stream()
+        .map(b -> geefPassageTekst(b, passageLookup))
+        .toList();
+
+    // Genereer embeddings en sla ze op bij de bezwaar-entiteiten
+    var embeddings = embeddingPoort.genereerEmbeddings(teksten);
+    for (int i = 0; i < bezwaren.size(); i++) {
+      bezwaren.get(i).setEmbedding(embeddings.get(i));
+    }
+    bezwaarRepository.saveAll(bezwaren);
+
+    // Maak thema-entiteit
+    var themaEntiteit = new ThemaEntiteit();
+    themaEntiteit.setProjectNaam(projectNaam);
+    themaEntiteit.setNaam(categorieNaam);
+    themaEntiteit = themaRepository.save(themaEntiteit);
+
+    // Bouw clustering-invoer en cluster
+    var invoer = new ArrayList<ClusteringInvoer>();
+    for (int i = 0; i < bezwaren.size(); i++) {
+      invoer.add(new ClusteringInvoer(bezwaren.get(i).getId(), embeddings.get(i)));
+    }
+    var clusterResultaat = clusteringPoort.cluster(invoer);
+
+    var kernbezwaren = new ArrayList<Kernbezwaar>();
+
+    // Verwerk clusters: vind representatief bezwaar (dichtst bij centroid)
+    for (var cluster : clusterResultaat.clusters()) {
+      var clusterBezwaren = cluster.bezwaarIds().stream()
+          .map(bezwaarById::get)
+          .toList();
+      var representatief = vindDichtstBijCentroid(clusterBezwaren, cluster.centroid());
+      var samenvatting = representatief.getSamenvatting();
+
+      var referenties = bouwReferenties(clusterBezwaren, passageLookup, bestandsnaamLookup);
+      var kern = slaKernbezwaarOp(themaEntiteit.getId(), samenvatting, referenties);
+      kernbezwaren.add(kern);
+    }
+
+    // Verwerk noise items: elk wordt een eigen kernbezwaar met originele tekst
+    for (var noiseId : clusterResultaat.noiseIds()) {
+      var bezwaar = bezwaarById.get(noiseId);
+      var tekst = geefPassageTekst(bezwaar, passageLookup);
+      var referenties = bouwReferenties(
+          List.of(bezwaar), passageLookup, bestandsnaamLookup);
+      var kern = slaKernbezwaarOp(themaEntiteit.getId(), tekst, referenties);
+      kernbezwaren.add(kern);
+    }
+
+    return new Thema(categorieNaam, kernbezwaren);
+  }
+
+  private GeextraheerdBezwaarEntiteit vindDichtstBijCentroid(
+      List<GeextraheerdBezwaarEntiteit> bezwaren, float[] centroid) {
+    GeextraheerdBezwaarEntiteit dichtstbij = null;
+    double hoogsteGelijkenis = Double.NEGATIVE_INFINITY;
+    for (var bezwaar : bezwaren) {
+      double gelijkenis = cosinusGelijkenis(bezwaar.getEmbedding(), centroid);
+      if (gelijkenis > hoogsteGelijkenis) {
+        hoogsteGelijkenis = gelijkenis;
+        dichtstbij = bezwaar;
+      }
+    }
+    return dichtstbij;
+  }
+
+  private double cosinusGelijkenis(float[] a, float[] b) {
+    double dot = 0.0;
+    double normA = 0.0;
+    double normB = 0.0;
+    for (int i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    double deler = Math.sqrt(normA) * Math.sqrt(normB);
+    return deler == 0.0 ? 0.0 : dot / deler;
+  }
+
+  private Kernbezwaar slaKernbezwaarOp(Long themaId, String samenvatting,
+      List<IndividueelBezwaarReferentie> referenties) {
+    var kernEntiteit = new KernbezwaarEntiteit();
+    kernEntiteit.setThemaId(themaId);
+    kernEntiteit.setSamenvatting(samenvatting);
+    kernEntiteit = kernbezwaarRepository.save(kernEntiteit);
+
+    var opgeslagenReferenties = new ArrayList<IndividueelBezwaarReferentie>();
+    for (var ref : referenties) {
+      var refEntiteit = new KernbezwaarReferentieEntiteit();
+      refEntiteit.setKernbezwaarId(kernEntiteit.getId());
+      refEntiteit.setBezwaarId(ref.bezwaarId());
+      refEntiteit.setBestandsnaam(ref.bestandsnaam());
+      refEntiteit.setPassage(ref.passage());
+      referentieRepository.save(refEntiteit);
+      opgeslagenReferenties.add(ref);
+    }
+
+    return new Kernbezwaar(kernEntiteit.getId(), samenvatting,
+        opgeslagenReferenties, null);
+  }
+
+  private List<IndividueelBezwaarReferentie> bouwReferenties(
+      List<GeextraheerdBezwaarEntiteit> bezwaren,
+      Map<Long, Map<Integer, String>> passageLookup,
+      Map<Long, String> bestandsnaamLookup) {
+    return bezwaren.stream()
+        .map(b -> new IndividueelBezwaarReferentie(
+            b.getId(),
+            bestandsnaamLookup.getOrDefault(b.getTaakId(), "onbekend"),
+            geefPassageTekst(b, passageLookup)))
+        .toList();
+  }
+
+  private String geefPassageTekst(GeextraheerdBezwaarEntiteit bezwaar,
+      Map<Long, Map<Integer, String>> passageLookup) {
+    var taakPassages = passageLookup.get(bezwaar.getTaakId());
+    if (taakPassages != null) {
+      var tekst = taakPassages.get(bezwaar.getPassageNr());
+      if (tekst != null) {
+        return tekst;
+      }
+    }
+    return bezwaar.getSamenvatting();
+  }
+
+  private Map<Long, Map<Integer, String>> bouwPassageLookup(List<Long> taakIds) {
+    var lookup = new HashMap<Long, Map<Integer, String>>();
+    for (var taakId : taakIds) {
+      var passages = passageRepository.findByTaakId(taakId);
+      var passageMap = passages.stream()
+          .collect(Collectors.toMap(
+              ExtractiePassageEntiteit::getPassageNr,
+              ExtractiePassageEntiteit::getTekst));
+      lookup.put(taakId, passageMap);
+    }
+    return lookup;
+  }
+
+  private Map<Long, String> bouwBestandsnaamLookup(List<Long> taakIds) {
+    var lookup = new HashMap<Long, String>();
+    for (var taakId : taakIds) {
+      taakRepository.findById(taakId)
+          .ifPresent(taak -> lookup.put(taakId, taak.getBestandsnaam()));
+    }
+    return lookup;
+  }
+
+  private List<Thema> verrijkMetAntwoorden(List<Thema> themas) {
+    var alleIds = themas.stream()
+        .flatMap(t -> t.kernbezwaren().stream())
+        .map(Kernbezwaar::id)
+        .toList();
+    var antwoorden = antwoordRepository.findByKernbezwaarIdIn(alleIds);
+    var antwoordMap = antwoorden.stream()
+        .collect(Collectors.toMap(
+            KernbezwaarAntwoordEntiteit::getKernbezwaarId,
+            KernbezwaarAntwoordEntiteit::getInhoud));
+    return themas.stream()
+        .map(thema -> new Thema(thema.naam(),
+            thema.kernbezwaren().stream()
+                .map(kern -> new Kernbezwaar(kern.id(), kern.samenvatting(),
+                    kern.individueleBezwaren(),
+                    antwoordMap.get(kern.id())))
+                .toList()))
+        .toList();
   }
 }
