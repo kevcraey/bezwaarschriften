@@ -129,7 +129,7 @@ public class ExtractieController {
   }
 
   /**
-   * Verwijdert een manueel toegevoegd bezwaar.
+   * Verwijdert een bezwaar (manueel of AI-gegenereerd).
    *
    * @param naam projectnaam
    * @param bestandsnaam naam van het bestand

@@ -187,4 +187,14 @@ class ExtractieControllerTest {
     verify(extractieTaakService).verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
   }
 
+
+  @Test
+  void verwijderBezwaarGeeft404BijOnbekendBezwaar() throws Exception {
+    doThrow(new IllegalArgumentException("Bezwaar niet gevonden"))
+        .when(extractieTaakService).verwijderBezwaar("windmolens", "bezwaar-001.txt", 999L);
+
+    mockMvc.perform(delete("/api/v1/projects/windmolens/extracties/bezwaar-001.txt/bezwaren/999")
+            .with(csrf()))
+        .andExpect(status().isNotFound());
+  }
 }
