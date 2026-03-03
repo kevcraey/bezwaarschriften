@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 class FixtureExtractieIntegrationTest {
 
   private static Path testdataPad;
+  private static Path documentenDir;
   private static Path bezwarenDir;
   private static AiExtractieVerwerker verwerker;
   private static ObjectMapper objectMapper;
@@ -31,21 +32,23 @@ class FixtureExtractieIntegrationTest {
   @BeforeAll
   static void setUp() {
     testdataPad = resolveTestdataPad();
+    documentenDir = testdataPad.resolve("documenten");
     bezwarenDir = testdataPad.resolve("bezwaren");
-    var chatModel = new FixtureChatModel(testdataPad.toString());
-    var ingestiePoort = new TestdataIngestiePoort();
+    var rootTestdataPad = testdataPad.getParent();
+    var chatModel = new FixtureChatModel(rootTestdataPad.toString());
+    var ingestiePoort = new TestdataIngestiePoort(testdataPad);
     verwerker = new AiExtractieVerwerker(chatModel, ingestiePoort, testdataPad.toString());
     objectMapper = new ObjectMapper();
   }
 
   @Test
   void verwerktAlleFixtureBestanden() throws IOException {
-    try (var stream = Files.list(bezwarenDir)) {
+    try (var stream = Files.list(documentenDir)) {
       var txtBestanden = stream
           .filter(p -> p.toString().endsWith(".txt"))
           .toList();
 
-      assertFalse(txtBestanden.isEmpty(), "Geen .txt bestanden gevonden in " + bezwarenDir);
+      assertFalse(txtBestanden.isEmpty(), "Geen .txt bestanden gevonden in " + documentenDir);
 
       for (var txtPath : txtBestanden) {
         var bestandsnaam = txtPath.getFileName().toString();
@@ -84,10 +87,8 @@ class FixtureExtractieIntegrationTest {
     assertTrue(bestanden.isArray());
 
     for (var entry : bestanden) {
-      var txtPad = bezwarenDir.resolve(
-          Path.of(entry.get("txtBestand").asText()).getFileName());
-      var jsonPad = bezwarenDir.resolve(
-          Path.of(entry.get("fixtureBestand").asText()).getFileName());
+      var txtPad = testdataPad.resolve(entry.get("txtBestand").asText());
+      var jsonPad = testdataPad.resolve(entry.get("fixtureBestand").asText());
       assertTrue(Files.exists(txtPad), "Ontbrekend txt: " + txtPad);
       assertTrue(Files.exists(jsonPad), "Ontbrekend json: " + jsonPad);
     }
@@ -107,18 +108,27 @@ class FixtureExtractieIntegrationTest {
   }
 
   /**
-   * Simpele IngestiePoort die .txt bestanden leest uit de bezwaren directory.
+   * IngestiePoort die bronbestanden leest uit de documenten/ map van het project.
+   * AiExtractieVerwerker vraagt het pad op als {inputFolder}/bezwaren/{naam},
+   * maar de bronbestanden staan nu in documenten/.
    */
   private static class TestdataIngestiePoort implements IngestiePoort {
 
+    private final Path projectPad;
+
+    TestdataIngestiePoort(Path projectPad) {
+      this.projectPad = projectPad;
+    }
+
     @Override
     public Brondocument leesBestand(Path pad) {
+      var documentPad = projectPad.resolve("documenten").resolve(pad.getFileName());
       try {
-        var tekst = Files.readString(pad, StandardCharsets.UTF_8);
+        var tekst = Files.readString(documentPad, StandardCharsets.UTF_8);
         return new Brondocument(
-            tekst, pad.getFileName().toString(), pad.toString(), Instant.now());
+            tekst, pad.getFileName().toString(), documentPad.toString(), Instant.now());
       } catch (IOException e) {
-        throw new RuntimeException("Kan testbestand niet lezen: " + pad, e);
+        throw new RuntimeException("Kan testbestand niet lezen: " + documentPad, e);
       }
     }
   }

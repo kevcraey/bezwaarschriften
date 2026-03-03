@@ -6,11 +6,14 @@ import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.Brondocument;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -85,6 +88,32 @@ class MockExtractieVerwerkerTest {
     var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 0);
 
     assertThat(resultaat.aantalWoorden()).isEqualTo(3);
+  }
+
+  @Test
+  void zoektFixtureViaProjectNaamEnBezwarenMap(@TempDir Path tempDir) throws IOException {
+    var projectNaam = "testproject";
+    var bestandsnaam = "Bezwaar_01.txt";
+    var fixtureJson = "{\"passages\":[{\"id\":1,\"tekst\":\"passage tekst\"}],"
+        + "\"bezwaren\":[{\"passageId\":1,\"samenvatting\":\"samenvatting\","
+        + "\"categorie\":\"mobiliteit\"}],"
+        + "\"metadata\":{\"aantalWoorden\":5,\"documentSamenvatting\":\"test samenvatting\"}}";
+
+    var bezwarenDir = tempDir.resolve(projectNaam).resolve("bezwaren");
+    Files.createDirectories(bezwarenDir);
+    Files.writeString(bezwarenDir.resolve("Bezwaar_01.json"), fixtureJson);
+
+    var verwerkerMetFixture = new MockExtractieVerwerker(
+        ingestiePoort, "input", tempDir.toString(), 0, 0);
+    when(ingestiePoort.leesBestand(Path.of("input", projectNaam, "bezwaren", bestandsnaam)))
+        .thenReturn(new Brondocument("dit is een test tekst", bestandsnaam,
+            "input/" + projectNaam + "/bezwaren/" + bestandsnaam, Instant.now()));
+
+    var resultaat = verwerkerMetFixture.verwerk(projectNaam, bestandsnaam, 0);
+
+    assertThat(resultaat.aantalBezwaren()).isEqualTo(1);
+    assertThat(resultaat.bezwaren()).hasSize(1);
+    assertThat(resultaat.bezwaren().get(0).samenvatting()).isEqualTo("samenvatting");
   }
 
   private void mockBestand(String bestandsnaam, String tekst) {

@@ -35,7 +35,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
 
   private final IngestiePoort ingestiePoort;
   private final Path inputFolder;
-  private final Path testdataFixtureDir;
+  private final Path testdataBaseDir;
   private final int minDelaySeconden;
   private final int maxDelaySeconden;
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -59,11 +59,11 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
       @Value("${bezwaarschriften.extractie.mock.max-delay-seconden:30}") int maxDelaySeconden) {
     this.ingestiePoort = ingestiePoort;
     this.inputFolder = Path.of(inputFolderString);
-    this.testdataFixtureDir = resolveFixtureDir(testdataPad);
+    this.testdataBaseDir = resolveFixtureDir(testdataPad);
     this.minDelaySeconden = minDelaySeconden;
     this.maxDelaySeconden = maxDelaySeconden;
-    if (this.testdataFixtureDir != null) {
-      LOGGER.info("Fixture-directory geconfigureerd: {}", this.testdataFixtureDir.toAbsolutePath());
+    if (this.testdataBaseDir != null) {
+      LOGGER.info("Fixture-basismap geconfigureerd: {}", this.testdataBaseDir.toAbsolutePath());
     }
   }
 
@@ -71,16 +71,16 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     if (testdataPad.isEmpty()) {
       return null;
     }
-    var pad = Path.of(testdataPad).resolve("bezwaren");
+    var pad = Path.of(testdataPad);
     if (Files.isDirectory(pad)) {
       return pad;
     }
     // Probeer parent directory (als app start vanuit app/ submodule)
-    var parentPad = Path.of("..").resolve(testdataPad).resolve("bezwaren");
+    var parentPad = Path.of("..").resolve(testdataPad);
     if (Files.isDirectory(parentPad)) {
       return parentPad;
     }
-    LOGGER.warn("Fixture-directory niet gevonden op '{}' of '{}'",
+    LOGGER.warn("Fixture-basismap niet gevonden op '{}' of '{}'",
         pad.toAbsolutePath(), parentPad.toAbsolutePath());
     return null;
   }
@@ -93,7 +93,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
 
     simuleerDelay();
 
-    var fixtureResultaat = zoekFixture(bestandsnaam, aantalWoorden);
+    var fixtureResultaat = zoekFixture(projectNaam, bestandsnaam, aantalWoorden);
     if (fixtureResultaat != null) {
       LOGGER.info("Bestand '{}' verwerkt via fixture (project '{}', {} bezwaren)",
           bestandsnaam, projectNaam, fixtureResultaat.aantalBezwaren());
@@ -106,16 +106,16 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     return new ExtractieResultaat(aantalWoorden, aantalBezwaren);
   }
 
-  private ExtractieResultaat zoekFixture(String bestandsnaam, int aantalWoorden) {
-    if (testdataFixtureDir == null) {
+  private ExtractieResultaat zoekFixture(String projectNaam, String bestandsnaam, int aantalWoorden) {
+    if (testdataBaseDir == null) {
       return null;
     }
     var naamZonderExtensie = bestandsnaam.contains(".")
         ? bestandsnaam.substring(0, bestandsnaam.lastIndexOf('.'))
         : bestandsnaam;
-    var fixturePad = testdataFixtureDir.resolve(naamZonderExtensie + ".json");
-    if (!Files.exists(fixturePad)) {
-      LOGGER.debug("Geen fixture gevonden op: {}", fixturePad.toAbsolutePath());
+    var fixturePad = zoekFixturePad(projectNaam, naamZonderExtensie);
+    if (fixturePad == null) {
+      LOGGER.debug("Geen fixture gevonden voor '{}' in project '{}'", bestandsnaam, projectNaam);
       return null;
     }
     try {
@@ -123,6 +123,27 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
       return parseFixture(json, aantalWoorden);
     } catch (IOException e) {
       LOGGER.warn("Kon fixture niet lezen: {}", fixturePad, e);
+      return null;
+    }
+  }
+
+  private Path zoekFixturePad(String projectNaam, String naamZonderExtensie) {
+    var jsonNaam = naamZonderExtensie + ".json";
+    // Probeer eerst exact projectpad
+    var kandidaat = testdataBaseDir.resolve(projectNaam).resolve("bezwaren").resolve(jsonNaam);
+    if (Files.exists(kandidaat)) {
+      return kandidaat;
+    }
+    // Doorzoek alle projectmappen als fallback (projectnaam in app kan afwijken van testdata)
+    try (var stream = Files.list(testdataBaseDir)) {
+      return stream
+          .filter(Files::isDirectory)
+          .map(dir -> dir.resolve("bezwaren").resolve(jsonNaam))
+          .filter(Files::exists)
+          .findFirst()
+          .orElse(null);
+    } catch (IOException e) {
+      LOGGER.warn("Kon testdata basismap niet doorzoeken: {}", testdataBaseDir, e);
       return null;
     }
   }

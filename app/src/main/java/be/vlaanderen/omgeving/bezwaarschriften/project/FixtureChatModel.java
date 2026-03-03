@@ -49,26 +49,37 @@ public class FixtureChatModel implements ChatModelPoort {
 
   private Map<String, String> laadFixtures(Path basePad) {
     var result = new HashMap<String, String>();
-    var bezwarenDir = basePad.resolve("bezwaren");
-    if (!Files.isDirectory(bezwarenDir)) {
-      LOGGER.warn("Bezwaren directory niet gevonden: {}", bezwarenDir);
+    if (!Files.isDirectory(basePad)) {
+      LOGGER.warn("Testdata basismap niet gevonden: {}", basePad);
       return result;
     }
-    try (var stream = Files.list(bezwarenDir)) {
-      stream.filter(p -> p.toString().endsWith(".txt")).forEach(txtPath -> {
-        var jsonPath = Path.of(txtPath.toString().replace(".txt", ".json"));
-        if (Files.exists(jsonPath)) {
-          try {
-            var txtContent = Files.readString(txtPath, StandardCharsets.UTF_8).strip();
-            var jsonContent = Files.readString(jsonPath, StandardCharsets.UTF_8).strip();
-            result.put(txtContent, jsonContent);
-          } catch (IOException e) {
-            LOGGER.error("Fout bij laden fixture: {}", txtPath, e);
-          }
+    try (var projectStream = Files.list(basePad)) {
+      projectStream.filter(Files::isDirectory).forEach(projectDir -> {
+        var documentenDir = projectDir.resolve("documenten");
+        if (!Files.isDirectory(documentenDir)) {
+          return;
+        }
+        try (var stream = Files.list(documentenDir)) {
+          stream.filter(p -> p.toString().endsWith(".txt")).forEach(txtPath -> {
+            var naam = txtPath.getFileName().toString();
+            var naamZonderExtensie = naam.substring(0, naam.lastIndexOf('.'));
+            var jsonPath = projectDir.resolve("bezwaren").resolve(naamZonderExtensie + ".json");
+            if (Files.exists(jsonPath)) {
+              try {
+                var txtContent = Files.readString(txtPath, StandardCharsets.UTF_8).strip();
+                var jsonContent = Files.readString(jsonPath, StandardCharsets.UTF_8).strip();
+                result.put(txtContent, jsonContent);
+              } catch (IOException e) {
+                LOGGER.error("Fout bij laden fixture: {}", txtPath, e);
+              }
+            }
+          });
+        } catch (IOException e) {
+          throw new RuntimeException("Kan documenten directory niet lezen: " + documentenDir, e);
         }
       });
     } catch (IOException e) {
-      throw new RuntimeException("Kan bezwaren directory niet lezen: " + bezwarenDir, e);
+      throw new RuntimeException("Kan testdata basismap niet lezen: " + basePad, e);
     }
     return result;
   }

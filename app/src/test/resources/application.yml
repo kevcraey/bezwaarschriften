@@ -23,7 +23,7 @@ bezwaarschriften:
   input:
     folder: input
   testdata:
-    pad: testdata/gaverbeek-stadion
+    pad: testdata
 
 management:
   endpoint:

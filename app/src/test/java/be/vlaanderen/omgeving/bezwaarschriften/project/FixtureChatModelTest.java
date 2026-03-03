@@ -19,10 +19,13 @@ class FixtureChatModelTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    var bezwarenDir = tempDir.resolve("bezwaren");
+    var projectDir = tempDir.resolve("testproject");
+    var documentenDir = projectDir.resolve("documenten");
+    var bezwarenDir = projectDir.resolve("bezwaren");
+    Files.createDirectories(documentenDir);
     Files.createDirectories(bezwarenDir);
 
-    Files.writeString(bezwarenDir.resolve("Bezwaar_01.txt"),
+    Files.writeString(documentenDir.resolve("Bezwaar_01.txt"),
         "Het verkeer zal onhoudbaar toenemen in de Gaverstraat.");
     Files.writeString(bezwarenDir.resolve("Bezwaar_01.json"),
         "{\"passages\":[{\"id\":1,\"tekst\":\"verkeer\"}],\"bezwaren\":[],"
