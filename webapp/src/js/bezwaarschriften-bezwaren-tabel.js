@@ -546,6 +546,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     verwijderKnop.setAttribute('ghost', '');
     verwijderKnop.setAttribute('label', 'Bezwaar verwijderen');
     verwijderKnop.addEventListener('vl-click', () => {
+      if (!bezwaar.id) return;
       const actieveTab = isManueelTab ? 'manueel' : 'automatisch';
       this._vraagBevestigingVerwijder(projectNaam, bestandsnaam, bezwaar.id, actieveTab);
     });
@@ -574,7 +575,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const modal = this.shadowRoot.querySelector('#verwijder-bezwaar-modal');
     if (modal) modal.close();
 
-    fetch(`/api/v1/projects/${encodeURIComponent(data.projectNaam)}/extracties/${encodeURIComponent(data.bestandsnaam)}/bezwaren/${data.bezwaarId}`, {
+    fetch(`/api/v1/projects/${encodeURIComponent(data.projectNaam)}/extracties/${encodeURIComponent(data.bestandsnaam)}/bezwaren/${encodeURIComponent(data.bezwaarId)}`, {
       method: 'DELETE',
     }).then((response) => {
       if (!response.ok) throw new Error('Verwijderen mislukt');
@@ -675,6 +676,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           if (foutEl) {
             foutEl.textContent = data.fout || 'Opslaan mislukt, probeer opnieuw.';
           }
+        }).catch(() => {
+          if (foutEl) foutEl.textContent = 'Opslaan mislukt, probeer opnieuw.';
         });
       }
     }).catch(() => {
