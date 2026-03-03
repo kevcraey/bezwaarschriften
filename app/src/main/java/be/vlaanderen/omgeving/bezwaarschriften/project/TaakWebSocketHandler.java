@@ -2,6 +2,8 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieNotificatie;
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakDto;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.ClusteringNotificatie;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.ClusteringTaakDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -21,7 +23,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
  */
 @Component
 public class TaakWebSocketHandler extends TextWebSocketHandler
-    implements ExtractieNotificatie, ConsolidatieNotificatie {
+    implements ExtractieNotificatie, ConsolidatieNotificatie, ClusteringNotificatie {
 
   private static final Logger LOG = LoggerFactory.getLogger(TaakWebSocketHandler.class);
 
@@ -52,6 +54,11 @@ public class TaakWebSocketHandler extends TextWebSocketHandler
   @Override
   public void consolidatieTaakGewijzigd(ConsolidatieTaakDto taak) {
     verstuur(Map.of("type", "consolidatie-update", "taak", taak));
+  }
+
+  @Override
+  public void clusteringTaakGewijzigd(ClusteringTaakDto taak) {
+    verstuur(Map.of("type", "clustering-update", "taak", taak));
   }
 
   void verstuur(Map<String, Object> bericht) {
