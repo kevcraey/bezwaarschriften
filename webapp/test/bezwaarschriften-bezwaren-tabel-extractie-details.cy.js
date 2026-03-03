@@ -233,9 +233,9 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
     cy.wait('@details');
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('.bezwaar-manueel-label')
+        .find('vl-pill.bezwaar-manueel-label')
         .should('have.length', 1)
-        .and('have.text', 'Manueel');
+        .and('contain.text', 'Manueel');
   });
 
   it('toont verwijder-knop alleen bij manueel bezwaar', () => {
@@ -258,7 +258,7 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
     cy.wait('@details');
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('.bezwaar-verwijder-knop')
+        .find('.bezwaar-header vl-button[icon="bin"]')
         .should('have.length', 1);
   });
 
@@ -291,7 +291,7 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
     cy.wait('@details');
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('.bezwaar-verwijder-knop')
+        .find('.bezwaar-header vl-button[icon="bin"]')
         .click();
 
     cy.wait('@verwijder');

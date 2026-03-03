@@ -125,12 +125,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           border-radius: 2px;
         }
         .bezwaar-manueel-label {
-          display: inline-block;
-          font-size: 0.75rem;
-          color: #687483;
-          background: #f3f5f6;
-          padding: 0.1rem 0.4rem;
-          border-radius: 2px;
           margin-bottom: 0.25rem;
         }
         .bezwaar-header {
@@ -138,18 +132,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           justify-content: space-between;
           align-items: flex-start;
         }
-        .bezwaar-verwijder-knop {
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #db3434;
-          font-size: 1rem;
-          padding: 0;
-          line-height: 1;
-          flex-shrink: 0;
-          opacity: 0.6;
-        }
-        .bezwaar-verwijder-knop:hover { opacity: 1; }
         #manueel-bezwaar-formulier {
           background: #f3f5f6;
           padding: 1rem;
@@ -161,7 +143,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           display: block;
           font-weight: bold;
           margin-bottom: 0.25rem;
-          font-size: 0.875rem;
         }
         #manueel-bezwaar-formulier .formulier-veld {
           margin-bottom: 0.75rem;
@@ -173,7 +154,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         }
         #manueel-foutmelding {
           color: #db3434;
-          font-size: 0.875rem;
           margin-top: 0.5rem;
         }
       </style>
@@ -203,8 +183,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         <div class="side-sheet-wrapper">
           <div class="side-sheet-header">
             <div id="extractie-side-sheet-titel" class="side-sheet-titel"></div>
-            <button id="bezwaar-toevoegen-knop" class="side-sheet-sluit-knop"
-                aria-label="Bezwaar toevoegen" style="display:none;" title="Bezwaar toevoegen">+</button>
+            <vl-button id="bezwaar-toevoegen-knop" icon="add" ghost
+                label="Bezwaar toevoegen" style="display:none;"></vl-button>
             <button id="extractie-side-sheet-sluit" class="side-sheet-sluit-knop"
                 aria-label="Sluiten">&times;</button>
           </div>
@@ -260,7 +240,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
     const toevoegKnop = this.shadowRoot.querySelector('#bezwaar-toevoegen-knop');
     if (toevoegKnop) {
-      toevoegKnop.addEventListener('click', () => {
+      toevoegKnop.addEventListener('vl-click', () => {
         this._toonManueelBezwaarFormulier();
       });
     }
@@ -515,7 +495,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             }
 
             if (bezwaar.manueel) {
-              const label = document.createElement('div');
+              const label = document.createElement('vl-pill');
               label.className = 'bezwaar-manueel-label';
               label.textContent = 'Manueel';
               item.appendChild(label);
@@ -530,11 +510,12 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             header.appendChild(samenvatting);
 
             if (bezwaar.manueel) {
-              const verwijderKnop = document.createElement('button');
-              verwijderKnop.className = 'bezwaar-verwijder-knop';
-              verwijderKnop.innerHTML = '\uD83D\uDDD1\uFE0F';
-              verwijderKnop.title = 'Manueel bezwaar verwijderen';
-              verwijderKnop.addEventListener('click', () => {
+              const verwijderKnop = document.createElement('vl-button');
+              verwijderKnop.setAttribute('icon', 'bin');
+              verwijderKnop.setAttribute('error', '');
+              verwijderKnop.setAttribute('ghost', '');
+              verwijderKnop.setAttribute('label', 'Manueel bezwaar verwijderen');
+              verwijderKnop.addEventListener('vl-click', () => {
                 this._verwijderManueelBezwaar(projectNaam, bestandsnaam, bezwaar.id);
               });
               header.appendChild(verwijderKnop);
@@ -595,8 +576,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       </div>
       <div class="formulier-acties">
         <vl-button id="manueel-opslaan" disabled>Opslaan</vl-button>
-        <button id="manueel-annuleer" class="side-sheet-sluit-knop"
-            aria-label="Annuleren" title="Annuleren">&times;</button>
+        <vl-button id="manueel-annuleer" icon="close" ghost label="Annuleren"></vl-button>
       </div>
       <div id="manueel-foutmelding"></div>
     `;
