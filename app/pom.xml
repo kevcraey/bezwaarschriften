@@ -124,6 +124,20 @@
 			<artifactId>aws-java-sdk-s3</artifactId>
 		</dependency>
 
+		<!-- Clustering -->
+		<dependency>
+			<groupId>org.tribuo</groupId>
+			<artifactId>tribuo-clustering-hdbscan</artifactId>
+			<version>4.3.2</version>
+		</dependency>
+
+		<!-- pgvector -->
+		<dependency>
+			<groupId>com.pgvector</groupId>
+			<artifactId>pgvector</artifactId>
+			<version>0.1.6</version>
+		</dependency>
+
 		<!-- Test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
