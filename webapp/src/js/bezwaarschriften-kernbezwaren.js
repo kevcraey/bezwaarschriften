@@ -73,6 +73,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           text-align: center;
           color: #687483;
         }
+        .status-pill {
+          font-variant-numeric: tabular-nums;
+          min-width: 120px;
+          display: inline-block;
+        }
         .side-sheet-wrapper {
           display: flex;
           flex-direction: column;
@@ -316,7 +321,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
     const knop = inhoud.querySelector('#groepeer-knop');
     if (knop) {
-      knop.addEventListener('vl-click', () => this._groepeer());
+      knop.addEventListener('click', () => this._groepeer());
     }
   }
 
@@ -402,7 +407,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     if (kern.antwoord) {
       penKnop.classList.add('heeft-antwoord');
     }
-    penKnop.addEventListener('vl-click', () => this._toggleEditor(item, kern, penKnop));
+    penKnop.addEventListener('click', () => this._toggleEditor(item, kern, penKnop));
 
     const actie = document.createElement('div');
     actie.className = 'kernbezwaar-actie';
@@ -410,7 +415,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     knop.setAttribute('tertiary', '');
     knop.setAttribute('icon', 'search');
     knop.textContent = `(${kern.individueleBezwaren.length})`;
-    knop.addEventListener('vl-click', () => this._toonPassages(kern));
+    knop.addEventListener('click', () => this._toonPassages(kern));
 
     actie.appendChild(knop);
     actie.appendChild(penKnop);
@@ -422,22 +427,13 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   _maakStatusPill(ct) {
     const pill = document.createElement('vl-pill');
     pill.dataset.categorie = ct.categorie;
-    pill.style.fontVariantNumeric = 'tabular-nums';
-    pill.style.minWidth = '120px';
-    pill.style.display = 'inline-block';
+    pill.className = 'status-pill';
 
     switch (ct.status) {
       case 'todo':
         pill.textContent = 'Te clusteren';
         break;
-      case 'wachtend': {
-        pill.setAttribute('type', 'warning');
-        const span = document.createElement('span');
-        span.className = 'timer-tekst';
-        span.textContent = this._formatClusteringStatus(ct);
-        pill.appendChild(span);
-        break;
-      }
+      case 'wachtend':
       case 'bezig': {
         pill.setAttribute('type', 'warning');
         const span = document.createElement('span');
@@ -463,46 +459,43 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   }
 
   _maakActieKnop(ct) {
+    let icon;
+    let titel;
+    let error = false;
+    let onClick;
+
     switch (ct.status) {
       case 'todo':
-        return this._maakPillKnop('\u25b6', 'Clustering starten', () =>
-          this._startClustering(ct.categorie));
+        icon = 'play-filled';
+        titel = 'Clustering starten';
+        onClick = () => this._startClustering(ct.categorie);
+        break;
       case 'wachtend':
       case 'bezig':
-        return this._maakPillKnop('\u00d7', 'Clustering annuleren', () =>
-          this._annuleerClustering(ct.categorie));
+        icon = 'close';
+        titel = 'Annuleer clustering';
+        onClick = () => this._annuleerClustering(ct.categorie);
+        break;
       case 'klaar':
-        return this._maakPillKnop('\ud83d\uddd1', 'Clustering verwijderen', () =>
-          this._toonVerwijderBevestiging(ct.categorie));
+        icon = 'bin';
+        titel = 'Verwijder clustering';
+        error = true;
+        onClick = () => this._toonVerwijderBevestiging(ct.categorie);
+        break;
       case 'fout':
-        return this._maakPillKnop('\u21bb', 'Opnieuw proberen', () =>
-          this._startClustering(ct.categorie));
+        icon = 'synchronize';
+        titel = 'Opnieuw clusteren';
+        onClick = () => this._startClustering(ct.categorie);
+        break;
       default:
         return null;
     }
-  }
 
-  _maakPillKnop(symbool, titel, onClick) {
-    const btn = document.createElement('button');
-    btn.title = titel;
-    btn.textContent = symbool;
-    Object.assign(btn.style, {
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      fontSize: '14px',
-      color: 'inherit',
-      padding: '0',
-      marginLeft: '6px',
-      lineHeight: '1',
-      opacity: '0.6',
-    });
-    btn.addEventListener('mouseenter', () => {
-      btn.style.opacity = '1';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.opacity = '0.6';
-    });
+    const btn = document.createElement('vl-button');
+    btn.setAttribute('icon', icon);
+    btn.setAttribute('label', titel);
+    btn.setAttribute('tertiary', '');
+    if (error) btn.setAttribute('error', '');
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       onClick();
@@ -601,7 +594,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           this.werkBijMetClusteringUpdate(taak);
         })
         .catch(() => {
-          // Stille fout
+          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
+            bubbles: true, composed: true,
+            detail: {bericht: 'Starten clustering mislukt'},
+          }));
         });
   }
 
@@ -616,7 +612,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           this.laadClusteringTaken(this._projectNaam);
         })
         .catch(() => {
-          // Stille fout
+          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
+            bubbles: true, composed: true,
+            detail: {bericht: 'Annuleren clustering mislukt'},
+          }));
         });
   }
 
@@ -645,7 +644,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           return null;
         })
         .catch(() => {
-          // Stille fout
+          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
+            bubbles: true, composed: true,
+            detail: {bericht: 'Verwijderen clustering mislukt'},
+          }));
         });
   }
 
@@ -666,7 +668,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     inhoud.appendChild(p);
 
     const afhandelen = (bevestigd) => {
-      bevestigKnop.removeEventListener('vl-click', bevestigHandler);
+      bevestigKnop.removeEventListener('click', bevestigHandler);
       modal.off('close', sluitHandler);
       modal.close();
       if (bevestigd) {
@@ -676,7 +678,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const bevestigHandler = () => afhandelen(true);
     const sluitHandler = () => afhandelen(false);
 
-    bevestigKnop.addEventListener('vl-click', bevestigHandler);
+    bevestigKnop.addEventListener('click', bevestigHandler);
     modal.on('close', sluitHandler);
     modal.open();
   }
@@ -696,7 +698,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           }
         })
         .catch(() => {
-          // Stille fout
+          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
+            bubbles: true, composed: true,
+            detail: {bericht: 'Starten clustering voor alle categorie\u00EBn mislukt'},
+          }));
         });
   }
 
@@ -795,7 +800,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
     const opslaanKnop = document.createElement('vl-button');
     opslaanKnop.textContent = 'Opslaan';
-    opslaanKnop.addEventListener('vl-click', () =>
+    opslaanKnop.addEventListener('click', () =>
       this._slaAntwoordOp(kern, textarea, opslaanRij));
 
     opslaanRij.appendChild(opslaanKnop);
@@ -900,7 +905,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     inhoud.appendChild(ul);
 
     const afhandelen = (bevestigd) => {
-      bevestigKnop.removeEventListener('vl-click', bevestigHandler);
+      bevestigKnop.removeEventListener('click', bevestigHandler);
       modal.off('close', sluitHandler);
       modal.close();
       if (bevestigd) {
@@ -912,7 +917,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const bevestigHandler = () => afhandelen(true);
     const sluitHandler = () => afhandelen(false);
 
-    bevestigKnop.addEventListener('vl-click', bevestigHandler);
+    bevestigKnop.addEventListener('click', bevestigHandler);
     modal.on('close', sluitHandler);
     modal.open();
   }

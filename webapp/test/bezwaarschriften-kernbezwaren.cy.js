@@ -115,7 +115,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     // Zoek de play-knop bij Milieu (todo categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Milieu"] button[title="Clustering starten"]')
+        .find('.categorie-wrapper[data-categorie="Milieu"] vl-button[label="Clustering starten"]')
         .click();
 
     cy.wait('@startClustering');
@@ -148,6 +148,92 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .click();
 
     cy.wait('@clusterAlles');
+  });
+
+  it('annuleert clustering bij klik op annuleer-knop', () => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Geluid', {
+      statusCode: 200,
+      body: {},
+    }).as('annuleerClustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    // Klik op de annuleer-knop bij Geluid (bezig categorie)
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Geluid"] vl-button[label="Annuleer clustering"]')
+        .click();
+
+    cy.wait('@annuleerClustering');
+  });
+
+  it('toont verwijder-bevestiging modal bij klare categorie met antwoorden', () => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
+      statusCode: 409,
+      body: {aantalAntwoorden: 3},
+    }).as('verwijderClustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    // Klik op de verwijder-knop bij Mobiliteit (klaar categorie)
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[label="Verwijder clustering"]')
+        .click();
+
+    cy.wait('@verwijderClustering');
+
+    // Controleer dat de modal zichtbaar is met de waarschuwingstekst
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-bevestiging-inhoud')
+        .should('contain.text', '3 antwoord(en)')
+        .and('contain.text', 'verloren gaan');
+  });
+
+  it('toont herstart-knop bij fout categorie', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    // Controleer dat de synchronize-knop bestaat bij Natuur (fout categorie)
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Natuur"] vl-button[label="Opnieuw clusteren"]')
+        .should('exist')
+        .and('have.attr', 'icon', 'synchronize');
+  });
+
+  it('update pill status via werkBijMetClusteringUpdate', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    // Controleer initieel: Milieu is 'todo'
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Milieu"] vl-pill')
+        .should('contain.text', 'Te clusteren');
+
+    // Update Milieu naar 'wachtend'
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].werkBijMetClusteringUpdate({
+          categorie: 'Milieu',
+          id: 5,
+          status: 'wachtend',
+          aantalBezwaren: 18,
+          aantalKernbezwaren: null,
+          aangemaaktOp: '2026-03-03T10:05:00Z',
+        }));
+
+    // Controleer dat de pill nu warning-type is met 'Wachtend'
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Milieu"] vl-pill')
+        .should('have.attr', 'type', 'warning')
+        .and('contain.text', 'Wachtend');
   });
 
   it('toont globale knop bovenaan rechts', () => {
