@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="20260303-clustering-taak" author="kenzo">
+    <createTable tableName="clustering_taak">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="project_naam" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="categorie" type="varchar(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="status" type="varchar(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="foutmelding" type="text"/>
+      <column name="aangemaakt_op" type="timestamp with time zone">
+        <constraints nullable="false"/>
+      </column>
+      <column name="verwerking_gestart_op" type="timestamp with time zone"/>
+      <column name="verwerking_voltooid_op" type="timestamp with time zone"/>
+      <column name="versie" type="int" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+  </changeSet>
+
+</databaseChangeLog>

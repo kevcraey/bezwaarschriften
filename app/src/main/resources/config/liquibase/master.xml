@@ -15,4 +15,6 @@
 
   <include file="config/liquibase/changelog/20260303-bezwaar-embedding.xml"/>
 
+  <include file="config/liquibase/changelog/20260303-clustering-taak.xml"/>
+
 </databaseChangeLog>
