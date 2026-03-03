@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller voor kernbezwaar-groepering.
+ * REST controller voor kernbezwaar-clustering.
  */
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -32,7 +32,7 @@ public class KernbezwaarController {
   }
 
   /**
-   * Triggert de groepering van individuele bezwaren tot thema's en kernbezwaren.
+   * Triggert de clustering van individuele bezwaren tot thema's en kernbezwaren.
    */
   @PostMapping("/{naam}/kernbezwaren/groepeer")
   public ResponseEntity<ThemasResponse> groepeer(@PathVariable String naam) {

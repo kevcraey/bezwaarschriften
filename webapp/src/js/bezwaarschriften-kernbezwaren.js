@@ -293,7 +293,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       return;
     }
 
-    // Legacy: als er themas zijn (van oude groepering)
+    // Legacy: als er themas zijn (van oude clustering)
     if (this._themas) {
       this._renderThemas(inhoud);
       return;
@@ -310,8 +310,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     inhoud.innerHTML = `
       <div class="lege-staat">
         <p>${this._aantalBezwaren} individuele bezwaren gevonden.
-           Voer groepering tot thema's en kernbezwaren uit om verder te gaan.</p>
-        <vl-button id="groepeer-knop">Groepeer bezwaren</vl-button>
+           Voer clustering tot thema's en kernbezwaren uit om verder te gaan.</p>
+        <vl-button id="groepeer-knop">Cluster bezwaren</vl-button>
       </div>`;
 
     const knop = inhoud.querySelector('#groepeer-knop');
@@ -700,7 +700,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
   }
 
-  // --- Legacy groepeer (voor oude flow zonder categorien) ---
+  // --- Legacy clustering (voor oude flow zonder categorien) ---
 
   _groepeer() {
     if (this._bezig || !this._projectNaam) return;
@@ -709,14 +709,14 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const knop = this.shadowRoot.querySelector('#groepeer-knop');
     if (knop) {
       knop.setAttribute('disabled', '');
-      knop.textContent = 'Bezig met groeperen...';
+      knop.textContent = 'Bezig met clustering...';
     }
 
     fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/kernbezwaren/groepeer`, {
       method: 'POST',
     })
         .then((response) => {
-          if (!response.ok) throw new Error('Groepering mislukt');
+          if (!response.ok) throw new Error('Clustering mislukt');
           return response.json();
         })
         .then((data) => {
@@ -726,7 +726,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .catch(() => {
           if (knop) {
             knop.removeAttribute('disabled');
-            knop.textContent = 'Groepeer bezwaren';
+            knop.textContent = 'Cluster bezwaren';
           }
         })
         .finally(() => {

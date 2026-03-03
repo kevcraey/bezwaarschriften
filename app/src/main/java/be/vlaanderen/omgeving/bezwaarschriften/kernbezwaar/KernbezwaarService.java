@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Orchestreert de groepering van individuele bezwaren tot thema's en kernbezwaren
+ * Orchestreert de clustering van individuele bezwaren tot thema's en kernbezwaren
  * via HDBSCAN-clustering op embedding-vectoren.
  */
 @Service
@@ -73,7 +73,7 @@ public class KernbezwaarService {
   }
 
   /**
-   * Groepeert de individuele bezwaren van een project tot thema's en kernbezwaren
+   * Clustert de individuele bezwaren van een project tot thema's en kernbezwaren
    * via embedding-generatie en HDBSCAN-clustering.
    *
    * <p>Delegeert naar {@link #clusterEenCategorie} per categorie.
@@ -85,7 +85,7 @@ public class KernbezwaarService {
   public List<Thema> groepeer(String projectNaam) {
     var alleBezwaren = bezwaarRepository.findByProjectNaam(projectNaam);
 
-    // Groepeer bezwaren per categorie
+    // Cluster bezwaren per categorie
     var categorien = alleBezwaren.stream()
         .map(GeextraheerdBezwaarEntiteit::getCategorie)
         .distinct()
@@ -112,7 +112,7 @@ public class KernbezwaarService {
    *
    * @param projectNaam naam van het project
    * @param categorie naam van de categorie
-   * @param taakId optioneel ID van de clustering-taak (null bij synchrone groepering)
+   * @param taakId optioneel ID van de clustering-taak (null bij synchrone clustering)
    * @return het thema met kernbezwaren
    * @throws ClusteringGeannuleerdException als de taak geannuleerd is
    */
@@ -151,7 +151,7 @@ public class KernbezwaarService {
    * Geeft eerder berekende kernbezwaren voor een project.
    *
    * @param projectNaam naam van het project
-   * @return optional met de lijst van thema's, of leeg als nog niet gegroepeerd
+   * @return optional met de lijst van thema's, of leeg als nog niet geclusterd
    */
   public Optional<List<Thema>> geefKernbezwaren(String projectNaam) {
     var themaEntiteiten = themaRepository.findByProjectNaam(projectNaam);
