@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarService;
-
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
