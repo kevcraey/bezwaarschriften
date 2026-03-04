@@ -695,6 +695,12 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
                         .then((resp) => {
                           if (!resp.ok) throw new Error('Verwijderen mislukt');
                           this._startClustering(categorie);
+                        })
+                        .catch(() => {
+                          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
+                            bubbles: true, composed: true,
+                            detail: {bericht: 'Opnieuw clusteren mislukt'},
+                          }));
                         });
                   },
               );
