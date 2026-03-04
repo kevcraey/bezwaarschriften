@@ -332,6 +332,60 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(kernbezwaren).hasSize(4);
   }
 
+  // --- Scenario 6: Clustering-taken worden opgeruimd als thema verdwijnt ---
+
+  @Test
+  @DisplayName("Clustering-taak wordt verwijderd als het corresponderende thema verdwijnt na documentverwijdering")
+  void clusteringTaakWordtVerwijderdAlsThemaVerdwijnt() {
+    // Arrange: 1 document, geclusterd in 2 categorieën
+    var taak = maakExtractieTaak("testproject", "doc-a.txt");
+    maakBezwaar(taak.getId(), "milieu", "Bezwaar milieu");
+    maakBezwaar(taak.getId(), "verkeer", "Bezwaar verkeer");
+
+    var themaMilieu = maakThema("testproject", "milieu");
+    var k1 = maakKernbezwaar(themaMilieu.getId(), "Geluidshinder");
+    maakReferentie(k1.getId(), "doc-a.txt", "passage geluid");
+
+    var themaVerkeer = maakThema("testproject", "verkeer");
+    var k2 = maakKernbezwaar(themaVerkeer.getId(), "Verkeersoverlast");
+    maakReferentie(k2.getId(), "doc-a.txt", "passage verkeer");
+
+    var clusteringMilieu = maakClusteringTaak("testproject", "milieu");
+    var clusteringVerkeer = maakClusteringTaak("testproject", "verkeer");
+
+    // Pre-check: beide clustering-taken bestaan met status KLAAR
+    assertThat(clusteringTaakRepository.findByProjectNaam("testproject")).hasSize(2);
+
+    // Act: verwijder het enige document
+    projectService.verwijderBezwaar("testproject", "doc-a.txt");
+
+    // Assert: thema's verdwenen, clustering-taken ook
+    assertThat(themaRepository.findByProjectNaam("testproject")).isEmpty();
+    assertThat(clusteringTaakRepository.findByProjectNaam("testproject")).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Clustering-taak blijft bestaan als het thema nog kernbezwaren heeft van een ander document")
+  void clusteringTaakBlijftAlsThemaNogKernbezwarenHeeft() {
+    // Arrange: 2 documenten, beide dragen bij aan zelfde thema
+    var taakA = maakExtractieTaak("testproject", "doc-a.txt");
+    var taakB = maakExtractieTaak("testproject", "doc-b.txt");
+
+    var thema = maakThema("testproject", "milieu");
+    var k1 = maakKernbezwaar(thema.getId(), "Geluidshinder");
+    maakReferentie(k1.getId(), "doc-a.txt", "passage geluid A");
+    maakReferentie(k1.getId(), "doc-b.txt", "passage geluid B");
+
+    var clustering = maakClusteringTaak("testproject", "milieu");
+
+    // Act: verwijder doc-a, maar thema "milieu" blijft door doc-b referentie
+    projectService.verwijderBezwaar("testproject", "doc-a.txt");
+
+    // Assert: thema blijft, clustering-taak ook
+    assertThat(themaRepository.findByProjectNaam("testproject")).hasSize(1);
+    assertThat(clusteringTaakRepository.findByProjectNaam("testproject")).hasSize(1);
+  }
+
   // --- Helper methoden voor testdata-aanmaak ---
 
   private ExtractieTaak maakExtractieTaak(String projectNaam, String bestandsnaam) {

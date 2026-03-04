@@ -217,12 +217,14 @@ public class KernbezwaarService {
 
   /**
    * Ruimt kernbezwaar-data op na verwijdering van een document.
-   * Verwijdert referenties voor het bestand, daarna lege kernbezwaren en lege thema's.
+   * Verwijdert referenties voor het bestand, daarna lege kernbezwaren, lege thema's,
+   * en clustering-taken waarvan het corresponderende thema niet meer bestaat.
    */
   public void ruimOpNaDocumentVerwijdering(String projectNaam, String bestandsnaam) {
     referentieRepository.deleteByBestandsnaamAndProjectNaam(bestandsnaam, projectNaam);
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
     themaRepository.deleteZonderKernbezwaren(projectNaam);
+    clusteringTaakRepository.deleteZonderThema(projectNaam);
   }
 
   /**

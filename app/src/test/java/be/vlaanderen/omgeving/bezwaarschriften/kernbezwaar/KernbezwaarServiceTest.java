@@ -368,23 +368,26 @@ class KernbezwaarServiceTest {
   }
 
   @Test
-  void ruimOpNaDocumentVerwijdering_verwijdertReferentiesEnLegeKernbezwarenEnThemas() {
+  void ruimOpNaDocumentVerwijdering_verwijdertReferentiesEnLegeKernbezwarenEnThemasEnClusteringTaken() {
     service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
 
     verify(referentieRepository).deleteByBestandsnaamAndProjectNaam("bezwaar-001.txt", "windmolens");
     verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
     verify(themaRepository).deleteZonderKernbezwaren("windmolens");
+    verify(clusteringTaakRepository).deleteZonderThema("windmolens");
   }
 
   @Test
   void ruimOpNaDocumentVerwijdering_roeptStappenInJuisteVolgordeAan() {
-    var inOrder = inOrder(referentieRepository, kernbezwaarRepository, themaRepository);
+    var inOrder = inOrder(referentieRepository, kernbezwaarRepository,
+        themaRepository, clusteringTaakRepository);
 
     service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
 
     inOrder.verify(referentieRepository).deleteByBestandsnaamAndProjectNaam("bezwaar-001.txt", "windmolens");
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
     inOrder.verify(themaRepository).deleteZonderKernbezwaren("windmolens");
+    inOrder.verify(clusteringTaakRepository).deleteZonderThema("windmolens");
   }
 
   @Test
