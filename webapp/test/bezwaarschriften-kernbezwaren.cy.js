@@ -481,7 +481,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@clusteringTaken');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-alert[slot="subtitle"]')
+        .find('vl-accordion[data-categorie="Milieu"] vl-alert')
         .should('have.attr', 'message')
         .and('include', '18 bezwaren');
   });
@@ -511,7 +511,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@kernbezwarenKlaar');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] vl-alert[slot="subtitle"]')
+        .find('vl-accordion[data-categorie="Mobiliteit"] vl-alert')
         .should('have.attr', 'message')
         .and('include', '42 bezwaren')
         .and('include', '3 kernbezwaren');

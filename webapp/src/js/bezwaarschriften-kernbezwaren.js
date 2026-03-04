@@ -363,31 +363,31 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       accordion.setAttribute('toggle-text', ct.categorie);
       accordion.dataset.categorie = ct.categorie;
 
-      // Subtitle slot: info-alert
-      const subtitle = document.createElement('vl-alert');
-      subtitle.slot = 'subtitle';
-      subtitle.setAttribute('type', 'success');
-      subtitle.setAttribute('naked', '');
-      subtitle.setAttribute('size', 'small');
-      subtitle.setAttribute('message', this._maakSubtitleTekst(ct));
-      accordion.appendChild(subtitle);
-
       // Menu slot: pill met status + actieknoppen
       const pill = this._maakStatusPill(ct);
       pill.slot = 'menu';
       accordion.appendChild(pill);
 
-      // Content: kernbezwaren (alleen bij klaar)
+      // Content: info-alert + kernbezwaren
+      const content = document.createElement('div');
+
+      const infoAlert = document.createElement('vl-alert');
+      infoAlert.setAttribute('type', 'success');
+      infoAlert.setAttribute('naked', '');
+      infoAlert.setAttribute('size', 'small');
+      infoAlert.setAttribute('message', this._maakSubtitleTekst(ct));
+      content.appendChild(infoAlert);
+
       if (ct.status === 'klaar' && this._themas) {
         const thema = this._themas.find((t) => t.naam === ct.categorie);
         if (thema && thema.kernbezwaren.length > 0) {
-          const wrapper = document.createElement('div');
           thema.kernbezwaren.forEach((kern) => {
-            wrapper.appendChild(this._maakKernbezwaarItem(kern));
+            content.appendChild(this._maakKernbezwaarItem(kern));
           });
-          accordion.appendChild(wrapper);
         }
       }
+
+      accordion.appendChild(content);
 
       inhoud.appendChild(accordion);
     });
