@@ -315,7 +315,81 @@ class ClusteringTaakServiceTest {
     verify(taakRepository, never()).findByStatusOrderByAangemaaktOpAsc(any());
   }
 
+  @Test
+  void verwijderAlleClusteringen_vraagBevestigingBijAntwoorden() {
+    var thema1 = maakThema(100L, "windmolens", "Geluid");
+    var thema2 = maakThema(101L, "windmolens", "Mobiliteit");
+    when(themaRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(thema1, thema2));
+
+    var kern1 = new KernbezwaarEntiteit();
+    kern1.setId(200L);
+    kern1.setThemaId(100L);
+    var kern2 = new KernbezwaarEntiteit();
+    kern2.setId(201L);
+    kern2.setThemaId(101L);
+    when(kernbezwaarRepository.findByThemaIdIn(List.of(100L, 101L)))
+        .thenReturn(List.of(kern1, kern2));
+    when(antwoordRepository.countByKernbezwaarIdIn(List.of(200L, 201L))).thenReturn(3L);
+
+    var resultaat = service.verwijderAlleClusteringen("windmolens", false);
+
+    assertThat(resultaat.bevestigingNodig()).isTrue();
+    assertThat(resultaat.aantalAntwoorden()).isEqualTo(3);
+    verify(themaRepository, never()).deleteByProjectNaam(any());
+    verify(taakRepository, never()).deleteByProjectNaam(any());
+  }
+
+  @Test
+  void verwijderAlleClusteringen_verwijdertZonderAntwoorden() {
+    var thema = maakThema(100L, "windmolens", "Geluid");
+    when(themaRepository.findByProjectNaam("windmolens")).thenReturn(List.of(thema));
+
+    var kern = new KernbezwaarEntiteit();
+    kern.setId(200L);
+    kern.setThemaId(100L);
+    when(kernbezwaarRepository.findByThemaIdIn(List.of(100L))).thenReturn(List.of(kern));
+    when(antwoordRepository.countByKernbezwaarIdIn(List.of(200L))).thenReturn(0L);
+
+    var resultaat = service.verwijderAlleClusteringen("windmolens", false);
+
+    assertThat(resultaat.verwijderd()).isTrue();
+    verify(themaRepository).deleteByProjectNaam("windmolens");
+    verify(taakRepository).deleteByProjectNaam("windmolens");
+  }
+
+  @Test
+  void verwijderAlleClusteringen_verwijdertBijBevestiging() {
+    when(themaRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(maakThema(100L, "windmolens", "Geluid")));
+
+    var resultaat = service.verwijderAlleClusteringen("windmolens", true);
+
+    assertThat(resultaat.verwijderd()).isTrue();
+    verify(themaRepository).deleteByProjectNaam("windmolens");
+    verify(taakRepository).deleteByProjectNaam("windmolens");
+  }
+
+  @Test
+  void verwijderAlleClusteringen_retourneertSuccesZonderThemas() {
+    when(themaRepository.findByProjectNaam("windmolens")).thenReturn(List.of());
+
+    var resultaat = service.verwijderAlleClusteringen("windmolens", false);
+
+    assertThat(resultaat.verwijderd()).isTrue();
+    verify(themaRepository).deleteByProjectNaam("windmolens");
+    verify(taakRepository).deleteByProjectNaam("windmolens");
+  }
+
   // --- Hulpmethoden ---
+
+  private ThemaEntiteit maakThema(Long id, String projectNaam, String naam) {
+    var thema = new ThemaEntiteit();
+    thema.setId(id);
+    thema.setProjectNaam(projectNaam);
+    thema.setNaam(naam);
+    return thema;
+  }
 
   private ClusteringTaak maakTaak(Long id, String projectNaam, String categorie,
       ClusteringTaakStatus status) {

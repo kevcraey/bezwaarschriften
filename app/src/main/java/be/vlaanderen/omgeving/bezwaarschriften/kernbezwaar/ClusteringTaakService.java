@@ -263,6 +263,36 @@ public class ClusteringTaakService {
   }
 
   /**
+   * Verwijdert alle clusteringresultaten voor een project. Als er antwoorden aan
+   * kernbezwaren gekoppeld zijn en bevestiging niet gegeven is, wordt eerst om
+   * bevestiging gevraagd.
+   *
+   * @param projectNaam naam van het project
+   * @param bevestigd true als de gebruiker bevestigd heeft dat antwoorden verloren mogen gaan
+   * @return resultaat met verwijderstatus en eventueel bevestigingsverzoek
+   */
+  @Transactional
+  public VerwijderResultaat verwijderAlleClusteringen(String projectNaam, boolean bevestigd) {
+    var themas = themaRepository.findByProjectNaam(projectNaam);
+    var themaIds = themas.stream().map(ThemaEntiteit::getId).toList();
+
+    if (!themaIds.isEmpty() && !bevestigd) {
+      var kernbezwaren = kernbezwaarRepository.findByThemaIdIn(themaIds);
+      var kernIds = kernbezwaren.stream().map(KernbezwaarEntiteit::getId).toList();
+      if (!kernIds.isEmpty()) {
+        long aantalAntwoorden = antwoordRepository.countByKernbezwaarIdIn(kernIds);
+        if (aantalAntwoorden > 0) {
+          return VerwijderResultaat.bevestigingVereist(aantalAntwoorden);
+        }
+      }
+    }
+
+    themaRepository.deleteByProjectNaam(projectNaam);
+    taakRepository.deleteByProjectNaam(projectNaam);
+    return VerwijderResultaat.succesvolVerwijderd();
+  }
+
+  /**
    * Geeft een overzicht van alle categorien met hun clustering-status.
    * Categorien zonder taak krijgen status "todo".
    *

@@ -328,6 +328,17 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     clusterAllesKnop.textContent = 'Cluster alle categorie\u00EBn';
     clusterAllesKnop.addEventListener('click', () => this._clusterAlles());
     header.appendChild(clusterAllesKnop);
+
+    const heeftKlareCategorie = this._clusteringTaken.some((ct) => ct.status === 'klaar');
+    if (heeftKlareCategorie) {
+      const verwijderAllesKnop = document.createElement('vl-button');
+      verwijderAllesKnop.id = 'verwijder-alles-knop';
+      verwijderAllesKnop.setAttribute('error', '');
+      verwijderAllesKnop.textContent = 'Alles verwijderen';
+      verwijderAllesKnop.addEventListener('click', () => this._verwijderAlles());
+      header.appendChild(verwijderAllesKnop);
+    }
+
     inhoud.appendChild(header);
 
     // Globale samenvatting als er klare categorien zijn
@@ -681,7 +692,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
     inhoud.innerHTML = '';
     const p = document.createElement('p');
-    p.textContent = `De clustering voor "${categorie}" bevat ${aantalAntwoorden} antwoord(en) ` +
+    const context = categorie ? `voor "${categorie}"` : 'voor alle categorie\u00EBn';
+    p.textContent = `De clustering ${context} bevat ${aantalAntwoorden} antwoord(en) ` +
         'die verloren gaan als u doorgaat.';
     inhoud.appendChild(p);
 
@@ -719,6 +731,37 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           this.dispatchEvent(new CustomEvent('toon-foutmelding', {
             bubbles: true, composed: true,
             detail: {bericht: 'Starten clustering voor alle categorie\u00EBn mislukt'},
+          }));
+        });
+  }
+
+  _verwijderAlles(bevestigd = false) {
+    if (!this._projectNaam) return;
+    const url = bevestigd ?
+      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken?bevestigd=true` :
+      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`;
+
+    fetch(url, {method: 'DELETE'})
+        .then((response) => {
+          if (response.status === 409) {
+            return response.json().then((data) => {
+              this._toonVerwijderBevestigingModal(
+                  null,
+                  data.aantalAntwoorden || 0,
+                  () => this._verwijderAlles(true),
+              );
+              return null;
+            });
+          }
+          if (!response.ok) throw new Error('Alles verwijderen mislukt');
+          this.laadClusteringTaken(this._projectNaam);
+          this.laadKernbezwaren(this._projectNaam);
+          return null;
+        })
+        .catch(() => {
+          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
+            bubbles: true, composed: true,
+            detail: {bericht: 'Verwijderen van alle clusteringen mislukt'},
           }));
         });
   }

@@ -137,6 +137,38 @@ class ClusteringTaakControllerTest {
     verify(taakService).verwijderClustering("windmolens", "Geluid", true);
   }
 
+  @Test
+  void verwijderAlleClusteringen_retourneert200ZonderAntwoorden() {
+    when(taakService.verwijderAlleClusteringen("windmolens", false))
+        .thenReturn(VerwijderResultaat.succesvolVerwijderd());
+
+    var response = controller.verwijderAlleClusteringen("windmolens", false);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    verify(taakService).verwijderAlleClusteringen("windmolens", false);
+  }
+
+  @Test
+  void verwijderAlleClusteringen_retourneert409BijAntwoorden() {
+    when(taakService.verwijderAlleClusteringen("windmolens", false))
+        .thenReturn(VerwijderResultaat.bevestigingVereist(5));
+
+    var response = controller.verwijderAlleClusteringen("windmolens", false);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  @Test
+  void verwijderAlleClusteringen_verwijdertBijBevestiging() {
+    when(taakService.verwijderAlleClusteringen("windmolens", true))
+        .thenReturn(VerwijderResultaat.succesvolVerwijderd());
+
+    var response = controller.verwijderAlleClusteringen("windmolens", true);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    verify(taakService).verwijderAlleClusteringen("windmolens", true);
+  }
+
   // --- Hulpmethoden ---
 
   private ClusteringTaakDto maakDto(Long id, String categorie, String status,

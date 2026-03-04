@@ -95,6 +95,22 @@ public class ClusteringTaakController {
     return ResponseEntity.ok().build();
   }
 
+  /**
+   * Verwijdert alle clusteringresultaten voor alle categorieën van een project.
+   * Bij gekoppelde antwoorden en ontbrekende bevestiging wordt 409 geretourneerd.
+   */
+  @DeleteMapping("/{naam}/clustering-taken")
+  public ResponseEntity<?> verwijderAlleClusteringen(
+      @PathVariable String naam,
+      @RequestParam(defaultValue = "false") boolean bevestigd) {
+    var resultaat = taakService.verwijderAlleClusteringen(naam, bevestigd);
+    if (resultaat.bevestigingNodig()) {
+      return ResponseEntity.status(409).body(
+          new BevestigingResponse(resultaat.aantalAntwoorden()));
+    }
+    return ResponseEntity.ok().build();
+  }
+
   /** Response DTO voor het categorieoverzicht. */
   record CategorieOverzichtResponse(
       List<ClusteringTaakService.CategorieStatus> categorieen) {}

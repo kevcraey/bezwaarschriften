@@ -236,6 +236,60 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .and('contain.text', 'Wachtend');
   });
 
+  it('toont alles-verwijderen knop naast cluster-alles knop als er klare categorien zijn', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-alles-knop')
+        .should('exist')
+        .and('have.attr', 'error', '');
+  });
+
+  it('verwijdert alles zonder antwoorden na klik op alles-verwijderen', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
+      statusCode: 200,
+      body: {},
+    }).as('verwijderAlles');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-alles-knop')
+        .click();
+
+    cy.wait('@verwijderAlles').its('request.url')
+        .should('include', '/clustering-taken');
+  });
+
+  it('toont bevestigingsmodal bij alles verwijderen als er antwoorden zijn', () => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
+      statusCode: 409,
+      body: {aantalAntwoorden: 5},
+    }).as('verwijderAlles');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-alles-knop')
+        .click();
+
+    cy.wait('@verwijderAlles');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-bevestiging-inhoud')
+        .should('contain.text', '5 antwoord(en)')
+        .and('contain.text', 'verloren gaan');
+  });
+
   it('toont globale knop bovenaan rechts', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
