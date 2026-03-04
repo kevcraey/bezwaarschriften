@@ -6,13 +6,10 @@ bezwaarschriften:
   extractie:
     max-concurrent: 3
     max-pogingen: 2
-    mock:
-      min-delay-seconden: 1
-      max-delay-seconden: 10
   clustering:
     min-cluster-size: 5
     min-samples: 3
-    cluster-selection-epsilon: 0.0
+    cluster-selection-epsilon: 0.2
   embedding:
     provider: ollama
     model: bge-m3

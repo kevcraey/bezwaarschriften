@@ -36,8 +36,6 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
   private final IngestiePoort ingestiePoort;
   private final Path inputFolder;
   private final Path testdataBaseDir;
-  private final int minDelaySeconden;
-  private final int maxDelaySeconden;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final ConcurrentHashMap<String, AtomicInteger> aanroepTeller =
       new ConcurrentHashMap<>();
@@ -48,20 +46,14 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
    * @param ingestiePoort Port voor bestandsingestie
    * @param inputFolderString Root input folder als string-pad
    * @param testdataPad Pad naar testdata project-directory met fixture JSON bestanden
-   * @param minDelaySeconden Minimale vertraging in seconden
-   * @param maxDelaySeconden Maximale vertraging in seconden
    */
   public MockExtractieVerwerker(
       IngestiePoort ingestiePoort,
       @Value("${bezwaarschriften.input.folder}") String inputFolderString,
-      @Value("${bezwaarschriften.testdata.pad:}") String testdataPad,
-      @Value("${bezwaarschriften.extractie.mock.min-delay-seconden:1}") int minDelaySeconden,
-      @Value("${bezwaarschriften.extractie.mock.max-delay-seconden:10}") int maxDelaySeconden) {
+      @Value("${bezwaarschriften.testdata.pad:}") String testdataPad) {
     this.ingestiePoort = ingestiePoort;
     this.inputFolder = Path.of(inputFolderString);
     this.testdataBaseDir = resolveFixtureDir(testdataPad);
-    this.minDelaySeconden = minDelaySeconden;
-    this.maxDelaySeconden = maxDelaySeconden;
     if (this.testdataBaseDir != null) {
       LOGGER.info("Fixture-basismap geconfigureerd: {}", this.testdataBaseDir.toAbsolutePath());
     }
@@ -90,8 +82,6 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     var pad = inputFolder.resolve(projectNaam).resolve("bezwaren").resolve(bestandsnaam);
     var brondocument = ingestiePoort.leesBestand(pad);
     var aantalWoorden = telWoorden(brondocument.tekst());
-
-    simuleerDelay();
 
     var fixtureResultaat = zoekFixture(projectNaam, bestandsnaam, aantalWoorden);
     if (fixtureResultaat != null) {
@@ -208,20 +198,4 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     return tekst.strip().split("\\s+").length;
   }
 
-  private void simuleerDelay() {
-    if (maxDelaySeconden <= 0) {
-      return;
-    }
-    try {
-      double random = ThreadLocalRandom.current().nextDouble();
-      // random² geeft bias naar lagere waarden
-      long delayMillis = minDelaySeconden * 1000L
-          + (long) (random * random * random * random * (maxDelaySeconden - minDelaySeconden) * 1000L);
-      LOGGER.debug("Simuleer verwerkingsdelay van {} ms", delayMillis);
-      Thread.sleep(delayMillis);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn("Verwerkingsdelay onderbroken");
-    }
-  }
 }

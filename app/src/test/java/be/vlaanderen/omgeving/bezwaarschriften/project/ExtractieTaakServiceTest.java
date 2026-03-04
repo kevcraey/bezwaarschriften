@@ -2,10 +2,12 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.Brondocument;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
 import java.nio.file.Path;
@@ -46,13 +48,20 @@ class ExtractieTaakServiceTest {
   @Mock
   private PassageValidator passageValidator;
 
+  @Mock
+  private EmbeddingPoort embeddingPoort;
+
   private ExtractieTaakService service;
 
   @BeforeEach
   void setUp() {
     service = new ExtractieTaakService(repository, notificatie, projectService,
         passageRepository, bezwaarRepository, projectPoort, ingestiePoort,
-        passageValidator, 3, 3);
+        passageValidator, embeddingPoort, 3, 3);
+    lenient().when(embeddingPoort.genereerEmbeddings(any())).thenAnswer(inv -> {
+      List<String> teksten = inv.getArgument(0);
+      return teksten.stream().map(t -> new float[]{0.1f}).toList();
+    });
   }
 
   @Test
@@ -154,9 +163,11 @@ class ExtractieTaakServiceTest {
     assertThat(passageCaptor.getAllValues().get(0).getTaakId()).isEqualTo(1L);
 
     var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
-    verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
+    // Elke bezwaar wordt 2x opgeslagen: eerst zonder embedding, dan met embedding
+    verify(bezwaarRepository, times(4)).save(bezwaarCaptor.capture());
     assertThat(bezwaarCaptor.getAllValues().get(0).getSamenvatting()).isEqualTo("Samenvatting een");
     assertThat(bezwaarCaptor.getAllValues().get(0).getTaakId()).isEqualTo(1L);
+    assertThat(bezwaarCaptor.getAllValues().get(2).getEmbedding()).isNotNull();
   }
 
   @Test
@@ -474,10 +485,12 @@ class ExtractieTaakServiceTest {
     assertThat(detail.passageGevonden()).isTrue();
 
     var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
-    verify(bezwaarRepository).save(bezwaarCaptor.capture());
-    assertThat(bezwaarCaptor.getValue().isManueel()).isTrue();
-    assertThat(bezwaarCaptor.getValue().getPassageNr()).isEqualTo(4);
-    assertThat(bezwaarCaptor.getValue().getCategorie()).isEqualTo("overig");
+    // Bezwaar wordt 2x opgeslagen: eerst zonder embedding, dan met embedding
+    verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
+    assertThat(bezwaarCaptor.getAllValues().get(0).isManueel()).isTrue();
+    assertThat(bezwaarCaptor.getAllValues().get(0).getPassageNr()).isEqualTo(4);
+    assertThat(bezwaarCaptor.getAllValues().get(0).getCategorie()).isEqualTo("overig");
+    assertThat(bezwaarCaptor.getAllValues().get(1).getEmbedding()).isNotNull();
 
     assertThat(taak.isHeeftManueel()).isTrue();
     assertThat(taak.getAantalBezwaren()).isEqualTo(1);

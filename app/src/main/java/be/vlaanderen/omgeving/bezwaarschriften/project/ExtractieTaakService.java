@@ -1,8 +1,10 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import javax.transaction.Transactional;
@@ -31,6 +33,7 @@ public class ExtractieTaakService {
   private final ProjectPoort projectPoort;
   private final IngestiePoort ingestiePoort;
   private final PassageValidator passageValidator;
+  private final EmbeddingPoort embeddingPoort;
   private final int maxConcurrent;
   private final int maxPogingen;
 
@@ -45,6 +48,7 @@ public class ExtractieTaakService {
    * @param projectPoort poort voor projectbestanden
    * @param ingestiePoort poort voor het inlezen van brondocumenten
    * @param passageValidator validator voor passage-verificatie
+   * @param embeddingPoort poort voor het genereren van embeddings
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
    * @param maxPogingen maximum aantal pogingen per taak
    */
@@ -57,6 +61,7 @@ public class ExtractieTaakService {
       ProjectPoort projectPoort,
       IngestiePoort ingestiePoort,
       PassageValidator passageValidator,
+      EmbeddingPoort embeddingPoort,
       @Value("${bezwaarschriften.extractie.max-concurrent:3}") int maxConcurrent,
       @Value("${bezwaarschriften.extractie.max-pogingen:3}") int maxPogingen) {
     this.repository = repository;
@@ -67,6 +72,7 @@ public class ExtractieTaakService {
     this.projectPoort = projectPoort;
     this.ingestiePoort = ingestiePoort;
     this.passageValidator = passageValidator;
+    this.embeddingPoort = embeddingPoort;
     this.maxConcurrent = maxConcurrent;
     this.maxPogingen = maxPogingen;
   }
@@ -212,6 +218,21 @@ public class ExtractieTaakService {
 
     for (var entiteit : bezwaarEntiteiten) {
       bezwaarRepository.save(entiteit);
+    }
+
+    // Genereer embeddings voor alle bezwaren (batch) en sla op
+    if (!bezwaarEntiteiten.isEmpty()) {
+      var teksten = bezwaarEntiteiten.stream()
+          .map(b -> {
+            var tekst = passageMap.get(b.getPassageNr());
+            return tekst != null ? tekst : b.getSamenvatting();
+          })
+          .toList();
+      var embeddings = embeddingPoort.genereerEmbeddings(teksten);
+      for (int i = 0; i < bezwaarEntiteiten.size(); i++) {
+        bezwaarEntiteiten.get(i).setEmbedding(embeddings.get(i));
+        bezwaarRepository.save(bezwaarEntiteiten.get(i));
+      }
     }
 
     repository.save(taak);
@@ -439,6 +460,11 @@ public class ExtractieTaakService {
     notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
 
     var opgeslagen = bezwaarRepository.save(bezwaarEntiteit);
+
+    var embedding = embeddingPoort.genereerEmbeddings(List.of(passageTekst)).get(0);
+    opgeslagen.setEmbedding(embedding);
+    bezwaarRepository.save(opgeslagen);
+
     return new ExtractieDetailDto.BezwaarDetail(
         opgeslagen.getId(), samenvatting, passageTekst, true, true);
   }

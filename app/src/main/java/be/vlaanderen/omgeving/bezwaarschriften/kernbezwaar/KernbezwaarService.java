@@ -245,21 +245,22 @@ public class KernbezwaarService {
       Map<Long, String> bestandsnaamLookup,
       Long taakId) {
 
-    // Bepaal de tekst per bezwaar: originele passage of fallback naar samenvatting
-    var teksten = bezwaren.stream()
-        .map(b -> geefPassageTekst(b, passageLookup))
+    // Genereer embeddings alleen voor bezwaren die er nog geen hebben (legacy data)
+    var zonderEmbedding = bezwaren.stream()
+        .filter(b -> b.getEmbedding() == null)
         .toList();
-
-    // Externe call: genereer embeddings (buiten transactie)
-    var embeddings = embeddingPoort.genereerEmbeddings(teksten);
-
-    // Sla embeddings op in korte transactie
-    transactionTemplate.executeWithoutResult(status -> {
-      for (int i = 0; i < bezwaren.size(); i++) {
-        bezwaren.get(i).setEmbedding(embeddings.get(i));
-      }
-      bezwaarRepository.saveAll(bezwaren);
-    });
+    if (!zonderEmbedding.isEmpty()) {
+      var teksten = zonderEmbedding.stream()
+          .map(b -> geefPassageTekst(b, passageLookup))
+          .toList();
+      var embeddings = embeddingPoort.genereerEmbeddings(teksten);
+      transactionTemplate.executeWithoutResult(status -> {
+        for (int i = 0; i < zonderEmbedding.size(); i++) {
+          zonderEmbedding.get(i).setEmbedding(embeddings.get(i));
+        }
+        bezwaarRepository.saveAll(zonderEmbedding);
+      });
+    }
 
     // Controleer annulering na embedding-generatie (buiten transactie: ziet verse data)
     if (taakId != null && clusteringTaakService.isGeannuleerd(taakId)) {
@@ -267,10 +268,9 @@ public class KernbezwaarService {
     }
 
     // Externe call: HDBSCAN-clustering (buiten transactie)
-    var invoer = new ArrayList<ClusteringInvoer>();
-    for (int i = 0; i < bezwaren.size(); i++) {
-      invoer.add(new ClusteringInvoer(bezwaren.get(i).getId(), embeddings.get(i)));
-    }
+    var invoer = bezwaren.stream()
+        .map(b -> new ClusteringInvoer(b.getId(), b.getEmbedding()))
+        .toList();
     var clusterResultaat = clusteringPoort.cluster(invoer);
 
     // Lookup voor bezwaren op ID (nodig bij opslaan thema/kernbezwaren)

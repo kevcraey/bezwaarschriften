@@ -61,6 +61,7 @@ public class ClusteringTaakService {
     taakRepository.findByProjectNaamAndCategorie(projectNaam, categorie)
         .ifPresent(bestaandeTaak -> {
           taakRepository.delete(bestaandeTaak);
+          taakRepository.flush(); // forceer DELETE naar DB vóór de nieuwe INSERT
           themaRepository.deleteByProjectNaamAndNaam(projectNaam, categorie);
         });
 

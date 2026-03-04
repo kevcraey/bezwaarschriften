@@ -92,8 +92,10 @@ class ClusteringTaakServiceTest {
 
     var dto = service.indienen("windmolens", "Geluid");
 
-    verify(taakRepository).delete(bestaandeTaak);
-    verify(themaRepository).deleteByProjectNaamAndNaam("windmolens", "Geluid");
+    var inOrder = org.mockito.Mockito.inOrder(taakRepository, themaRepository);
+    inOrder.verify(taakRepository).delete(bestaandeTaak);
+    inOrder.verify(taakRepository).flush();
+    inOrder.verify(themaRepository).deleteByProjectNaamAndNaam("windmolens", "Geluid");
     assertThat(dto.status()).isEqualTo("wachtend");
     assertThat(dto.id()).isEqualTo(11L);
   }

@@ -29,7 +29,7 @@ class MockExtractieVerwerkerTest {
 
   @BeforeEach
   void setUp() {
-    verwerker = new MockExtractieVerwerker(ingestiePoort, "input", "", 0, 0);
+    verwerker = new MockExtractieVerwerker(ingestiePoort, "input", "");
   }
 
   @Test
@@ -104,7 +104,7 @@ class MockExtractieVerwerkerTest {
     Files.writeString(bezwarenDir.resolve("Bezwaar_01.json"), fixtureJson);
 
     var verwerkerMetFixture = new MockExtractieVerwerker(
-        ingestiePoort, "input", tempDir.toString(), 0, 0);
+        ingestiePoort, "input", tempDir.toString());
     when(ingestiePoort.leesBestand(Path.of("input", projectNaam, "bezwaren", bestandsnaam)))
         .thenReturn(new Brondocument("dit is een test tekst", bestandsnaam,
             "input/" + projectNaam + "/bezwaren/" + bestandsnaam, Instant.now()));
