@@ -471,6 +471,8 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .click();
 
     cy.wait('@verwijderClustering');
+    cy.wait('@startClustering');
+  });
 
   it('toont subtitle met aantal bezwaren voor todo categorie', () => {
     cy.get('bezwaarschriften-kernbezwaren')
