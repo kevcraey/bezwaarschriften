@@ -136,6 +136,27 @@ class ClusteringTaakServiceTest {
   }
 
   @Test
+  void annuleer_retourneertFalseVoorFouteTaak() {
+    var taak = maakTaak(1L, "windmolens", "Geluid", ClusteringTaakStatus.FOUT);
+    when(taakRepository.findById(1L)).thenReturn(Optional.of(taak));
+
+    var resultaat = service.annuleer(1L);
+
+    assertThat(resultaat).isFalse();
+    verify(taakRepository, never()).delete(any(ClusteringTaak.class));
+  }
+
+  @Test
+  void annuleer_retourneertFalseVoorOnbekendeTaak() {
+    when(taakRepository.findById(99L)).thenReturn(Optional.empty());
+
+    var resultaat = service.annuleer(99L);
+
+    assertThat(resultaat).isFalse();
+    verify(taakRepository, never()).delete(any(ClusteringTaak.class));
+  }
+
+  @Test
   void verwijderClustering_vraagBevestigingBijAntwoorden() {
     var thema = new ThemaEntiteit();
     thema.setId(100L);

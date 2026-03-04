@@ -436,4 +436,45 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .find('#verwijder-bevestiging-inhoud')
         .should('contain.text', '3 antwoord(en)');
   });
+
+  it('retry bij klaar met bevestiging verwijdert en herstart clustering', () => {
+    let deleteCount = 0;
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Mobiliteit*', (req) => {
+      deleteCount++;
+      if (!req.url.includes('bevestigd=true')) {
+        req.reply({statusCode: 409, body: {aantalAntwoorden: 3}});
+      } else {
+        req.reply({statusCode: 200});
+      }
+    }).as('verwijderClustering');
+
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
+      statusCode: 202,
+      body: {
+        id: 10, projectNaam: 'testproject', categorie: 'Mobiliteit',
+        status: 'wachtend', aantalBezwaren: 42,
+        aangemaaktOp: '2026-03-04T10:00:00Z',
+      },
+    }).as('startClustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    // Klik retry
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="synchronize"]')
+        .click();
+
+    cy.wait('@verwijderClustering');
+
+    // Modal verschijnt, klik bevestig
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-bevestiging-bevestig')
+        .click();
+
+    cy.wait('@verwijderClustering');
+    cy.wait('@startClustering');
+  });
 });
