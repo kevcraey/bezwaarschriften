@@ -22,19 +22,9 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .clustering-header {
           margin-bottom: 1.5rem;
         }
-        .categorie-wrapper {
+        vl-accordion {
           margin-bottom: 0.5rem;
-        }
-        .categorie-header {
-          display: flex;
-          align-items: center;
-          padding: 0.75rem 0;
-          border-bottom: 1px solid #e8ebee;
-          gap: 0.75rem;
-        }
-        .categorie-label {
-          font-weight: bold;
-          flex: 1;
+          display: block;
         }
         .kernbezwaar-item {
           display: flex;
