@@ -77,7 +77,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         <div slot="content">
           <vl-upload id="bestand-upload"
             accepted-files=".txt"
-            max-files="100"
+            max-files="1000"
             max-size="50"
             main-title="Bezwaarbestanden toevoegen"
             sub-title="Sleep .txt bestanden hierheen of klik om te bladeren">

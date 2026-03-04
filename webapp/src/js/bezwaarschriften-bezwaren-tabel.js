@@ -172,7 +172,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         <vl-rich-data-field name="acties" label="Acties"></vl-rich-data-field>
         <vl-pager slot="pager" total-items="0" items-per-page="${ITEMS_PER_PAGINA}" current-page="1"></vl-pager>
       </vl-rich-data-table>
-      <vl-side-sheet id="extractie-side-sheet" hide-toggle-button absolute>
+      <vl-side-sheet id="extractie-side-sheet" hide-toggle-button>
         <div class="side-sheet-wrapper">
           <div class="side-sheet-header">
             <div id="extractie-side-sheet-titel" class="side-sheet-titel"></div>

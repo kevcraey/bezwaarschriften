@@ -127,10 +127,10 @@ public class ProjectController {
   public ResponseEntity<UploadResponse> uploadBezwaren(
       @PathVariable String naam,
       @RequestParam("bestanden") MultipartFile[] bestanden) {
-    if (bestanden.length > 100) {
+    if (bestanden.length > 1000) {
       return ResponseEntity.badRequest().body(
           new UploadResponse(List.of(),
-              List.of(new UploadFoutDto("", "Maximum 100 bestanden per upload"))));
+              List.of(new UploadFoutDto("", "Maximum 1000 bestanden per upload"))));
     }
 
     var bestandenMap = new LinkedHashMap<String, byte[]>();

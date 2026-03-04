@@ -55,8 +55,8 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
       IngestiePoort ingestiePoort,
       @Value("${bezwaarschriften.input.folder}") String inputFolderString,
       @Value("${bezwaarschriften.testdata.pad:}") String testdataPad,
-      @Value("${bezwaarschriften.extractie.mock.min-delay-seconden:5}") int minDelaySeconden,
-      @Value("${bezwaarschriften.extractie.mock.max-delay-seconden:30}") int maxDelaySeconden) {
+      @Value("${bezwaarschriften.extractie.mock.min-delay-seconden:1}") int minDelaySeconden,
+      @Value("${bezwaarschriften.extractie.mock.max-delay-seconden:10}") int maxDelaySeconden) {
     this.ingestiePoort = ingestiePoort;
     this.inputFolder = Path.of(inputFolderString);
     this.testdataBaseDir = resolveFixtureDir(testdataPad);
@@ -213,8 +213,10 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
       return;
     }
     try {
-      long delayMillis = ThreadLocalRandom.current()
-          .nextLong(minDelaySeconden * 1000L, maxDelaySeconden * 1000L + 1);
+      double random = ThreadLocalRandom.current().nextDouble();
+      // random² geeft bias naar lagere waarden
+      long delayMillis = minDelaySeconden * 1000L
+          + (long) (random * random * random * random * (maxDelaySeconden - minDelaySeconden) * 1000L);
       LOGGER.debug("Simuleer verwerkingsdelay van {} ms", delayMillis);
       Thread.sleep(delayMillis);
     } catch (InterruptedException e) {
