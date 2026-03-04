@@ -1,13 +1,14 @@
 import {BaseHTMLElement, defineWebComponent, registerWebComponents} from '@domg-wc/common';
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
 import {VlAccordionComponent} from '@domg-wc/components/block/accordion/vl-accordion.component.js';
+import {VlAlert} from '@domg-wc/components/block/alert';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
 import '@domg-wc/components/form/textarea-rich';
 
-registerWebComponents([VlButtonComponent, VlAccordionComponent, VlModalComponent, VlSideSheet, VlPillComponent]);
+registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent]);
 
 export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   constructor() {
@@ -339,6 +340,31 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     header.appendChild(clusterAllesKnop);
     inhoud.appendChild(header);
 
+    // Globale samenvatting als er klare categorien zijn
+    if (this._themas) {
+      let totaalBezwaren = 0;
+      let totaalKernbezwaren = 0;
+      this._clusteringTaken.forEach((ct) => {
+        if (ct.status === 'klaar') {
+          const thema = this._themas.find((t) => t.naam === ct.categorie);
+          if (thema) {
+            totaalBezwaren += ct.aantalBezwaren;
+            totaalKernbezwaren += thema.kernbezwaren.length;
+          }
+        }
+      });
+      if (totaalKernbezwaren > 0) {
+        const reductie = Math.round(totaalBezwaren / totaalKernbezwaren);
+        const reductieTekst = reductie > 1 ? ` (${reductie}x reductie)` : '';
+        const totaalAlert = document.createElement('vl-alert');
+        totaalAlert.setAttribute('type', 'success');
+        totaalAlert.setAttribute('naked', '');
+        totaalAlert.setAttribute('message', `Er zijn ${totaalBezwaren} individuele bezwaren ` +
+            `herleid naar ${totaalKernbezwaren} kernbezwaren${reductieTekst}.`);
+        inhoud.appendChild(totaalAlert);
+      }
+    }
+
     // Per categorie
     this._clusteringTaken.forEach((ct) => {
       const wrapper = document.createElement('div');
@@ -366,23 +392,24 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
       wrapper.appendChild(categorieHeader);
 
-      // Accordion met kernbezwaren voor klare categorien
+      // Kernbezwaren tonen voor klare categorien
       if (ct.status === 'klaar' && this._themas) {
         const thema = this._themas.find((t) => t.naam === ct.categorie);
         if (thema && thema.kernbezwaren.length > 0) {
-          const accordion = document.createElement('vl-accordion');
           const aantalKern = thema.kernbezwaren.length;
-          const kernLabel = aantalKern === 1 ? '1 kernbezwaar' : `${aantalKern} kernbezwaren`;
-          accordion.setAttribute('toggle-text', `${ct.categorie} (${kernLabel})`);
-          accordion.setAttribute('default-open', '');
+          const reductie = Math.round(ct.aantalBezwaren / aantalKern);
+          const reductieTekst = reductie > 1 ? ` (${reductie}x reductie)` : '';
+          const samenvatting = document.createElement('vl-alert');
+          samenvatting.setAttribute('type', 'success');
+          samenvatting.setAttribute('naked', '');
+          samenvatting.setAttribute('size', 'small');
+          samenvatting.setAttribute('message', `Er zijn ${ct.aantalBezwaren} individuele bezwaren ` +
+              `herleid naar ${aantalKern} kernbezwaren${reductieTekst}.`);
+          wrapper.appendChild(samenvatting);
 
-          const kernWrapper = document.createElement('div');
           thema.kernbezwaren.forEach((kern) => {
-            kernWrapper.appendChild(this._maakKernbezwaarItem(kern));
+            wrapper.appendChild(this._maakKernbezwaarItem(kern));
           });
-
-          accordion.appendChild(kernWrapper);
-          wrapper.appendChild(accordion);
         }
       }
 
