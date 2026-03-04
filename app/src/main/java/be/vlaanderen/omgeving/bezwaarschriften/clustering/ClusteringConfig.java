@@ -12,6 +12,7 @@ public class ClusteringConfig {
 
   private int minClusterSize = 5;
   private int minSamples = 3;
+  private double clusterSelectionEpsilon = 0.0;
 
   public int getMinClusterSize() {
     return minClusterSize;
@@ -27,5 +28,13 @@ public class ClusteringConfig {
 
   public void setMinSamples(int minSamples) {
     this.minSamples = minSamples;
+  }
+
+  public double getClusterSelectionEpsilon() {
+    return clusterSelectionEpsilon;
+  }
+
+  public void setClusterSelectionEpsilon(double clusterSelectionEpsilon) {
+    this.clusterSelectionEpsilon = clusterSelectionEpsilon;
   }
 }

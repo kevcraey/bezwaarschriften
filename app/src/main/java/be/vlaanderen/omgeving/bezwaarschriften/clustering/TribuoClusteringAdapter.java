@@ -40,11 +40,22 @@ public class TribuoClusteringAdapter implements ClusteringPoort {
     }
 
     var dataset = bouwDataset(invoer);
-    var trainer = new HdbscanTrainer(config.getMinClusterSize());
+    var trainer = new HdbscanTrainer(
+        config.getMinClusterSize(),
+        HdbscanTrainer.Distance.EUCLIDEAN,
+        config.getMinSamples(),
+        1);
     var model = trainer.train(dataset);
 
     var labels = model.getClusterLabels();
-    return verwerkLabels(invoer, labels);
+    var clusters = verwerkLabels(invoer, labels);
+
+    if (config.getClusterSelectionEpsilon() > 0.0) {
+      var samengevoegd = samenvoegDichteClusters(clusters.clusters(),
+          config.getClusterSelectionEpsilon());
+      return new ClusteringResultaat(samengevoegd, clusters.noiseIds());
+    }
+    return clusters;
   }
 
   private MutableDataset<ClusterID> bouwDataset(
@@ -100,6 +111,74 @@ public class TribuoClusteringAdapter implements ClusteringPoort {
     }
 
     return new ClusteringResultaat(clusters, noiseIds);
+  }
+
+  /**
+   * Voegt clusters samen waarvan de centroiden binnen {@code epsilon} Euclidische
+   * afstand van elkaar liggen (transitief, via union-find).
+   */
+  List<Cluster> samenvoegDichteClusters(List<Cluster> clusters, double epsilon) {
+    int n = clusters.size();
+    int[] parent = new int[n];
+    for (int i = 0; i < n; i++) {
+      parent[i] = i;
+    }
+
+    for (int i = 0; i < n; i++) {
+      for (int j = i + 1; j < n; j++) {
+        if (euclidischeAfstand(clusters.get(i).centroid(),
+            clusters.get(j).centroid()) < epsilon) {
+          union(parent, i, j);
+        }
+      }
+    }
+
+    Map<Integer, List<Long>> groepen = new HashMap<>();
+    for (int i = 0; i < n; i++) {
+      int root = find(parent, i);
+      groepen.computeIfAbsent(root, k -> new ArrayList<>())
+          .addAll(clusters.get(i).bezwaarIds());
+    }
+
+    var resultaat = new ArrayList<Cluster>();
+    int nieuwLabel = 1;
+    for (var entry : groepen.entrySet()) {
+      var ids = entry.getValue();
+      var centroid = berekenCentroidVanIds(clusters, entry.getKey(), parent, n);
+      resultaat.add(new Cluster(nieuwLabel++, ids, centroid));
+    }
+    return resultaat;
+  }
+
+  private float[] berekenCentroidVanIds(
+      List<Cluster> clusters, int root, int[] parent, int n) {
+    var vectoren = new ArrayList<float[]>();
+    for (int i = 0; i < n; i++) {
+      if (find(parent, i) == root) {
+        vectoren.add(clusters.get(i).centroid());
+      }
+    }
+    return berekenCentroid(vectoren);
+  }
+
+  private int find(int[] parent, int i) {
+    if (parent[i] != i) {
+      parent[i] = find(parent, parent[i]);
+    }
+    return parent[i];
+  }
+
+  private void union(int[] parent, int i, int j) {
+    parent[find(parent, i)] = find(parent, j);
+  }
+
+  private double euclidischeAfstand(float[] a, float[] b) {
+    double sum = 0;
+    for (int i = 0; i < a.length; i++) {
+      double diff = a[i] - b[i];
+      sum += diff * diff;
+    }
+    return Math.sqrt(sum);
   }
 
   private float[] berekenCentroid(List<float[]> vectoren) {

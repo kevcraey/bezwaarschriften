@@ -12,6 +12,7 @@ bezwaarschriften:
   clustering:
     min-cluster-size: 5
     min-samples: 3
+    cluster-selection-epsilon: 0.0
   embedding:
     provider: ollama
     model: bge-m3
