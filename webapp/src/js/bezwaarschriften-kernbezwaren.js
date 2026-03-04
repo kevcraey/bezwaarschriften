@@ -102,17 +102,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           margin-right: 1rem;
         }
         .side-sheet-sluit-knop {
-          background: none;
-          border: none;
-          font-size: 1.5rem;
-          cursor: pointer;
-          padding: 0;
-          color: #333;
-          line-height: 1;
           flex-shrink: 0;
-        }
-        .side-sheet-sluit-knop:hover {
-          color: #000;
         }
         .side-sheet-body {
           flex: 1;
@@ -141,8 +131,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         <div class="side-sheet-wrapper">
           <div class="side-sheet-header">
             <div id="side-sheet-titel" class="side-sheet-titel"></div>
-            <button id="side-sheet-sluit-knop" class="side-sheet-sluit-knop"
-                aria-label="Sluiten">&times;</button>
+            <vl-button id="side-sheet-sluit-knop" class="side-sheet-sluit-knop"
+                ghost="" icon="close" label="Sluiten"></vl-button>
           </div>
           <div id="side-sheet-inhoud" class="side-sheet-body"></div>
         </div>
@@ -429,8 +419,9 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     if (kern.antwoord) samenvatting.style.color = '#0e7c3a';
 
     const penKnop = document.createElement('vl-button');
-    penKnop.setAttribute('tertiary', '');
+    penKnop.setAttribute('ghost', '');
     penKnop.setAttribute('icon', 'pencil');
+    penKnop.setAttribute('label', kern.antwoord ? 'Antwoord bewerken' : 'Antwoord invoeren');
     if (kern.antwoord) {
       penKnop.classList.add('heeft-antwoord');
     }
@@ -439,7 +430,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const actie = document.createElement('div');
     actie.className = 'kernbezwaar-actie';
     const knop = document.createElement('vl-button');
-    knop.setAttribute('tertiary', '');
+    knop.setAttribute('ghost', '');
     knop.setAttribute('icon', 'search');
     knop.textContent = `(${kern.individueleBezwaren.length})`;
     knop.addEventListener('click', () => this._toonPassages(kern));
@@ -521,7 +512,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const btn = document.createElement('vl-button');
     btn.setAttribute('icon', icon);
     btn.setAttribute('label', titel);
-    btn.setAttribute('tertiary', '');
+    btn.setAttribute('ghost', '');
     if (error) btn.setAttribute('error', '');
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
