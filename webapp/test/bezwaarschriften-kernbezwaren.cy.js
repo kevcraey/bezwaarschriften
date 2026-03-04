@@ -471,6 +471,79 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .click();
 
     cy.wait('@verwijderClustering');
-    cy.wait('@startClustering');
+
+  it('toont subtitle met aantal bezwaren voor todo categorie', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-accordion[data-categorie="Milieu"] [slot="subtitle"]')
+        .should('contain.text', '18 bezwaren');
+  });
+
+  it('toont subtitle met bezwaren en kernbezwaren voor klare categorie', () => {
+    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
+      statusCode: 200,
+      body: {
+        themas: [{
+          naam: 'Mobiliteit',
+          kernbezwaren: [
+            {id: 1, samenvatting: 'Kern 1', individueleBezwaren: [], antwoord: null},
+            {id: 2, samenvatting: 'Kern 2', individueleBezwaren: [], antwoord: null},
+            {id: 3, samenvatting: 'Kern 3', individueleBezwaren: [], antwoord: null},
+          ],
+        }],
+      },
+    }).as('kernbezwarenKlaar');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => {
+          $el[0].laadClusteringTaken('testproject');
+          $el[0].laadKernbezwaren('testproject');
+        });
+
+    cy.wait('@clusteringTaken');
+    cy.wait('@kernbezwarenKlaar');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="subtitle"]')
+        .should('contain.text', '42 bezwaren')
+        .and('contain.text', '3 kernbezwaren');
+  });
+
+  it('toont pill in menu-slot van accordion', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-accordion[data-categorie="Mobiliteit"] vl-pill[slot="menu"]')
+        .should('exist')
+        .and('have.attr', 'type', 'success');
+  });
+
+  it('alle accordions zijn standaard dichtgeklapt', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-accordion[default-open]')
+        .should('not.exist');
+  });
+
+  it('toont categorienaam als toggle-text zonder aantal', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-accordion[data-categorie="Mobiliteit"]')
+        .should('have.attr', 'toggle-text', 'Mobiliteit');
   });
 });
