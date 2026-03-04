@@ -70,6 +70,16 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           white-space: nowrap;
           align-self: center;
         }
+        .klaar-menu {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+        .klaar-info-tekst {
+          color: #0e7c26;
+          font-size: 0.9rem;
+          white-space: nowrap;
+        }
         .side-sheet-wrapper {
           display: flex;
           flex-direction: column;
@@ -365,31 +375,51 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       accordion.setAttribute('toggle-text', ct.categorie);
       accordion.dataset.categorie = ct.categorie;
 
-      // Menu slot: pill met status + actieknoppen
-      const pill = this._maakStatusPill(ct);
-      pill.slot = 'menu';
-      accordion.appendChild(pill);
+      if (ct.status === 'klaar') {
+        // Menu slot: compacte info-tekst + losse actieknoppen (geen pill)
+        const menu = document.createElement('div');
+        menu.slot = 'menu';
+        menu.className = 'klaar-menu';
 
-      // Content: info-alert + kernbezwaren
-      const content = document.createElement('div');
+        const infoTekst = document.createElement('span');
+        infoTekst.className = 'klaar-info-tekst';
+        infoTekst.textContent = this._maakSubtitleTekst(ct);
+        menu.appendChild(infoTekst);
 
-      const infoAlert = document.createElement('vl-alert');
-      infoAlert.setAttribute('type', 'success');
-      infoAlert.setAttribute('naked', '');
-      infoAlert.setAttribute('size', 'small');
-      infoAlert.setAttribute('message', this._maakSubtitleTekst(ct));
-      content.appendChild(infoAlert);
+        menu.appendChild(this._maakPillKnop('\u00d7', 'Verwijder clustering',
+            () => this._toonVerwijderBevestiging(ct.categorie)));
+        menu.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw clusteren',
+            () => this._retryClustering(ct.categorie)));
 
-      if (ct.status === 'klaar' && this._themas) {
-        const thema = this._themas.find((t) => t.naam === ct.categorie);
-        if (thema && thema.kernbezwaren.length > 0) {
-          thema.kernbezwaren.forEach((kern) => {
-            content.appendChild(this._maakKernbezwaarItem(kern));
-          });
+        accordion.appendChild(menu);
+
+        // Content: kernbezwaren
+        if (this._themas) {
+          const thema = this._themas.find((t) => t.naam === ct.categorie);
+          if (thema && thema.kernbezwaren.length > 0) {
+            const content = document.createElement('div');
+            thema.kernbezwaren.forEach((kern) => {
+              content.appendChild(this._maakKernbezwaarItem(kern));
+            });
+            accordion.appendChild(content);
+          }
         }
-      }
+      } else {
+        // Menu slot: pill met status + actieknoppen
+        const pill = this._maakStatusPill(ct);
+        pill.slot = 'menu';
+        accordion.appendChild(pill);
 
-      accordion.appendChild(content);
+        // Content: info-alert (toont bezwaren-aantal)
+        const content = document.createElement('div');
+        const infoAlert = document.createElement('vl-alert');
+        infoAlert.setAttribute('type', 'success');
+        infoAlert.setAttribute('naked', '');
+        infoAlert.setAttribute('size', 'small');
+        infoAlert.setAttribute('message', this._maakSubtitleTekst(ct));
+        content.appendChild(infoAlert);
+        accordion.appendChild(content);
+      }
 
       inhoud.appendChild(accordion);
     });
