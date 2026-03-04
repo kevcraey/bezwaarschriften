@@ -26,13 +26,12 @@ AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hex
 - We schrijven ook front-end testen, niet alleen back-end. Zie richtlijnen voor details.
 - We schrijven front-end testen met Cypress.
 - Gebruik voor de front-end enkel componenten uit de component library (@domg-wc). Wijk enkel op expliciete vraag van deze regel af.
-- Custom css wordt zo veel als mogelijk vermeden, we blijven strikt binnen de mogelijkheden van de component library.
 - `vl-button`: boolean attributes, NIET `type="..."`. Error-stijl: `<vl-button error="">`.
 - `vl-button` tekst: via child content (`btn.textContent`), NIET via `label` attribuut.
-- `vl-button-icon`: voor icon-only knoppen. Error-stijl: `<vl-button-icon icon="bin" error="">`.
 - `vl-tabs`: gebruik `disable-links` attribuut bij hash-routing.
 - `vl-rich-data-table`: geen `vl-search-filter` slot voor client-side filtering (toont "0 resultaten").
 - Documentatie: `richtlijnen/frontend.md`
+- BELANGRIJK: iedere keer als je CSS schrijft, vraag u af: is er geen standaard manier om dat te doen in de webcomponentenbibliotheek? Custom CSS zou heel uitzonderlijk moeten zijn.
 
 ## Gotchas
 
