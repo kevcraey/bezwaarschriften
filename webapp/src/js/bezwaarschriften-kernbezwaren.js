@@ -5,7 +5,7 @@ import {VlAlert} from '@domg-wc/components/block/alert';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
-import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
+import {vlGlobalStyles, vlGridStyles, vlGroupStyles} from '@domg-wc/styles';
 import '@domg-wc/components/form/textarea-rich';
 
 registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent]);
@@ -16,11 +16,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       <style>
         ${vlGlobalStyles}
         ${vlGridStyles}
+        ${vlGroupStyles}
         :host { display: block; padding: 1.5rem; transition: margin-right 0.2s ease; }
         :host(.side-sheet-open) { margin-right: 33.3%; }
         .clustering-header {
-          display: flex;
-          justify-content: flex-end;
           margin-bottom: 1.5rem;
         }
         .categorie-wrapper {
@@ -321,7 +320,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
     // Globale knop bovenaan rechts
     const header = document.createElement('div');
-    header.className = 'clustering-header';
+    header.className = 'clustering-header vl-group vl-group--justify-end';
 
     const clusterAllesKnop = document.createElement('vl-button');
     clusterAllesKnop.id = 'cluster-alles-knop';

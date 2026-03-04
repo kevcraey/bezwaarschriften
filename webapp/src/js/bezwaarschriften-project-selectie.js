@@ -5,7 +5,7 @@ import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.c
 import {VlUploadComponent} from '@domg-wc/components/form/upload/vl-upload.component.js';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {VlToasterComponent} from '@domg-wc/components/block/toaster/vl-toaster.component.js';
-import {vlGlobalStyles, vlGridStyles} from '@domg-wc/styles';
+import {vlGlobalStyles, vlGridStyles, vlGroupStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 import './bezwaarschriften-kernbezwaren.js';
 import './bezwaarschriften-resultaten-tabel.js';
@@ -38,13 +38,16 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       <style>
         ${vlGlobalStyles}
         ${vlGridStyles}
+        ${vlGroupStyles}
       </style>
       <div id="tabs-sectie">
         <vl-tabs observe-title active-tab="documenten" disable-links>
           <vl-tabs-pane id="documenten" title="Documenten">
-            <vl-button id="verwerken-knop" hidden>Verwerken</vl-button>
-            <vl-button id="verwijder-knop" error="" hidden>Verwijder geselecteerde</vl-button>
-            <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
+            <div class="vl-group">
+              <vl-button id="verwerken-knop" hidden>Verwerken</vl-button>
+              <vl-button id="verwijder-knop" error="" hidden>Verwijder geselecteerde</vl-button>
+              <vl-button id="toevoegen-knop">Bestanden toevoegen</vl-button>
+            </div>
             <p id="fout-melding" hidden></p>
             <bezwaarschriften-bezwaren-tabel id="bezwaren-tabel"></bezwaarschriften-bezwaren-tabel>
           </vl-tabs-pane>
