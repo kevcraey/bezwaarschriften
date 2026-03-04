@@ -202,7 +202,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     // Klik op de verwijder-knop bij Mobiliteit (klaar categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[label="Verwijder clustering"]')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="bin"]')
         .click();
 
     cy.wait('@verwijderClustering');
@@ -366,5 +366,74 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .find('.clustering-header #cluster-alles-knop')
         .should('exist')
         .and('contain.text', 'Cluster alle');
+  });
+
+  it('toont vuilbak en retry knop bij klare categorie', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    // Vuilbak-knop met ghost en error
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="bin"]')
+        .should('exist')
+        .and('have.attr', 'ghost', '')
+        .and('have.attr', 'error', '');
+
+    // Retry-knop met ghost
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="synchronize"]')
+        .should('exist')
+        .and('have.attr', 'ghost', '');
+  });
+
+  it('retry bij klaar verwijdert en herstart clustering', () => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
+      statusCode: 200,
+    }).as('verwijderClustering');
+
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
+      statusCode: 202,
+      body: {
+        id: 10, projectNaam: 'testproject', categorie: 'Mobiliteit',
+        status: 'wachtend', aantalBezwaren: 42,
+        aangemaaktOp: '2026-03-04T10:00:00Z',
+      },
+    }).as('startClustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="synchronize"]')
+        .click();
+
+    cy.wait('@verwijderClustering');
+    cy.wait('@startClustering');
+  });
+
+  it('retry bij klaar toont modal als er antwoorden zijn', () => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
+      statusCode: 409,
+      body: {aantalAntwoorden: 3},
+    }).as('verwijderClustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="synchronize"]')
+        .click();
+
+    cy.wait('@verwijderClustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-bevestiging-inhoud')
+        .should('contain.text', '3 antwoord(en)');
   });
 });

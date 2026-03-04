@@ -386,11 +386,9 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       const pill = this._maakStatusPill(ct);
       categorieHeader.appendChild(pill);
 
-      // Actieknop
-      const actieKnop = this._maakActieKnop(ct);
-      if (actieKnop) {
-        categorieHeader.appendChild(actieKnop);
-      }
+      // Actieknoppen
+      const actieKnoppen = this._maakActieKnoppen(ct);
+      categorieHeader.appendChild(actieKnoppen);
 
       wrapper.appendChild(categorieHeader);
 
@@ -488,49 +486,45 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     return pill;
   }
 
-  _maakActieKnop(ct) {
-    let icon;
-    let titel;
-    let error = false;
-    let onClick;
+  _maakActieKnoppen(ct) {
+    const fragment = document.createDocumentFragment();
+
+    const maakKnop = (icon, titel, onClick, error = false) => {
+      const btn = document.createElement('vl-button');
+      btn.setAttribute('icon', icon);
+      btn.setAttribute('label', titel);
+      btn.setAttribute('ghost', '');
+      if (error) btn.setAttribute('error', '');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onClick();
+      });
+      return btn;
+    };
 
     switch (ct.status) {
       case 'todo':
-        icon = 'play-filled';
-        titel = 'Clustering starten';
-        onClick = () => this._startClustering(ct.categorie);
+        fragment.appendChild(maakKnop('play-filled', 'Clustering starten',
+            () => this._startClustering(ct.categorie)));
         break;
       case 'wachtend':
       case 'bezig':
-        icon = 'close';
-        titel = 'Annuleer clustering';
-        onClick = () => this._annuleerClustering(ct.categorie);
+        fragment.appendChild(maakKnop('close', 'Annuleer clustering',
+            () => this._annuleerClustering(ct.categorie)));
         break;
       case 'klaar':
-        icon = 'bin';
-        titel = 'Verwijder clustering';
-        error = true;
-        onClick = () => this._toonVerwijderBevestiging(ct.categorie);
+        fragment.appendChild(maakKnop('bin', 'Verwijder clustering',
+            () => this._toonVerwijderBevestiging(ct.categorie), true));
+        fragment.appendChild(maakKnop('synchronize', 'Opnieuw clusteren',
+            () => this._retryClustering(ct.categorie)));
         break;
       case 'fout':
-        icon = 'synchronize';
-        titel = 'Opnieuw clusteren';
-        onClick = () => this._startClustering(ct.categorie);
+        fragment.appendChild(maakKnop('synchronize', 'Opnieuw clusteren',
+            () => this._startClustering(ct.categorie)));
         break;
-      default:
-        return null;
     }
 
-    const btn = document.createElement('vl-button');
-    btn.setAttribute('icon', icon);
-    btn.setAttribute('label', titel);
-    btn.setAttribute('ghost', '');
-    if (error) btn.setAttribute('error', '');
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onClick();
-    });
-    return btn;
+    return fragment;
   }
 
   // --- Timer management ---
@@ -683,6 +677,40 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _toonVerwijderBevestiging(categorie) {
     this._verwijderClustering(categorie);
+  }
+
+  _retryClustering(categorie) {
+    if (!this._projectNaam) return;
+    const url = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}`;
+
+    fetch(url, {method: 'DELETE'})
+        .then((response) => {
+          if (response.status === 409) {
+            return response.json().then((data) => {
+              this._toonVerwijderBevestigingModal(
+                  categorie,
+                  data.aantalAntwoorden || 0,
+                  () => {
+                    fetch(`${url}?bevestigd=true`, {method: 'DELETE'})
+                        .then((resp) => {
+                          if (!resp.ok) throw new Error('Verwijderen mislukt');
+                          this._startClustering(categorie);
+                        });
+                  },
+              );
+              return null;
+            });
+          }
+          if (!response.ok) throw new Error('Opnieuw clusteren mislukt');
+          this._startClustering(categorie);
+          return null;
+        })
+        .catch(() => {
+          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
+            bubbles: true, composed: true,
+            detail: {bericht: 'Opnieuw clusteren mislukt'},
+          }));
+        });
   }
 
   _toonVerwijderBevestigingModal(categorie, aantalAntwoorden, onBevestig) {
