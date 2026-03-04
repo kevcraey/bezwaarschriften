@@ -30,6 +30,26 @@ const MOCK_CLUSTERING_TAKEN = {
   ],
 };
 
+// Mock zonder actieve taken: knop "Alles verwijderen" is zichtbaar
+const MOCK_CLUSTERING_KLAAR = {
+  categorieen: [
+    {
+      categorie: 'Mobiliteit', status: 'klaar', taakId: 1, aantalBezwaren: 42,
+      aantalKernbezwaren: 3, foutmelding: null,
+      aangemaaktOp: '2026-03-03T10:00:00Z',
+      verwerkingGestartOp: '2026-03-03T10:00:01Z',
+      verwerkingVoltooidOp: '2026-03-03T10:00:15Z',
+    },
+    {
+      categorie: 'Natuur', status: 'klaar', taakId: 2, aantalBezwaren: 6,
+      aantalKernbezwaren: 2, foutmelding: null,
+      aangemaaktOp: '2026-03-03T10:00:00Z',
+      verwerkingGestartOp: '2026-03-03T10:00:01Z',
+      verwerkingVoltooidOp: '2026-03-03T10:00:05Z',
+    },
+  ],
+};
+
 describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
   beforeEach(() => {
     cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
@@ -236,11 +256,43 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .and('contain.text', 'Wachtend');
   });
 
-  it('toont alles-verwijderen knop naast cluster-alles knop als er klare categorien zijn', () => {
+  it('verbergt alles-verwijderen knop als er actieve taken zijn naast klare', () => {
+    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
+      statusCode: 200,
+      body: {
+        categorieen: [
+          {
+            categorie: 'Mobiliteit', status: 'klaar', taakId: 1, aantalBezwaren: 42,
+            aantalKernbezwaren: 3,
+          },
+          {
+            categorie: 'Geluid', status: 'bezig', taakId: 2, aantalBezwaren: 25,
+            aantalKernbezwaren: null,
+          },
+        ],
+      },
+    }).as('metActieveTaak');
+
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
 
-    cy.wait('@clusteringTaken');
+    cy.wait('@metActieveTaak');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-alles-knop')
+        .should('not.exist');
+  });
+
+  it('toont alles-verwijderen knop naast cluster-alles knop als er klare categorien zijn', () => {
+    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
+      statusCode: 200,
+      body: MOCK_CLUSTERING_KLAAR,
+    }).as('alleenKlaar');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@alleenKlaar');
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('#verwijder-alles-knop')
@@ -249,10 +301,15 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
   });
 
   it('verwijdert alles zonder antwoorden na klik op alles-verwijderen', () => {
+    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
+      statusCode: 200,
+      body: MOCK_CLUSTERING_KLAAR,
+    }).as('alleenKlaar');
+
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
 
-    cy.wait('@clusteringTaken');
+    cy.wait('@alleenKlaar');
 
     cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
       statusCode: 200,
@@ -268,6 +325,11 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
   });
 
   it('toont bevestigingsmodal bij alles verwijderen als er antwoorden zijn', () => {
+    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
+      statusCode: 200,
+      body: MOCK_CLUSTERING_KLAAR,
+    }).as('alleenKlaar');
+
     cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
       statusCode: 409,
       body: {aantalAntwoorden: 5},
@@ -276,7 +338,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
 
-    cy.wait('@clusteringTaken');
+    cy.wait('@alleenKlaar');
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('#verwijder-alles-knop')

@@ -330,7 +330,9 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     header.appendChild(clusterAllesKnop);
 
     const heeftKlareCategorie = this._clusteringTaken.some((ct) => ct.status === 'klaar');
-    if (heeftKlareCategorie) {
+    const heeftActieveTaak = this._clusteringTaken.some(
+        (ct) => ct.status === 'wachtend' || ct.status === 'bezig');
+    if (heeftKlareCategorie && !heeftActieveTaak) {
       const verwijderAllesKnop = document.createElement('vl-button');
       verwijderAllesKnop.id = 'verwijder-alles-knop';
       verwijderAllesKnop.setAttribute('error', '');

@@ -371,6 +371,19 @@ class ClusteringTaakServiceTest {
   }
 
   @Test
+  void verwijderAlleClusteringen_verwijdertDirectBijThemasZonderKernbezwaren() {
+    var thema = maakThema(100L, "windmolens", "Geluid");
+    when(themaRepository.findByProjectNaam("windmolens")).thenReturn(List.of(thema));
+    when(kernbezwaarRepository.findByThemaIdIn(List.of(100L))).thenReturn(List.of());
+
+    var resultaat = service.verwijderAlleClusteringen("windmolens", false);
+
+    assertThat(resultaat.verwijderd()).isTrue();
+    verify(antwoordRepository, never()).countByKernbezwaarIdIn(any());
+    verify(themaRepository).deleteByProjectNaam("windmolens");
+  }
+
+  @Test
   void verwijderAlleClusteringen_retourneertSuccesZonderThemas() {
     when(themaRepository.findByProjectNaam("windmolens")).thenReturn(List.of());
 
