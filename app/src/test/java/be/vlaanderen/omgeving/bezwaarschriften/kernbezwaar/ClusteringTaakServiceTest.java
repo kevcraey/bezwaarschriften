@@ -99,18 +99,28 @@ class ClusteringTaakServiceTest {
   }
 
   @Test
-  void annuleer_zetStatusOpGeannuleerd() {
+  void annuleer_verwijdertWachtendeTaak() {
     var taak = maakTaak(1L, "windmolens", "Geluid", ClusteringTaakStatus.WACHTEND);
     when(taakRepository.findById(1L)).thenReturn(Optional.of(taak));
-    when(bezwaarRepository.countByProjectNaamAndCategorie("windmolens", "Geluid"))
-        .thenReturn(5);
 
     var resultaat = service.annuleer(1L);
 
     assertThat(resultaat).isTrue();
-    assertThat(taak.getStatus()).isEqualTo(ClusteringTaakStatus.GEANNULEERD);
-    verify(taakRepository).save(taak);
-    verify(notificatie).clusteringTaakGewijzigd(any(ClusteringTaakDto.class));
+    verify(taakRepository).delete(taak);
+    verify(taakRepository, never()).save(any());
+    verify(notificatie, never()).clusteringTaakGewijzigd(any(ClusteringTaakDto.class));
+  }
+
+  @Test
+  void annuleer_verwijdertBezigeTaak() {
+    var taak = maakTaak(1L, "windmolens", "Geluid", ClusteringTaakStatus.BEZIG);
+    when(taakRepository.findById(1L)).thenReturn(Optional.of(taak));
+
+    var resultaat = service.annuleer(1L);
+
+    assertThat(resultaat).isTrue();
+    verify(taakRepository).delete(taak);
+    verify(taakRepository, never()).save(any());
   }
 
   @Test
@@ -121,6 +131,7 @@ class ClusteringTaakServiceTest {
     var resultaat = service.annuleer(1L);
 
     assertThat(resultaat).isFalse();
+    verify(taakRepository, never()).delete(any(ClusteringTaak.class));
     verify(taakRepository, never()).save(any());
   }
 
@@ -238,26 +249,17 @@ class ClusteringTaakServiceTest {
   }
 
   @Test
-  void isGeannuleerd_returnsTrueWhenGeannuleerd() {
-    var taak = maakTaak(1L, "windmolens", "Geluid", ClusteringTaakStatus.GEANNULEERD);
-    when(taakRepository.findById(1L)).thenReturn(Optional.of(taak));
+  void isGeannuleerd_returnsTrueWhenNietGevonden() {
+    when(taakRepository.existsById(99L)).thenReturn(false);
 
-    assertThat(service.isGeannuleerd(1L)).isTrue();
+    assertThat(service.isGeannuleerd(99L)).isTrue();
   }
 
   @Test
-  void isGeannuleerd_returnsFalseWhenBezig() {
-    var taak = maakTaak(1L, "windmolens", "Geluid", ClusteringTaakStatus.BEZIG);
-    when(taakRepository.findById(1L)).thenReturn(Optional.of(taak));
+  void isGeannuleerd_returnsFalseWhenBestaat() {
+    when(taakRepository.existsById(1L)).thenReturn(true);
 
     assertThat(service.isGeannuleerd(1L)).isFalse();
-  }
-
-  @Test
-  void isGeannuleerd_returnsFalseWhenNotFound() {
-    when(taakRepository.findById(99L)).thenReturn(Optional.empty());
-
-    assertThat(service.isGeannuleerd(99L)).isFalse();
   }
 
   @Test

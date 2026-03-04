@@ -7,6 +7,5 @@ public enum ClusteringTaakStatus {
   WACHTEND,
   BEZIG,
   KLAAR,
-  FOUT,
-  GEANNULEERD
+  FOUT
 }

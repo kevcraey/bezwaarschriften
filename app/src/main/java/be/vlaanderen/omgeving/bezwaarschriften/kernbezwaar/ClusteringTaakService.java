@@ -161,19 +161,19 @@ public class ClusteringTaakService {
   }
 
   /**
-   * Controleert of een taak geannuleerd is.
+   * Controleert of een taak geannuleerd is (= verwijderd uit de database).
    *
    * @param taakId ID van de taak
-   * @return true als de taak status GEANNULEERD heeft
+   * @return true als de taak niet meer bestaat
    */
   public boolean isGeannuleerd(Long taakId) {
-    return taakRepository.findById(taakId)
-        .map(taak -> taak.getStatus() == ClusteringTaakStatus.GEANNULEERD)
-        .orElse(false);
+    return !taakRepository.existsById(taakId);
   }
 
   /**
    * Annuleert een taak als die status WACHTEND of BEZIG heeft.
+   * De taak wordt verwijderd uit de database zodat de categorie
+   * terugkeert naar "todo"-status in het overzicht.
    *
    * @param taakId ID van de taak
    * @return true als de taak geannuleerd is, false als de status dat niet toelaat
@@ -190,13 +190,9 @@ public class ClusteringTaakService {
       return false;
     }
 
-    taak.setStatus(ClusteringTaakStatus.GEANNULEERD);
-    taakRepository.save(taak);
-
-    int aantalBezwaren = bezwaarRepository.countByProjectNaamAndCategorie(
-        taak.getProjectNaam(), taak.getCategorie());
-    var dto = ClusteringTaakDto.van(taak, aantalBezwaren, null);
-    notificatie.clusteringTaakGewijzigd(dto);
+    taakRepository.delete(taak);
+    LOGGER.info("Clustering-taak {} geannuleerd en verwijderd: project='{}', categorie='{}'",
+        taak.getId(), taak.getProjectNaam(), taak.getCategorie());
     return true;
   }
 
