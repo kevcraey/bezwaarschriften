@@ -1,0 +1,334 @@
+package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+import be.vlaanderen.omgeving.bezwaarschriften.BaseBezwaarschriftenIntegrationTest;
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaak;
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakStatus;
+import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaak;
+import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakStatus;
+import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
+import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectPoort;
+import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectService;
+import java.time.Instant;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+/**
+ * Integratietest die de cascade-verwijdering van documenten en projecten valideert
+ * tegen een echte PostgreSQL-database via Testcontainers.
+ *
+ * <p>Test dat de JPQL-queries in de repositories correct samenwerken met de
+ * ON DELETE CASCADE constraints op databaseniveau.
+ */
+class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
+
+  @MockBean
+  private ProjectPoort projectPoort;
+
+  @Autowired
+  private ProjectService projectService;
+
+  @Autowired
+  private ExtractieTaakRepository extractieTaakRepository;
+
+  @Autowired
+  private GeextraheerdBezwaarRepository bezwaarRepository;
+
+  @Autowired
+  private ThemaRepository themaRepository;
+
+  @Autowired
+  private KernbezwaarRepository kernbezwaarRepository;
+
+  @Autowired
+  private KernbezwaarReferentieRepository referentieRepository;
+
+  @Autowired
+  private KernbezwaarAntwoordRepository antwoordRepository;
+
+  @Autowired
+  private ClusteringTaakRepository clusteringTaakRepository;
+
+  @Autowired
+  private ConsolidatieTaakRepository consolidatieTaakRepository;
+
+  @BeforeEach
+  void setUp() {
+    // Mock ProjectPoort om filesystem-operaties te vermijden
+    when(projectPoort.verwijderBestand(anyString(), anyString())).thenReturn(true);
+    when(projectPoort.verwijderProject(anyString())).thenReturn(true);
+
+    // Schoon alle tabellen op in de juiste volgorde (geen FK-schendingen)
+    referentieRepository.deleteAll();
+    antwoordRepository.deleteAll();
+    kernbezwaarRepository.deleteAll();
+    themaRepository.deleteAll();
+    clusteringTaakRepository.deleteAll();
+    consolidatieTaakRepository.deleteAll();
+    bezwaarRepository.deleteAll();
+    extractieTaakRepository.deleteAll();
+  }
+
+  // --- Scenario 1: Document verwijderd, gedeeld kernbezwaar blijft bestaan ---
+
+  @Test
+  @DisplayName("Gedeeld kernbezwaar behoudt referentie naar ander document na verwijdering")
+  void gedeeldKernbezwaarBlijftBestaanNaDocumentVerwijdering() {
+    // Arrange: 2 documenten in "testproject"
+    var taakA = maakExtractieTaak("testproject", "doc-a.txt");
+    var taakB = maakExtractieTaak("testproject", "doc-b.txt");
+    maakBezwaar(taakA.getId(), "milieu", "Bezwaar over geluid doc A");
+    maakBezwaar(taakB.getId(), "milieu", "Bezwaar over geluid doc B");
+
+    var thema = maakThema("testproject", "milieu");
+    var k1 = maakKernbezwaar(thema.getId(), "Geluidshinder is onaanvaardbaar");
+    maakReferentie(k1.getId(), "doc-a.txt", "passage over geluid in doc A");
+    maakReferentie(k1.getId(), "doc-b.txt", "passage over geluid in doc B");
+
+    // Act: verwijder doc-a
+    projectService.verwijderBezwaar("testproject", "doc-a.txt");
+
+    // Assert: K1 bestaat nog met enkel de doc-b referentie
+    assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
+    var overgeblevenRefs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
+    assertThat(overgeblevenRefs).hasSize(1);
+    assertThat(overgeblevenRefs.get(0).getBestandsnaam()).isEqualTo("doc-b.txt");
+  }
+
+  // --- Scenario 2: Document verwijderd, niet-gedeeld kernbezwaar verdwijnt ---
+
+  @Test
+  @DisplayName("Niet-gedeeld kernbezwaar en antwoord worden verwijderd met document")
+  void nietGedeeldKernbezwaarVerdwijntBijDocumentVerwijdering() {
+    // Arrange: 2 documenten, K2 heeft enkel referenties naar doc-a
+    var taakA = maakExtractieTaak("testproject", "doc-a.txt");
+    maakExtractieTaak("testproject", "doc-b.txt");
+
+    var thema = maakThema("testproject", "milieu");
+    var k2 = maakKernbezwaar(thema.getId(), "Fijnstof is problematisch");
+    maakReferentie(k2.getId(), "doc-a.txt", "passage over fijnstof in doc A");
+    maakAntwoord(k2.getId(), "<p>Antwoord op fijnstofbezwaar</p>");
+
+    // Act: verwijder doc-a
+    projectService.verwijderBezwaar("testproject", "doc-a.txt");
+
+    // Assert: K2 is weg (geen referenties meer), antwoord mee via DB cascade
+    assertThat(kernbezwaarRepository.findById(k2.getId())).isEmpty();
+    assertThat(antwoordRepository.findById(k2.getId())).isEmpty();
+    assertThat(referentieRepository.findByKernbezwaarIdIn(List.of(k2.getId()))).isEmpty();
+  }
+
+  // --- Scenario 3: Leeg thema wordt mee opgeruimd ---
+
+  @Test
+  @DisplayName("Thema zonder kernbezwaren wordt verwijderd na documentverwijdering")
+  void leegThemaWordtVerwijderdNaDocumentVerwijdering() {
+    // Arrange: thema "verkeer" met 1 kernbezwaar dat enkel naar doc-a verwijst
+    var taakA = maakExtractieTaak("testproject", "doc-a.txt");
+
+    var themaVerkeer = maakThema("testproject", "verkeer");
+    var k3 = maakKernbezwaar(themaVerkeer.getId(), "Verkeersoverlast");
+    maakReferentie(k3.getId(), "doc-a.txt", "passage over verkeer");
+
+    // Ander thema met referentie naar ander document moet blijven bestaan
+    var themaMilieu = maakThema("testproject", "milieu");
+    var k4 = maakKernbezwaar(themaMilieu.getId(), "Geluidshinder");
+    maakReferentie(k4.getId(), "doc-b.txt", "passage over geluid");
+
+    // Act: verwijder doc-a
+    projectService.verwijderBezwaar("testproject", "doc-a.txt");
+
+    // Assert: thema "verkeer" is weg, thema "milieu" bestaat nog
+    assertThat(themaRepository.findById(themaVerkeer.getId())).isEmpty();
+    assertThat(themaRepository.findById(themaMilieu.getId())).isPresent();
+    assertThat(kernbezwaarRepository.findById(k3.getId())).isEmpty();
+    assertThat(kernbezwaarRepository.findById(k4.getId())).isPresent();
+  }
+
+  // --- Scenario 4: Heel project verwijderd ---
+
+  @Test
+  @DisplayName("Projectverwijdering ruimt alle gerelateerde data op")
+  void projectVerwijderingRuimtAllesOp() {
+    // Arrange: "testproject" met volledige datastructuur
+    var taakA = maakExtractieTaak("testproject", "doc-a.txt");
+    var taakB = maakExtractieTaak("testproject", "doc-b.txt");
+    maakBezwaar(taakA.getId(), "milieu", "Bezwaar A");
+    maakBezwaar(taakB.getId(), "milieu", "Bezwaar B");
+
+    var thema = maakThema("testproject", "milieu");
+    var k1 = maakKernbezwaar(thema.getId(), "Geluid");
+    maakReferentie(k1.getId(), "doc-a.txt", "passage A");
+    maakReferentie(k1.getId(), "doc-b.txt", "passage B");
+    maakAntwoord(k1.getId(), "<p>Antwoord op geluid</p>");
+
+    var clusteringTaak = maakClusteringTaak("testproject", "milieu");
+    var consolidatieTaak = maakConsolidatieTaak("testproject", "doc-a.txt");
+
+    // Arrange: "anderproject" met eigen data
+    var anderTaak = maakExtractieTaak("anderproject", "ander-doc.txt");
+    maakBezwaar(anderTaak.getId(), "natuur", "Bezwaar ander");
+
+    var anderThema = maakThema("anderproject", "natuur");
+    var anderKern = maakKernbezwaar(anderThema.getId(), "Natuurschade");
+    maakReferentie(anderKern.getId(), "ander-doc.txt", "passage ander");
+    maakAntwoord(anderKern.getId(), "<p>Antwoord op natuur</p>");
+
+    var anderClustering = maakClusteringTaak("anderproject", "natuur");
+    var anderConsolidatie = maakConsolidatieTaak("anderproject", "ander-doc.txt");
+
+    // Act: verwijder "testproject"
+    projectService.verwijderProject("testproject");
+
+    // Assert: alle data van "testproject" is weg
+    assertThat(extractieTaakRepository.findByProjectNaam("testproject")).isEmpty();
+    assertThat(themaRepository.findByProjectNaam("testproject")).isEmpty();
+    assertThat(kernbezwaarRepository.findById(k1.getId())).isEmpty();
+    assertThat(referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()))).isEmpty();
+    assertThat(antwoordRepository.findById(k1.getId())).isEmpty();
+    assertThat(clusteringTaakRepository.findByProjectNaam("testproject")).isEmpty();
+    assertThat(consolidatieTaakRepository.findByProjectNaam("testproject")).isEmpty();
+
+    // Assert: "anderproject" data is onaangetast
+    assertThat(extractieTaakRepository.findByProjectNaam("anderproject")).hasSize(1);
+    assertThat(themaRepository.findByProjectNaam("anderproject")).hasSize(1);
+    assertThat(kernbezwaarRepository.findById(anderKern.getId())).isPresent();
+    assertThat(referentieRepository.findByKernbezwaarIdIn(List.of(anderKern.getId())))
+        .hasSize(1);
+    assertThat(antwoordRepository.findById(anderKern.getId())).isPresent();
+    assertThat(clusteringTaakRepository.findByProjectNaam("anderproject")).hasSize(1);
+    assertThat(consolidatieTaakRepository.findByProjectNaam("anderproject")).hasSize(1);
+  }
+
+  // --- Gecombineerd scenario: gedeeld + niet-gedeeld + leeg thema ---
+
+  @Test
+  @DisplayName("Documentverwijdering behandelt gedeelde en niet-gedeelde kernbezwaren correct")
+  void gecombineerdScenarioDocumentVerwijdering() {
+    // Arrange: 2 documenten, mix van gedeelde en niet-gedeelde kernbezwaren
+    var taakA = maakExtractieTaak("testproject", "doc-a.txt");
+    var taakB = maakExtractieTaak("testproject", "doc-b.txt");
+
+    var themaMilieu = maakThema("testproject", "milieu");
+
+    // K1: gedeeld kernbezwaar (referenties naar beide documenten)
+    var k1 = maakKernbezwaar(themaMilieu.getId(), "Geluidshinder gedeeld");
+    maakReferentie(k1.getId(), "doc-a.txt", "geluid passage A");
+    maakReferentie(k1.getId(), "doc-b.txt", "geluid passage B");
+
+    // K2: niet-gedeeld kernbezwaar (enkel doc-a) met antwoord
+    var k2 = maakKernbezwaar(themaMilieu.getId(), "Fijnstof enkel doc-a");
+    maakReferentie(k2.getId(), "doc-a.txt", "fijnstof passage");
+    maakAntwoord(k2.getId(), "<p>Fijnstof antwoord</p>");
+
+    var themaVerkeer = maakThema("testproject", "verkeer");
+
+    // K3: niet-gedeeld kernbezwaar in apart thema (enkel doc-a)
+    var k3 = maakKernbezwaar(themaVerkeer.getId(), "Verkeersoverlast enkel doc-a");
+    maakReferentie(k3.getId(), "doc-a.txt", "verkeer passage");
+
+    // Act: verwijder doc-a
+    projectService.verwijderBezwaar("testproject", "doc-a.txt");
+
+    // Assert: K1 bestaat nog met enkel doc-b referentie
+    assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
+    var k1Refs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
+    assertThat(k1Refs).hasSize(1);
+    assertThat(k1Refs.get(0).getBestandsnaam()).isEqualTo("doc-b.txt");
+
+    // Assert: K2 is verwijderd samen met antwoord (DB cascade)
+    assertThat(kernbezwaarRepository.findById(k2.getId())).isEmpty();
+    assertThat(antwoordRepository.findById(k2.getId())).isEmpty();
+
+    // Assert: K3 is verwijderd, thema "verkeer" ook (leeg thema)
+    assertThat(kernbezwaarRepository.findById(k3.getId())).isEmpty();
+    assertThat(themaRepository.findById(themaVerkeer.getId())).isEmpty();
+
+    // Assert: thema "milieu" bestaat nog (K1 zit er nog in)
+    assertThat(themaRepository.findById(themaMilieu.getId())).isPresent();
+  }
+
+  // --- Helper methoden voor testdata-aanmaak ---
+
+  private ExtractieTaak maakExtractieTaak(String projectNaam, String bestandsnaam) {
+    var taak = new ExtractieTaak();
+    taak.setProjectNaam(projectNaam);
+    taak.setBestandsnaam(bestandsnaam);
+    taak.setStatus(ExtractieTaakStatus.KLAAR);
+    taak.setAantalPogingen(1);
+    taak.setMaxPogingen(3);
+    taak.setAangemaaktOp(Instant.now());
+    return extractieTaakRepository.save(taak);
+  }
+
+  private GeextraheerdBezwaarEntiteit maakBezwaar(Long taakId, String categorie,
+      String samenvatting) {
+    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    bezwaar.setTaakId(taakId);
+    bezwaar.setPassageNr(1);
+    bezwaar.setSamenvatting(samenvatting);
+    bezwaar.setCategorie(categorie);
+    return bezwaarRepository.save(bezwaar);
+  }
+
+  private ThemaEntiteit maakThema(String projectNaam, String naam) {
+    var thema = new ThemaEntiteit();
+    thema.setProjectNaam(projectNaam);
+    thema.setNaam(naam);
+    return themaRepository.save(thema);
+  }
+
+  private KernbezwaarEntiteit maakKernbezwaar(Long themaId, String samenvatting) {
+    var kern = new KernbezwaarEntiteit();
+    kern.setThemaId(themaId);
+    kern.setSamenvatting(samenvatting);
+    return kernbezwaarRepository.save(kern);
+  }
+
+  private KernbezwaarReferentieEntiteit maakReferentie(Long kernbezwaarId, String bestandsnaam,
+      String passage) {
+    var ref = new KernbezwaarReferentieEntiteit();
+    ref.setKernbezwaarId(kernbezwaarId);
+    ref.setBestandsnaam(bestandsnaam);
+    ref.setPassage(passage);
+    return referentieRepository.save(ref);
+  }
+
+  private KernbezwaarAntwoordEntiteit maakAntwoord(Long kernbezwaarId, String inhoud) {
+    var antwoord = new KernbezwaarAntwoordEntiteit();
+    antwoord.setKernbezwaarId(kernbezwaarId);
+    antwoord.setInhoud(inhoud);
+    antwoord.setBijgewerktOp(Instant.now());
+    return antwoordRepository.save(antwoord);
+  }
+
+  private ClusteringTaak maakClusteringTaak(String projectNaam, String categorie) {
+    var taak = new ClusteringTaak();
+    taak.setProjectNaam(projectNaam);
+    taak.setCategorie(categorie);
+    taak.setStatus(ClusteringTaakStatus.KLAAR);
+    taak.setAangemaaktOp(Instant.now());
+    return clusteringTaakRepository.save(taak);
+  }
+
+  private ConsolidatieTaak maakConsolidatieTaak(String projectNaam, String bestandsnaam) {
+    var taak = new ConsolidatieTaak();
+    taak.setProjectNaam(projectNaam);
+    taak.setBestandsnaam(bestandsnaam);
+    taak.setStatus(ConsolidatieTaakStatus.KLAAR);
+    taak.setAantalPogingen(1);
+    taak.setMaxPogingen(3);
+    taak.setAangemaaktOp(Instant.now());
+    return consolidatieTaakRepository.save(taak);
+  }
+}
