@@ -363,10 +363,13 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       accordion.setAttribute('toggle-text', ct.categorie);
       accordion.dataset.categorie = ct.categorie;
 
-      // Subtitle slot: info-tekst
-      const subtitle = document.createElement('span');
+      // Subtitle slot: info-alert
+      const subtitle = document.createElement('vl-alert');
       subtitle.slot = 'subtitle';
-      subtitle.textContent = this._maakSubtitleTekst(ct);
+      subtitle.setAttribute('type', 'success');
+      subtitle.setAttribute('naked', '');
+      subtitle.setAttribute('size', 'small');
+      subtitle.setAttribute('message', this._maakSubtitleTekst(ct));
       accordion.appendChild(subtitle);
 
       // Menu slot: pill met status + actieknoppen

@@ -481,8 +481,9 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@clusteringTaken');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] [slot="subtitle"]')
-        .should('contain.text', '18 bezwaren');
+        .find('vl-accordion[data-categorie="Milieu"] vl-alert[slot="subtitle"]')
+        .should('have.attr', 'message')
+        .and('include', '18 bezwaren');
   });
 
   it('toont subtitle met bezwaren en kernbezwaren voor klare categorie', () => {
@@ -510,9 +511,10 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@kernbezwarenKlaar');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="subtitle"]')
-        .should('contain.text', '42 bezwaren')
-        .and('contain.text', '3 kernbezwaren');
+        .find('vl-accordion[data-categorie="Mobiliteit"] vl-alert[slot="subtitle"]')
+        .should('have.attr', 'message')
+        .and('include', '42 bezwaren')
+        .and('include', '3 kernbezwaren');
   });
 
   it('toont pill in menu-slot van accordion', () => {
