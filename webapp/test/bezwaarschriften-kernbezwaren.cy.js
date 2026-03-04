@@ -64,15 +64,16 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.mount(html`<bezwaarschriften-kernbezwaren></bezwaarschriften-kernbezwaren>`);
   });
 
-  it('toont info-tekst in menu-slot voor klare clustering', () => {
+  it('toont info-blok in menu-slot voor klare clustering', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
 
     cy.wait('@clusteringTaken');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] .klaar-info-tekst')
-        .should('contain.text', 'bezwaren');
+        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] .klaar-info')
+        .should('exist')
+        .and('contain.text', 'bezwaren');
   });
 
   it('toont \'Te clusteren\' voor todo categorie', () => {
@@ -508,7 +509,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@kernbezwarenKlaar');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] .klaar-info-tekst')
+        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] .klaar-info')
         .should('contain.text', '42 bezwaren')
         .and('contain.text', '3 kernbezwaren');
   });

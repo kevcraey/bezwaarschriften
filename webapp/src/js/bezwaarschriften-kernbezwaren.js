@@ -71,14 +71,21 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           align-self: center;
         }
         .klaar-menu {
-          display: flex;
+          display: inline-flex;
           align-items: center;
           gap: 0.25rem;
+          flex-shrink: 0;
         }
-        .klaar-info-tekst {
-          color: #0e7c26;
-          font-size: 0.9rem;
+        .klaar-info {
+          display: inline-flex;
+          align-items: center;
+          padding: 0.15rem 0.5rem;
+          background-color: #e8f5e9;
+          border-left: 3px solid #0e7c3a;
+          color: #0e7c3a;
+          font-size: 0.875rem;
           white-space: nowrap;
+          line-height: 1.4;
         }
         .side-sheet-wrapper {
           display: flex;
@@ -381,10 +388,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         menu.slot = 'menu';
         menu.className = 'klaar-menu';
 
-        const infoTekst = document.createElement('span');
-        infoTekst.className = 'klaar-info-tekst';
-        infoTekst.textContent = this._maakSubtitleTekst(ct);
-        menu.appendChild(infoTekst);
+        const info = document.createElement('span');
+        info.className = 'klaar-info';
+        info.textContent = this._maakSubtitleTekst(ct);
+        menu.appendChild(info);
 
         menu.appendChild(this._maakPillKnop('\u00d7', 'Verwijder clustering',
             () => this._toonVerwijderBevestiging(ct.categorie)));
