@@ -1,5 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarService;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -23,17 +25,25 @@ public class ProjectService {
 
   private final ProjectPoort projectPoort;
   private final ExtractieTaakRepository extractieTaakRepository;
+  private final KernbezwaarService kernbezwaarService;
+  private final ConsolidatieTaakRepository consolidatieTaakRepository;
 
   /**
    * Maakt een nieuwe ProjectService aan.
    *
    * @param projectPoort Port voor filesystem toegang
    * @param extractieTaakRepository Repository voor extractie-taken
+   * @param kernbezwaarService Service voor kernbezwaar-opruiming
+   * @param consolidatieTaakRepository Repository voor consolidatie-taken
    */
   public ProjectService(ProjectPoort projectPoort,
-      ExtractieTaakRepository extractieTaakRepository) {
+      ExtractieTaakRepository extractieTaakRepository,
+      KernbezwaarService kernbezwaarService,
+      ConsolidatieTaakRepository consolidatieTaakRepository) {
     this.projectPoort = projectPoort;
     this.extractieTaakRepository = extractieTaakRepository;
+    this.kernbezwaarService = kernbezwaarService;
+    this.consolidatieTaakRepository = consolidatieTaakRepository;
   }
 
   /**
@@ -123,6 +133,7 @@ public class ProjectService {
    */
   @Transactional
   public boolean verwijderBezwaar(String projectNaam, String bestandsnaam) {
+    kernbezwaarService.ruimOpNaDocumentVerwijdering(projectNaam, bestandsnaam);
     extractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
     return projectPoort.verwijderBestand(projectNaam, bestandsnaam);
   }
@@ -169,6 +180,8 @@ public class ProjectService {
    */
   @Transactional
   public boolean verwijderProject(String naam) {
+    kernbezwaarService.ruimAllesOpVoorProject(naam);
+    consolidatieTaakRepository.deleteByProjectNaam(naam);
     extractieTaakRepository.deleteByProjectNaam(naam);
     return projectPoort.verwijderProject(naam);
   }

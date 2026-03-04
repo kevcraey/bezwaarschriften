@@ -36,6 +36,7 @@ public class KernbezwaarService {
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarReferentieRepository referentieRepository;
   private final ClusteringTaakService clusteringTaakService;
+  private final ClusteringTaakRepository clusteringTaakRepository;
   private final TransactionTemplate transactionTemplate;
 
   /**
@@ -51,6 +52,7 @@ public class KernbezwaarService {
    * @param kernbezwaarRepository repository voor kernbezwaren
    * @param referentieRepository repository voor kernbezwaar-referenties
    * @param clusteringTaakService service voor clustering-taak levenscyclus
+   * @param clusteringTaakRepository repository voor clustering-taken
    * @param transactionManager transaction manager voor korte transactieblokken
    */
   public KernbezwaarService(EmbeddingPoort embeddingPoort,
@@ -63,6 +65,7 @@ public class KernbezwaarService {
       KernbezwaarRepository kernbezwaarRepository,
       KernbezwaarReferentieRepository referentieRepository,
       ClusteringTaakService clusteringTaakService,
+      ClusteringTaakRepository clusteringTaakRepository,
       PlatformTransactionManager transactionManager) {
     this.embeddingPoort = embeddingPoort;
     this.clusteringPoort = clusteringPoort;
@@ -74,6 +77,7 @@ public class KernbezwaarService {
     this.kernbezwaarRepository = kernbezwaarRepository;
     this.referentieRepository = referentieRepository;
     this.clusteringTaakService = clusteringTaakService;
+    this.clusteringTaakRepository = clusteringTaakRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
@@ -209,6 +213,30 @@ public class KernbezwaarService {
     entiteit.setInhoud(inhoud);
     entiteit.setBijgewerktOp(Instant.now());
     antwoordRepository.save(entiteit);
+  }
+
+  /**
+   * Ruimt kernbezwaar-data op na verwijdering van een document.
+   * Verwijdert referenties voor het bestand, daarna lege kernbezwaren, lege thema's,
+   * en clustering-taken waarvan het corresponderende thema niet meer bestaat.
+   */
+  public void ruimOpNaDocumentVerwijdering(String projectNaam, String bestandsnaam) {
+    referentieRepository.deleteByBestandsnaamAndProjectNaam(bestandsnaam, projectNaam);
+    kernbezwaarRepository.deleteZonderReferenties(projectNaam);
+    themaRepository.deleteZonderKernbezwaren(projectNaam);
+    clusteringTaakRepository.deleteZonderThema(projectNaam);
+  }
+
+  /**
+   * Ruimt alle kernbezwaar- en clusteringdata op voor een project.
+   * Kernbezwaren, referenties en antwoorden worden via ON DELETE CASCADE
+   * op database-niveau meeverwijderd bij het verwijderen van thema's.
+   *
+   * @param projectNaam naam van het project
+   */
+  public void ruimAllesOpVoorProject(String projectNaam) {
+    themaRepository.deleteByProjectNaam(projectNaam);
+    clusteringTaakRepository.deleteByProjectNaam(projectNaam);
   }
 
   private Thema clusterCategorie(String projectNaam, String categorieNaam,

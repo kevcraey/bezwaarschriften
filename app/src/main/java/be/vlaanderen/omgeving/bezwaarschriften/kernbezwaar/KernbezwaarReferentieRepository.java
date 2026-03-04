@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,4 +19,16 @@ public interface KernbezwaarReferentieRepository extends JpaRepository<Kernbezwa
       + "JOIN ThemaEntiteit t ON k.themaId = t.id "
       + "WHERE t.projectNaam = :projectNaam")
   List<KernbezwaarReferentieEntiteit> findByProjectNaam(@Param("projectNaam") String projectNaam);
+
+  @Modifying(clearAutomatically = true)
+  @Query("DELETE FROM KernbezwaarReferentieEntiteit r "
+      + "WHERE r.bestandsnaam = :bestandsnaam "
+      + "AND r.kernbezwaarId IN ("
+      + "  SELECT k.id FROM KernbezwaarEntiteit k "
+      + "  WHERE k.themaId IN ("
+      + "    SELECT t.id FROM ThemaEntiteit t "
+      + "    WHERE t.projectNaam = :projectNaam))")
+  void deleteByBestandsnaamAndProjectNaam(
+      @Param("bestandsnaam") String bestandsnaam,
+      @Param("projectNaam") String projectNaam);
 }

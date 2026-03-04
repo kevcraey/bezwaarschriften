@@ -2,9 +2,12 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarService;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -24,11 +27,18 @@ class ProjectServiceTest {
   @Mock
   private ExtractieTaakRepository extractieTaakRepository;
 
+  @Mock
+  private KernbezwaarService kernbezwaarService;
+
+  @Mock
+  private ConsolidatieTaakRepository consolidatieTaakRepository;
+
   private ProjectService service;
 
   @BeforeEach
   void setUp() {
-    service = new ProjectService(projectPoort, extractieTaakRepository);
+    service = new ProjectService(projectPoort, extractieTaakRepository,
+        kernbezwaarService, consolidatieTaakRepository);
   }
 
   @Test
@@ -139,14 +149,30 @@ class ProjectServiceTest {
   }
 
   @Test
-  void verwijderProject_verwijdertExtractieTakenEnDelegeerNaarPoort() {
+  void verwijderBezwaar_ruimtKernbezwaarDataOpVoorVerwijdering() {
+    when(projectPoort.verwijderBestand("windmolens", "bezwaar-001.txt")).thenReturn(true);
+
+    service.verwijderBezwaar("windmolens", "bezwaar-001.txt");
+
+    var inOrder = inOrder(kernbezwaarService, extractieTaakRepository, projectPoort);
+    inOrder.verify(kernbezwaarService).ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
+    inOrder.verify(extractieTaakRepository).deleteByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt");
+    inOrder.verify(projectPoort).verwijderBestand("windmolens", "bezwaar-001.txt");
+  }
+
+  @Test
+  void verwijderProject_verwijdertAlleDataEnDelegeerNaarPoort() {
     when(projectPoort.verwijderProject("oud-project")).thenReturn(true);
 
     boolean result = service.verwijderProject("oud-project");
 
     assertThat(result).isTrue();
-    verify(extractieTaakRepository).deleteByProjectNaam("oud-project");
-    verify(projectPoort).verwijderProject("oud-project");
+    var inOrder = inOrder(kernbezwaarService, consolidatieTaakRepository,
+        extractieTaakRepository, projectPoort);
+    inOrder.verify(kernbezwaarService).ruimAllesOpVoorProject("oud-project");
+    inOrder.verify(consolidatieTaakRepository).deleteByProjectNaam("oud-project");
+    inOrder.verify(extractieTaakRepository).deleteByProjectNaam("oud-project");
+    inOrder.verify(projectPoort).verwijderProject("oud-project");
   }
 
   @Test
@@ -156,6 +182,8 @@ class ProjectServiceTest {
     boolean result = service.verwijderProject("bestaat-niet");
 
     assertThat(result).isFalse();
+    verify(kernbezwaarService).ruimAllesOpVoorProject("bestaat-niet");
+    verify(consolidatieTaakRepository).deleteByProjectNaam("bestaat-niet");
     verify(extractieTaakRepository).deleteByProjectNaam("bestaat-niet");
   }
 
