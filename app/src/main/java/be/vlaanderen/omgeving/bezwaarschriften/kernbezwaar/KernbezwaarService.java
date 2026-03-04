@@ -227,6 +227,10 @@ public class KernbezwaarService {
 
   /**
    * Ruimt alle kernbezwaar- en clusteringdata op voor een project.
+   * Kernbezwaren, referenties en antwoorden worden via ON DELETE CASCADE
+   * op database-niveau meeverwijderd bij het verwijderen van thema's.
+   *
+   * @param projectNaam naam van het project
    */
   public void ruimAllesOpVoorProject(String projectNaam) {
     themaRepository.deleteByProjectNaam(projectNaam);

@@ -14,7 +14,7 @@ public interface KernbezwaarRepository extends JpaRepository<KernbezwaarEntiteit
 
   int countByThemaId(Long themaId);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query("DELETE FROM KernbezwaarEntiteit k "
       + "WHERE k.themaId IN ("
       + "  SELECT t.id FROM ThemaEntiteit t WHERE t.projectNaam = :projectNaam) "

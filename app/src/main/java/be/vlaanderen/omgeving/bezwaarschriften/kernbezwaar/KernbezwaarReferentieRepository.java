@@ -20,7 +20,7 @@ public interface KernbezwaarReferentieRepository extends JpaRepository<Kernbezwa
       + "WHERE t.projectNaam = :projectNaam")
   List<KernbezwaarReferentieEntiteit> findByProjectNaam(@Param("projectNaam") String projectNaam);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query("DELETE FROM KernbezwaarReferentieEntiteit r "
       + "WHERE r.bestandsnaam = :bestandsnaam "
       + "AND r.kernbezwaarId IN ("

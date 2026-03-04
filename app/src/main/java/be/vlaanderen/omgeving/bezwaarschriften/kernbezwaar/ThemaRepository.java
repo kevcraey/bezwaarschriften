@@ -17,7 +17,7 @@ public interface ThemaRepository extends JpaRepository<ThemaEntiteit, Long> {
 
   void deleteByProjectNaamAndNaam(String projectNaam, String naam);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query("DELETE FROM ThemaEntiteit t "
       + "WHERE t.projectNaam = :projectNaam "
       + "AND t.id NOT IN ("
