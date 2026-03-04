@@ -67,6 +67,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           font-variant-numeric: tabular-nums;
           min-width: 120px;
           display: inline-block;
+          white-space: nowrap;
+          align-self: center;
         }
         .side-sheet-wrapper {
           display: flex;
