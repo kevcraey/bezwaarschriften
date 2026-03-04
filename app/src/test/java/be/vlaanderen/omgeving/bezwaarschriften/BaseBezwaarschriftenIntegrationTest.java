@@ -19,7 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public abstract class BaseBezwaarschriftenIntegrationTest {
 
   @Container
-  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17")
+  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg17")
       .withDatabaseName("bezwaarschriften")
       .withUsername("test")
       .withPassword("test");
