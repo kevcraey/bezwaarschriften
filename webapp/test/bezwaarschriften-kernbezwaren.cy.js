@@ -64,19 +64,19 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.mount(html`<bezwaarschriften-kernbezwaren></bezwaarschriften-kernbezwaren>`);
   });
 
-  it('toont info-blok in menu-slot voor klare clustering', () => {
+  it('toont bezwaren-tekst in pill voor klare clustering', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
 
     cy.wait('@clusteringTaken');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] .klaar-info')
-        .should('exist')
-        .and('contain.text', 'bezwaren');
+        .find('vl-accordion[data-categorie="Mobiliteit"] vl-pill[slot="menu"]')
+        .should('have.attr', 'type', 'success')
+        .and('contain.text', '42');
   });
 
-  it('toont \'Te clusteren\' voor todo categorie', () => {
+  it('toont bezwaren-aantal in pill voor todo categorie', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
 
@@ -84,7 +84,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-accordion[data-categorie="Milieu"] vl-pill')
-        .should('contain.text', 'Te clusteren');
+        .should('contain.text', '18');
 
     // Todo-pill heeft geen type="success", "error" of "warning"
     cy.get('bezwaarschriften-kernbezwaren')
@@ -232,10 +232,10 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     cy.wait('@clusteringTaken');
 
-    // Controleer initieel: Milieu is 'todo'
+    // Controleer initieel: Milieu is 'todo' — toont bezwaren-aantal
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-accordion[data-categorie="Milieu"] vl-pill')
-        .should('contain.text', 'Te clusteren');
+        .should('contain.text', '18');
 
     // Update Milieu naar 'wachtend'
     cy.get('bezwaarschriften-kernbezwaren')
@@ -479,9 +479,8 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@clusteringTaken');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-alert')
-        .should('have.attr', 'message')
-        .and('include', '18 bezwaren');
+        .find('vl-accordion[data-categorie="Milieu"] vl-pill[slot="menu"]')
+        .should('contain.text', '18');
   });
 
   it('toont subtitle met bezwaren en kernbezwaren voor klare categorie', () => {
@@ -509,26 +508,25 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@kernbezwarenKlaar');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] .klaar-info')
-        .should('contain.text', '42 bezwaren')
-        .and('contain.text', '3 kernbezwaren');
+        .find('vl-accordion[data-categorie="Mobiliteit"] vl-pill[slot="menu"]')
+        .should('contain.text', '42')
+        .and('contain.text', '3');
   });
 
-  it('toont pill in menu-slot voor niet-klare categorie', () => {
+  it('toont pill in menu-slot voor alle categorieen', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
 
     cy.wait('@clusteringTaken');
 
-    // Milieu is 'todo' — heeft wel een pill in het menu-slot
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-accordion[data-categorie="Milieu"] vl-pill[slot="menu"]')
         .should('exist');
 
-    // Mobiliteit is 'klaar' — geen pill, maar een info-alert in het menu-slot
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-accordion[data-categorie="Mobiliteit"] vl-pill[slot="menu"]')
-        .should('not.exist');
+        .should('exist')
+        .and('have.attr', 'type', 'success');
   });
 
   it('alle accordions zijn standaard dichtgeklapt', () => {

@@ -65,27 +65,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         }
         .status-pill {
           font-variant-numeric: tabular-nums;
-          min-width: 120px;
-          display: inline-block;
+          min-width: 8rem;
+          display: inline-flex;
           white-space: nowrap;
           align-self: center;
-        }
-        .klaar-menu {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          flex-shrink: 0;
-        }
-        .klaar-info {
-          display: inline-flex;
-          align-items: center;
-          padding: 0.15rem 0.5rem;
-          background-color: #e8f5e9;
-          border-left: 3px solid #0e7c3a;
-          color: #0e7c3a;
-          font-size: 0.875rem;
-          white-space: nowrap;
-          line-height: 1.4;
+          justify-content: center;
         }
         .side-sheet-wrapper {
           display: flex;
@@ -382,50 +366,21 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       accordion.setAttribute('toggle-text', ct.categorie);
       accordion.dataset.categorie = ct.categorie;
 
-      if (ct.status === 'klaar') {
-        // Menu slot: compacte info-tekst + losse actieknoppen (geen pill)
-        const menu = document.createElement('div');
-        menu.slot = 'menu';
-        menu.className = 'klaar-menu';
+      // Menu slot: pill met status + actieknoppen
+      const pill = this._maakStatusPill(ct);
+      pill.slot = 'menu';
+      accordion.appendChild(pill);
 
-        const info = document.createElement('span');
-        info.className = 'klaar-info';
-        info.textContent = this._maakSubtitleTekst(ct);
-        menu.appendChild(info);
-
-        menu.appendChild(this._maakPillKnop('\u00d7', 'Verwijder clustering',
-            () => this._toonVerwijderBevestiging(ct.categorie)));
-        menu.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw clusteren',
-            () => this._retryClustering(ct.categorie)));
-
-        accordion.appendChild(menu);
-
-        // Content: kernbezwaren
-        if (this._themas) {
-          const thema = this._themas.find((t) => t.naam === ct.categorie);
-          if (thema && thema.kernbezwaren.length > 0) {
-            const content = document.createElement('div');
-            thema.kernbezwaren.forEach((kern) => {
-              content.appendChild(this._maakKernbezwaarItem(kern));
-            });
-            accordion.appendChild(content);
-          }
+      // Content: kernbezwaren (alleen bij klaar)
+      if (ct.status === 'klaar' && this._themas) {
+        const thema = this._themas.find((t) => t.naam === ct.categorie);
+        if (thema && thema.kernbezwaren.length > 0) {
+          const content = document.createElement('div');
+          thema.kernbezwaren.forEach((kern) => {
+            content.appendChild(this._maakKernbezwaarItem(kern));
+          });
+          accordion.appendChild(content);
         }
-      } else {
-        // Menu slot: pill met status + actieknoppen
-        const pill = this._maakStatusPill(ct);
-        pill.slot = 'menu';
-        accordion.appendChild(pill);
-
-        // Content: info-alert (toont bezwaren-aantal)
-        const content = document.createElement('div');
-        const infoAlert = document.createElement('vl-alert');
-        infoAlert.setAttribute('type', 'success');
-        infoAlert.setAttribute('naked', '');
-        infoAlert.setAttribute('size', 'small');
-        infoAlert.setAttribute('message', this._maakSubtitleTekst(ct));
-        content.appendChild(infoAlert);
-        accordion.appendChild(content);
       }
 
       inhoud.appendChild(accordion);
@@ -474,7 +429,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
     switch (ct.status) {
       case 'todo':
-        pill.textContent = 'Te clusteren';
+        pill.textContent = `${ct.aantalBezwaren}`;
         pill.appendChild(this._maakPillKnop('\u25b6', 'Clustering starten',
             () => this._startClustering(ct.categorie)));
         break;
@@ -491,7 +446,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       }
       case 'klaar': {
         pill.setAttribute('type', 'success');
-        pill.textContent = this._formatClusteringStatus(ct);
+        pill.textContent = this._maakSubtitleTekst(ct);
         pill.appendChild(this._maakPillKnop('\u00d7', 'Verwijder clustering',
             () => this._toonVerwijderBevestiging(ct.categorie)));
         pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw clusteren',
@@ -515,10 +470,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     if (ct.status === 'klaar' && this._themas) {
       const thema = this._themas.find((t) => t.naam === ct.categorie);
       if (thema) {
-        return `${ct.aantalBezwaren} bezwaren → ${thema.kernbezwaren.length} kernbezwaren`;
+        return `${ct.aantalBezwaren} \u2192 ${thema.kernbezwaren.length}`;
       }
     }
-    return `${ct.aantalBezwaren} bezwaren`;
+    return `${ct.aantalBezwaren}`;
   }
 
   _maakPillKnop(symbool, titel, onClick) {
