@@ -495,19 +495,24 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   }
 
   _werkKernbezwarenTabTitelBij(aantalMetAntwoord, totaal) {
-    if (totaal === 0) return;
+    const tabs = this.shadowRoot.querySelector('vl-tabs');
+    const slot = tabs && tabs.shadowRoot &&
+        tabs.shadowRoot.querySelector(`slot[name="kernbezwaren-title-slot"]`);
+    if (!slot) return;
+
+    if (totaal === 0) {
+      slot.innerHTML = 'Kernbezwaren';
+      slot.style.color = '';
+      return;
+    }
+
     const allesKlaar = aantalMetAntwoord === totaal;
 
     let titel = `Kernbezwaren (${aantalMetAntwoord}/${totaal})`;
     if (allesKlaar) titel = `\u2714\uFE0F Kernbezwaren (${totaal}/${totaal})`;
 
-    const tabs = this.shadowRoot.querySelector('vl-tabs');
-    const slot = tabs && tabs.shadowRoot &&
-        tabs.shadowRoot.querySelector(`slot[name="kernbezwaren-title-slot"]`);
-    if (slot) {
-      slot.innerHTML = titel;
-      slot.style.color = allesKlaar ? '#0e7c3a' : '';
-    }
+    slot.innerHTML = titel;
+    slot.style.color = allesKlaar ? '#0e7c3a' : '';
   }
 
   _werkVerwerkenKnopBij() {
