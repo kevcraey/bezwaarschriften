@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -65,6 +66,9 @@ class KernbezwaarServiceTest {
   private ClusteringTaakService clusteringTaakService;
 
   @Mock
+  private ClusteringTaakRepository clusteringTaakRepository;
+
+  @Mock
   private PlatformTransactionManager transactionManager;
 
   private KernbezwaarService service;
@@ -78,7 +82,8 @@ class KernbezwaarServiceTest {
         bezwaarRepository, passageRepository, taakRepository,
         antwoordRepository, themaRepository,
         kernbezwaarRepository, referentieRepository,
-        clusteringTaakService, transactionManager);
+        clusteringTaakService, clusteringTaakRepository,
+        transactionManager);
   }
 
   @Test
@@ -360,6 +365,34 @@ class KernbezwaarServiceTest {
     assertThat(thema.naam()).isEqualTo("Geluid");
     assertThat(thema.kernbezwaren()).hasSize(1);
     verify(themaRepository).deleteByProjectNaamAndNaam("windmolens", "Geluid");
+  }
+
+  @Test
+  void ruimOpNaDocumentVerwijdering_verwijdertReferentiesEnLegeKernbezwarenEnThemas() {
+    service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
+
+    verify(referentieRepository).deleteByBestandsnaamAndProjectNaam("bezwaar-001.txt", "windmolens");
+    verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
+    verify(themaRepository).deleteZonderKernbezwaren("windmolens");
+  }
+
+  @Test
+  void ruimOpNaDocumentVerwijdering_roeptStappenInJuisteVolgordeAan() {
+    var inOrder = inOrder(referentieRepository, kernbezwaarRepository, themaRepository);
+
+    service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
+
+    inOrder.verify(referentieRepository).deleteByBestandsnaamAndProjectNaam("bezwaar-001.txt", "windmolens");
+    inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
+    inOrder.verify(themaRepository).deleteZonderKernbezwaren("windmolens");
+  }
+
+  @Test
+  void ruimAllesOpVoorProject_verwijdertAlleKernbezwaarEnClusteringData() {
+    service.ruimAllesOpVoorProject("windmolens");
+
+    verify(themaRepository).deleteByProjectNaam("windmolens");
+    verify(clusteringTaakRepository).deleteByProjectNaam("windmolens");
   }
 
   // --- Hulpmethoden ---
