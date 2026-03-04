@@ -505,6 +505,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       padding: '0',
       marginLeft: '6px',
       lineHeight: '1',
+      verticalAlign: 'middle',
       opacity: '0.6',
     });
     btn.addEventListener('mouseenter', () => {
