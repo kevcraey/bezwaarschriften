@@ -135,7 +135,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     // Zoek de play-knop bij Milieu (todo categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Milieu"] vl-button[label="Clustering starten"]')
+        .find('.categorie-wrapper[data-categorie="Milieu"] vl-pill button[title="Clustering starten"]')
         .click();
 
     cy.wait('@startClustering');
@@ -183,7 +183,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     // Klik op de annuleer-knop bij Geluid (bezig categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Geluid"] vl-button[label="Annuleer clustering"]')
+        .find('.categorie-wrapper[data-categorie="Geluid"] vl-pill button[title="Annuleer clustering"]')
         .click();
 
     cy.wait('@annuleerClustering');
@@ -202,7 +202,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     // Klik op de verwijder-knop bij Mobiliteit (klaar categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="bin"]')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-pill button[title="Verwijder clustering"]')
         .click();
 
     cy.wait('@verwijderClustering');
@@ -220,11 +220,10 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     cy.wait('@clusteringTaken');
 
-    // Controleer dat de synchronize-knop bestaat bij Natuur (fout categorie)
+    // Controleer dat de retry-knop bestaat bij Natuur (fout categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Natuur"] vl-button[label="Opnieuw clusteren"]')
-        .should('exist')
-        .and('have.attr', 'icon', 'synchronize');
+        .find('.categorie-wrapper[data-categorie="Natuur"] vl-pill button[title="Opnieuw clusteren"]')
+        .should('exist');
   });
 
   it('update pill status via werkBijMetClusteringUpdate', () => {
@@ -368,24 +367,21 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .and('contain.text', 'Cluster alle');
   });
 
-  it('toont vuilbak en retry knop bij klare categorie', () => {
+  it('toont verwijder en retry knop in pill bij klare categorie', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));
 
     cy.wait('@clusteringTaken');
 
-    // Vuilbak-knop met ghost en error
+    // Verwijder-knop in pill
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="bin"]')
-        .should('exist')
-        .and('have.attr', 'ghost', '')
-        .and('have.attr', 'error', '');
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-pill button[title="Verwijder clustering"]')
+        .should('exist');
 
-    // Retry-knop met ghost
+    // Retry-knop in pill
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="synchronize"]')
-        .should('exist')
-        .and('have.attr', 'ghost', '');
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-pill button[title="Opnieuw clusteren"]')
+        .should('exist');
   });
 
   it('retry bij klaar verwijdert en herstart clustering', () => {
@@ -408,7 +404,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@clusteringTaken');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="synchronize"]')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-pill button[title="Opnieuw clusteren"]')
         .click();
 
     cy.wait('@verwijderClustering');
@@ -427,7 +423,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@clusteringTaken');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="synchronize"]')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-pill button[title="Opnieuw clusteren"]')
         .click();
 
     cy.wait('@verwijderClustering');
@@ -464,7 +460,7 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
 
     // Klik retry
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-button[icon="synchronize"]')
+        .find('.categorie-wrapper[data-categorie="Mobiliteit"] vl-pill button[title="Opnieuw clusteren"]')
         .click();
 
     cy.wait('@verwijderClustering');

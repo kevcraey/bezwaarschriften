@@ -382,13 +382,9 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       label.textContent = `${ct.categorie} (${ct.aantalBezwaren} bezwaren)`;
       categorieHeader.appendChild(label);
 
-      // Pill met status
+      // Pill met status + actieknoppen
       const pill = this._maakStatusPill(ct);
       categorieHeader.appendChild(pill);
-
-      // Actieknoppen
-      const actieKnoppen = this._maakActieKnoppen(ct);
-      categorieHeader.appendChild(actieKnoppen);
 
       wrapper.appendChild(categorieHeader);
 
@@ -460,6 +456,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     switch (ct.status) {
       case 'todo':
         pill.textContent = 'Te clusteren';
+        pill.appendChild(this._maakPillKnop('\u25b6', 'Clustering starten',
+            () => this._startClustering(ct.categorie)));
         break;
       case 'wachtend':
       case 'bezig': {
@@ -468,16 +466,24 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         span.className = 'timer-tekst';
         span.textContent = this._formatClusteringStatus(ct);
         pill.appendChild(span);
+        pill.appendChild(this._maakPillKnop('\u00d7', 'Annuleer clustering',
+            () => this._annuleerClustering(ct.categorie)));
         break;
       }
       case 'klaar': {
         pill.setAttribute('type', 'success');
         pill.textContent = this._formatClusteringStatus(ct);
+        pill.appendChild(this._maakPillKnop('\u00d7', 'Verwijder clustering',
+            () => this._toonVerwijderBevestiging(ct.categorie)));
+        pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw clusteren',
+            () => this._retryClustering(ct.categorie)));
         break;
       }
       case 'fout':
         pill.setAttribute('type', 'error');
         pill.textContent = 'Fout';
+        pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw clusteren',
+            () => this._startClustering(ct.categorie)));
         break;
       default:
         pill.textContent = ct.status;
@@ -486,45 +492,32 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     return pill;
   }
 
-  _maakActieKnoppen(ct) {
-    const fragment = document.createDocumentFragment();
-
-    const maakKnop = (icon, titel, onClick, error = false) => {
-      const btn = document.createElement('vl-button');
-      btn.setAttribute('icon', icon);
-      btn.setAttribute('label', titel);
-      btn.setAttribute('ghost', '');
-      if (error) btn.setAttribute('error', '');
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onClick();
-      });
-      return btn;
-    };
-
-    switch (ct.status) {
-      case 'todo':
-        fragment.appendChild(maakKnop('play-filled', 'Clustering starten',
-            () => this._startClustering(ct.categorie)));
-        break;
-      case 'wachtend':
-      case 'bezig':
-        fragment.appendChild(maakKnop('close', 'Annuleer clustering',
-            () => this._annuleerClustering(ct.categorie)));
-        break;
-      case 'klaar':
-        fragment.appendChild(maakKnop('bin', 'Verwijder clustering',
-            () => this._toonVerwijderBevestiging(ct.categorie), true));
-        fragment.appendChild(maakKnop('synchronize', 'Opnieuw clusteren',
-            () => this._retryClustering(ct.categorie)));
-        break;
-      case 'fout':
-        fragment.appendChild(maakKnop('synchronize', 'Opnieuw clusteren',
-            () => this._startClustering(ct.categorie)));
-        break;
-    }
-
-    return fragment;
+  _maakPillKnop(symbool, titel, onClick) {
+    const btn = document.createElement('button');
+    btn.title = titel;
+    btn.textContent = symbool;
+    Object.assign(btn.style, {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '14px',
+      color: 'inherit',
+      padding: '0',
+      marginLeft: '6px',
+      lineHeight: '1',
+      opacity: '0.6',
+    });
+    btn.addEventListener('mouseenter', () => {
+      btn.style.opacity = '1';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.opacity = '0.6';
+    });
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
   }
 
   // --- Timer management ---
