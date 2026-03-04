@@ -369,47 +369,34 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
     // Per categorie
     this._clusteringTaken.forEach((ct) => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'categorie-wrapper';
-      wrapper.dataset.categorie = ct.categorie;
+      const accordion = document.createElement('vl-accordion');
+      accordion.setAttribute('toggle-text', ct.categorie);
+      accordion.dataset.categorie = ct.categorie;
 
-      const categorieHeader = document.createElement('div');
-      categorieHeader.className = 'categorie-header';
+      // Subtitle slot: info-tekst
+      const subtitle = document.createElement('span');
+      subtitle.slot = 'subtitle';
+      subtitle.textContent = this._maakSubtitleTekst(ct);
+      accordion.appendChild(subtitle);
 
-      // Label: "Geluid (42 bezwaren)"
-      const label = document.createElement('span');
-      label.className = 'categorie-label';
-      label.textContent = `${ct.categorie} (${ct.aantalBezwaren} bezwaren)`;
-      categorieHeader.appendChild(label);
-
-      // Pill met status + actieknoppen
+      // Menu slot: pill met status + actieknoppen
       const pill = this._maakStatusPill(ct);
-      categorieHeader.appendChild(pill);
+      pill.slot = 'menu';
+      accordion.appendChild(pill);
 
-      wrapper.appendChild(categorieHeader);
-
-      // Kernbezwaren tonen voor klare categorien
+      // Content: kernbezwaren (alleen bij klaar)
       if (ct.status === 'klaar' && this._themas) {
         const thema = this._themas.find((t) => t.naam === ct.categorie);
         if (thema && thema.kernbezwaren.length > 0) {
-          const aantalKern = thema.kernbezwaren.length;
-          const reductie = Math.round(ct.aantalBezwaren / aantalKern);
-          const reductieTekst = reductie > 1 ? ` (${reductie}x reductie)` : '';
-          const samenvatting = document.createElement('vl-alert');
-          samenvatting.setAttribute('type', 'success');
-          samenvatting.setAttribute('naked', '');
-          samenvatting.setAttribute('size', 'small');
-          samenvatting.setAttribute('message', `Er zijn ${ct.aantalBezwaren} individuele bezwaren ` +
-              `herleid naar ${aantalKern} kernbezwaren${reductieTekst}.`);
-          wrapper.appendChild(samenvatting);
-
+          const wrapper = document.createElement('div');
           thema.kernbezwaren.forEach((kern) => {
             wrapper.appendChild(this._maakKernbezwaarItem(kern));
           });
+          accordion.appendChild(wrapper);
         }
       }
 
-      inhoud.appendChild(wrapper);
+      inhoud.appendChild(accordion);
     });
 
     this._dispatchVoortgang();
@@ -490,6 +477,16 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     }
 
     return pill;
+  }
+
+  _maakSubtitleTekst(ct) {
+    if (ct.status === 'klaar' && this._themas) {
+      const thema = this._themas.find((t) => t.naam === ct.categorie);
+      if (thema) {
+        return `${ct.aantalBezwaren} bezwaren → ${thema.kernbezwaren.length} kernbezwaren`;
+      }
+    }
+    return `${ct.aantalBezwaren} bezwaren`;
   }
 
   _maakPillKnop(symbool, titel, onClick) {
