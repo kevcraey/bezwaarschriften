@@ -258,6 +258,80 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(themaRepository.findById(themaMilieu.getId())).isPresent();
   }
 
+  // --- Scenario 5: Totaalaantal referenties na verwijdering ---
+
+  @Test
+  @DisplayName("Na documentverwijdering telt het totaal referenties enkel bezwaren uit het overblijvende document")
+  void totaalAantalReferentiesKloptNaDocumentVerwijdering() {
+    // Arrange: doc-a met 10 bezwaren, doc-b met 15 bezwaren
+    var taakA = maakExtractieTaak("testproject", "doc-a.txt");
+    var taakB = maakExtractieTaak("testproject", "doc-b.txt");
+
+    for (int i = 0; i < 10; i++) {
+      maakBezwaar(taakA.getId(), "milieu", "Bezwaar A-" + i);
+    }
+    for (int i = 0; i < 15; i++) {
+      maakBezwaar(taakB.getId(), "milieu", "Bezwaar B-" + i);
+    }
+
+    // Simuleer clustering-resultaat: 5 kernbezwaren
+    var thema = maakThema("testproject", "milieu");
+
+    // K1-K3: gedeelde kernbezwaren (referenties naar beide documenten)
+    var k1 = maakKernbezwaar(thema.getId(), "Geluidshinder");
+    maakReferentie(k1.getId(), "doc-a.txt", "geluid A-1");
+    maakReferentie(k1.getId(), "doc-a.txt", "geluid A-2");
+    maakReferentie(k1.getId(), "doc-b.txt", "geluid B-1");
+    maakReferentie(k1.getId(), "doc-b.txt", "geluid B-2");
+    maakReferentie(k1.getId(), "doc-b.txt", "geluid B-3");
+
+    var k2 = maakKernbezwaar(thema.getId(), "Fijnstof");
+    maakReferentie(k2.getId(), "doc-a.txt", "fijnstof A-1");
+    maakReferentie(k2.getId(), "doc-b.txt", "fijnstof B-1");
+    maakReferentie(k2.getId(), "doc-b.txt", "fijnstof B-2");
+
+    var k3 = maakKernbezwaar(thema.getId(), "Wateroverlast");
+    maakReferentie(k3.getId(), "doc-a.txt", "water A-1");
+    maakReferentie(k3.getId(), "doc-b.txt", "water B-1");
+
+    // K4: enkel doc-a referenties (verdwijnt na verwijdering)
+    var k4 = maakKernbezwaar(thema.getId(), "Trillingen");
+    maakReferentie(k4.getId(), "doc-a.txt", "trilling A-1");
+    maakReferentie(k4.getId(), "doc-a.txt", "trilling A-2");
+    maakReferentie(k4.getId(), "doc-a.txt", "trilling A-3");
+
+    // K5: enkel doc-b referenties (onaangetast)
+    var k5 = maakKernbezwaar(thema.getId(), "Geurhinder");
+    maakReferentie(k5.getId(), "doc-b.txt", "geur B-1");
+    maakReferentie(k5.getId(), "doc-b.txt", "geur B-2");
+    maakReferentie(k5.getId(), "doc-b.txt", "geur B-3");
+    maakReferentie(k5.getId(), "doc-b.txt", "geur B-4");
+
+    // Totaal voor: 7 doc-a refs + 10 doc-b refs = 17 referenties, 5 kernbezwaren
+    var alleRefsPre = referentieRepository.findByProjectNaam("testproject");
+    assertThat(alleRefsPre).hasSize(17);
+
+    // Act: verwijder doc-a
+    projectService.verwijderBezwaar("testproject", "doc-a.txt");
+
+    // Assert: enkel doc-b referenties blijven over
+    var alleRefsPost = referentieRepository.findByProjectNaam("testproject");
+    assertThat(alleRefsPost).hasSize(10);
+    assertThat(alleRefsPost).allSatisfy(ref ->
+        assertThat(ref.getBestandsnaam()).isEqualTo("doc-b.txt"));
+
+    // Assert: K4 (enkel doc-a) is verwijderd, rest bestaat nog
+    assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
+    assertThat(kernbezwaarRepository.findById(k2.getId())).isPresent();
+    assertThat(kernbezwaarRepository.findById(k3.getId())).isPresent();
+    assertThat(kernbezwaarRepository.findById(k4.getId())).isEmpty();
+    assertThat(kernbezwaarRepository.findById(k5.getId())).isPresent();
+
+    // Assert: 4 kernbezwaren over (K4 verwijderd)
+    var kernbezwaren = kernbezwaarRepository.findByThemaId(thema.getId());
+    assertThat(kernbezwaren).hasSize(4);
+  }
+
   // --- Helper methoden voor testdata-aanmaak ---
 
   private ExtractieTaak maakExtractieTaak(String projectNaam, String bestandsnaam) {
