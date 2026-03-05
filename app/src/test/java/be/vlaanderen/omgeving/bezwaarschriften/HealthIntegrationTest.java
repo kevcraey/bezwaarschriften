@@ -42,7 +42,9 @@ public class HealthIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
     String healthJson =
         mockMvc.perform(get("/admin/health")).andReturn().getResponse().getContentAsString();
     JsonNode health = objectMapper.readValue(healthJson, JsonNode.class);
-    assertThat(health.get("status").asText()).isEqualTo("UP");
+    assertThat(health.get("status").asText())
+        .as("Health status (response: %s)", healthJson)
+        .isEqualTo("UP");
   }
 
   @Test
@@ -55,7 +57,9 @@ public class HealthIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
   @Test
   public void kanGedetailleerdeHealthOpvragen() throws Exception {
     JsonNode health = getHealth();
-    assertThat(health.get("status").asText()).isEqualTo("UP");
+    assertThat(health.get("status").asText())
+        .as("Health status (components: %s)", health.get("components"))
+        .isEqualTo("UP");
     assertThat(health.has("components")).isTrue();
   }
 

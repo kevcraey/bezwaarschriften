@@ -10,19 +10,20 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @ActiveProfiles(Constants.SPRING_PROFILE_DEVELOPMENT)
-@Testcontainers
 public abstract class BaseBezwaarschriftenIntegrationTest {
 
-  @Container
-  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg17")
-      .withDatabaseName("bezwaarschriften")
-      .withUsername("test")
-      .withPassword("test");
+  static final PostgreSQLContainer<?> postgres;
+
+  static {
+    postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg17")
+        .withDatabaseName("bezwaarschriften")
+        .withUsername("test")
+        .withPassword("test");
+    postgres.start();
+  }
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
