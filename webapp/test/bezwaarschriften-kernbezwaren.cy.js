@@ -540,6 +540,43 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .should('not.exist');
   });
 
+  it('toont teller in (totaal|groepen) formaat op search-knop', () => {
+    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
+      statusCode: 200,
+      body: {
+        themas: [{
+          naam: 'Mobiliteit',
+          kernbezwaren: [{
+            id: 1,
+            samenvatting: 'Geluidshinder',
+            antwoord: null,
+            individueleBezwaren: [
+              {bestandsnaam: '001.txt', passage: 'Te veel geluid'},
+              {bestandsnaam: '002.txt', passage: 'Te veel geluid'},
+              {bestandsnaam: '003.txt', passage: 'Te veel geluid'},
+              {bestandsnaam: '004.txt', passage: 'Verkeer is gevaarlijk'},
+              {bestandsnaam: '005.txt', passage: 'Fietspaden ontbreken'},
+            ],
+          }],
+        }],
+      },
+    }).as('kernbezwaren');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => {
+          $el[0].laadClusteringTaken('testproject');
+          $el[0].laadKernbezwaren('testproject');
+        });
+
+    cy.wait('@clusteringTaken');
+    cy.wait('@kernbezwaren');
+
+    // Search-knop toont (5|3): 5 individuele bezwaren, 3 unieke groepen
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .should('contain.text', '(5|3)');
+  });
+
   it('toont categorienaam als toggle-text zonder aantal', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].laadClusteringTaken('testproject'));

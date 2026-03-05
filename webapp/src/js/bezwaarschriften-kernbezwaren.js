@@ -6,6 +6,7 @@ import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.compone
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {vlGlobalStyles, vlGridStyles, vlGroupStyles} from '@domg-wc/styles';
+import {groepeerPassages} from './passage-groepering.js';
 import '@domg-wc/components/form/textarea-rich';
 
 registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent]);
@@ -409,7 +410,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         if (thema && thema.kernbezwaren.length > 0) {
           const content = document.createElement('div');
           const gesorteerd = [...thema.kernbezwaren].sort(
-            (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
+              (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
           );
           gesorteerd.forEach((kern) => {
             content.appendChild(this._maakKernbezwaarItem(kern));
@@ -447,7 +448,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const knop = document.createElement('vl-button');
     knop.setAttribute('ghost', '');
     knop.setAttribute('icon', 'search');
-    knop.textContent = `(${kern.individueleBezwaren.length})`;
+    const totaal = kern.individueleBezwaren.length;
+    const groepen = groepeerPassages(kern.individueleBezwaren);
+    const aantalGroepen = groepen.length;
+    knop.textContent = totaal === aantalGroepen ? `(${totaal})` : `(${totaal}|${aantalGroepen})`;
     knop.addEventListener('click', () => this._toonPassages(kern));
 
     actie.appendChild(knop);
@@ -911,7 +915,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
       const wrapper = document.createElement('div');
       const gesorteerd = [...thema.kernbezwaren].sort(
-        (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
+          (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
       );
       gesorteerd.forEach((kern) => {
         wrapper.appendChild(this._maakKernbezwaarItem(kern));
