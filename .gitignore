@@ -5,7 +5,12 @@ dist/
 
 # Node
 node_modules/
+**/node_modules/
 .npmrc
+
+# Frontend build output
+webapp/build/
+webapp/dist/
 
 # IDE
 .idea/
@@ -22,7 +27,6 @@ tmp/
 .worktrees/
 
 # Stuff
-docs/
 .agents/
 richtlijnen/
 specs/
