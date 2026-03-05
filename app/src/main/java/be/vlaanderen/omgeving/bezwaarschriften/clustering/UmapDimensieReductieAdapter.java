@@ -1,5 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.clustering;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -41,7 +43,7 @@ public class UmapDimensieReductieAdapter implements DimensieReductiePoort {
     umap.setVerbose(false);
 
     double[][] invoer = naarDoubleMatrix(vectoren);
-    double[][] resultaat = umap.fitTransform(invoer);
+    double[][] resultaat = metOnderdrukteSysteemUitvoer(() -> umap.fitTransform(invoer));
     return naarFloatLijst(resultaat);
   }
 
@@ -56,6 +58,22 @@ public class UmapDimensieReductieAdapter implements DimensieReductiePoort {
       matrix[i] = doubles;
     }
     return matrix;
+  }
+
+  /**
+   * Voert een operatie uit terwijl System.out tijdelijk wordt onderdrukt.
+   * De UMAP-library (tag.bio) logt rechtstreeks naar System.out via Utils.message()
+   * en produceert onterecht "Update counter exceeded total" meldingen door een bug
+   * in de interne progress-tracking.
+   */
+  private <T> T metOnderdrukteSysteemUitvoer(java.util.function.Supplier<T> operatie) {
+    var origineel = System.out;
+    try {
+      System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+      return operatie.get();
+    } finally {
+      System.setOut(origineel);
+    }
   }
 
   private List<float[]> naarFloatLijst(double[][] matrix) {
