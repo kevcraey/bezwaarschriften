@@ -67,26 +67,41 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .kernbezwaar-item:last-child { border-bottom: none; }
         .kernbezwaar-samenvatting { flex: 1; margin-right: 1rem; }
         .kernbezwaar-actie { white-space: nowrap; }
-        .passage-item {
+        .passage-groep {
           margin-bottom: 1.5rem;
           padding-bottom: 1rem;
           border-bottom: 1px solid #e8ebee;
         }
-        .passage-item:last-child { border-bottom: none; }
-        .passage-bestandsnaam {
-          font-size: 0.85rem;
-          color: #687483;
-          margin-bottom: 0.25rem;
-          text-decoration: none;
-          cursor: pointer;
-        }
-        .passage-bestandsnaam:hover {
-          text-decoration: underline;
-          color: #0055cc;
+        .passage-groep:last-child {
+          border-bottom: none;
         }
         .passage-tekst {
           font-style: italic;
           line-height: 1.5;
+        }
+        .passage-documenten {
+          margin-top: 0.5rem;
+          font-size: 0.85rem;
+          line-height: 1.8;
+        }
+        .passage-document-link {
+          color: #687483;
+          text-decoration: none;
+          cursor: pointer;
+          margin-right: 0.5rem;
+        }
+        .passage-document-link:hover {
+          text-decoration: underline;
+          color: #0055cc;
+        }
+        .passage-toon-alle {
+          color: #0055cc;
+          cursor: pointer;
+          font-size: 0.85rem;
+          text-decoration: none;
+        }
+        .passage-toon-alle:hover {
+          text-decoration: underline;
         }
         .lege-staat {
           padding: 2rem;
@@ -1112,32 +1127,68 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     inhoud.innerHTML = '';
     if (titelEl) titelEl.textContent = kernbezwaar.samenvatting;
 
+    const groepen = groepeerPassages(kernbezwaar.individueleBezwaren);
+    const totaal = kernbezwaar.individueleBezwaren.length;
+
     const aantalLabel = document.createElement('p');
-    const n = kernbezwaar.individueleBezwaren.length;
-    aantalLabel.textContent = `${n} individuele bezwar${n === 1 ? '' : 'en'}:`;
+    if (groepen.length < totaal) {
+      aantalLabel.textContent = `${totaal} individuele bezwaren, ${groepen.length} unieke passages:`;
+    } else {
+      aantalLabel.textContent = `${totaal} individuele bezwar${totaal === 1 ? '' : 'en'}:`;
+    }
     inhoud.appendChild(aantalLabel);
 
-    kernbezwaar.individueleBezwaren.forEach((ref) => {
-      const item = document.createElement('div');
-      item.className = 'passage-item';
+    const MAX_ZICHTBAAR = 5;
 
-      const bestand = document.createElement('a');
-      bestand.className = 'passage-bestandsnaam';
-      bestand.textContent = ref.bestandsnaam;
-      bestand.href = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(ref.bestandsnaam)}/download`;
-      bestand.download = ref.bestandsnaam;
+    groepen.forEach((groep) => {
+      const groepEl = document.createElement('div');
+      groepEl.className = 'passage-groep';
 
       const passage = document.createElement('div');
       passage.className = 'passage-tekst';
-      passage.textContent = `"${ref.passage}"`;
+      passage.textContent = `"${groep.passage}"`;
+      groepEl.appendChild(passage);
 
-      item.appendChild(bestand);
-      item.appendChild(passage);
-      inhoud.appendChild(item);
+      const docContainer = document.createElement('div');
+      docContainer.className = 'passage-documenten';
+
+      const zichtbaar = groep.bezwaren.slice(0, MAX_ZICHTBAAR);
+      const verborgen = groep.bezwaren.slice(MAX_ZICHTBAAR);
+
+      zichtbaar.forEach((ref) => {
+        docContainer.appendChild(this._maakDocumentLink(ref));
+      });
+
+      if (verborgen.length > 0) {
+        const toonAlleLink = document.createElement('a');
+        toonAlleLink.className = 'passage-toon-alle';
+        toonAlleLink.href = '#';
+        toonAlleLink.textContent = `... (${groep.bezwaren.length} documenten)`;
+        toonAlleLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          verborgen.forEach((ref) => {
+            docContainer.insertBefore(this._maakDocumentLink(ref), toonAlleLink);
+          });
+          toonAlleLink.remove();
+        });
+        docContainer.appendChild(toonAlleLink);
+      }
+
+      groepEl.appendChild(docContainer);
+      inhoud.appendChild(groepEl);
     });
 
     sideSheet.open();
     this.classList.add('side-sheet-open');
+  }
+
+  _maakDocumentLink(ref) {
+    const link = document.createElement('a');
+    link.className = 'passage-document-link';
+    link.textContent = ref.bestandsnaam;
+    link.href = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(ref.bestandsnaam)}/download`;
+    link.download = ref.bestandsnaam;
+    return link;
   }
 }
 

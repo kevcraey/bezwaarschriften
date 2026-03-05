@@ -588,3 +588,143 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
         .should('have.attr', 'toggle-text', 'Mobiliteit');
   });
 });
+
+describe('side panel passage-deduplicatie', () => {
+  const MOCK_MET_DUPLICATEN = {
+    themas: [{
+      naam: 'Mobiliteit',
+      kernbezwaren: [{
+        id: 1,
+        samenvatting: 'Geluidshinder',
+        antwoord: null,
+        individueleBezwaren: [
+          {bestandsnaam: '001.txt', passage: 'Te veel geluid in de buurt'},
+          {bestandsnaam: '002.txt', passage: 'Te veel geluid in de buurt'},
+          {bestandsnaam: '003.txt', passage: 'Te veel geluid in de buurt'},
+          {bestandsnaam: '004.txt', passage: 'Te veel geluid in de buurt'},
+          {bestandsnaam: '005.txt', passage: 'Te veel geluid in de buurt'},
+          {bestandsnaam: '006.txt', passage: 'Te veel geluid in de buurt'},
+          {bestandsnaam: '007.txt', passage: 'Te veel geluid in de buurt'},
+          {bestandsnaam: '008.txt', passage: 'Verkeer is gevaarlijk'},
+        ],
+      }],
+    }],
+  };
+
+  beforeEach(() => {
+    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
+      statusCode: 200,
+      body: {
+        categorieen: [{
+          categorie: 'Mobiliteit', status: 'klaar', taakId: 1,
+          aantalBezwaren: 8, aantalKernbezwaren: 1,
+          aangemaaktOp: '2026-03-03T10:00:00Z',
+          verwerkingGestartOp: '2026-03-03T10:00:01Z',
+          verwerkingVoltooidOp: '2026-03-03T10:00:15Z',
+        }],
+      },
+    }).as('clusteringTaken');
+
+    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
+      statusCode: 200,
+      body: MOCK_MET_DUPLICATEN,
+    }).as('kernbezwaren');
+
+    cy.mount(html`<bezwaarschriften-kernbezwaren></bezwaarschriften-kernbezwaren>`);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => {
+          $el[0].laadClusteringTaken('testproject');
+          $el[0].laadKernbezwaren('testproject');
+        });
+
+    cy.wait('@clusteringTaken');
+    cy.wait('@kernbezwaren');
+
+    // Open de accordion zodat kernbezwaren zichtbaar worden
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-accordion[data-categorie="Mobiliteit"]')
+        .click();
+  });
+
+  it('toont gegroepeerde passage slechts 1x met documentenlijst', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
+
+    // 2 groepen: geluid (7x) + verkeer (1x)
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep .passage-tekst')
+        .should('have.length', 2);
+
+    // Eerste groep toont max 5 documenten
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .first()
+        .find('.passage-document-link')
+        .should('have.length', 5);
+
+    // Plus "... (7 documenten)" link
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .first()
+        .find('.passage-toon-alle')
+        .should('contain.text', '7 documenten');
+  });
+
+  it('toont alle documenten na klik op "Toon alle"', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .first()
+        .find('.passage-toon-alle')
+        .click();
+
+    // Nu alle 7 documenten zichtbaar
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .first()
+        .find('.passage-document-link')
+        .should('have.length', 7);
+
+    // "Toon alle" link verdwenen
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .first()
+        .find('.passage-toon-alle')
+        .should('not.exist');
+  });
+
+  it('toont header met totaal en groepen-aantal', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#side-sheet-inhoud')
+        .should('contain.text', '8 individuele bezwaren')
+        .and('contain.text', '2 unieke passages');
+  });
+
+  it('toont enkel document als passage uniek is', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
+
+    // Tweede groep (verkeer) heeft 1 document, geen "Toon alle"
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .last()
+        .find('.passage-document-link')
+        .should('have.length', 1);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .last()
+        .find('.passage-toon-alle')
+        .should('not.exist');
+  });
+});
