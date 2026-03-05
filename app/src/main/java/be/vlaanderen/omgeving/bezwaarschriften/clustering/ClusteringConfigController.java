@@ -26,7 +26,11 @@ public class ClusteringConfigController {
     return ResponseEntity.ok(new ConfigDto(
         config.getMinClusterSize(),
         config.getMinSamples(),
-        config.getClusterSelectionEpsilon()));
+        config.getClusterSelectionEpsilon(),
+        config.isUmapEnabled(),
+        config.getUmapNComponents(),
+        config.getUmapNNeighbors(),
+        config.getUmapMinDist()));
   }
 
   @PutMapping
@@ -34,8 +38,15 @@ public class ClusteringConfigController {
     config.setMinClusterSize(dto.minClusterSize());
     config.setMinSamples(dto.minSamples());
     config.setClusterSelectionEpsilon(dto.clusterSelectionEpsilon());
+    config.setUmapEnabled(dto.umapEnabled());
+    config.setUmapNComponents(dto.umapNComponents());
+    config.setUmapNNeighbors(dto.umapNNeighbors());
+    config.setUmapMinDist(dto.umapMinDist());
     return ResponseEntity.ok(dto);
   }
 
-  public record ConfigDto(int minClusterSize, int minSamples, double clusterSelectionEpsilon) {}
+  public record ConfigDto(int minClusterSize, int minSamples,
+      double clusterSelectionEpsilon,
+      boolean umapEnabled, int umapNComponents,
+      int umapNNeighbors, float umapMinDist) {}
 }
