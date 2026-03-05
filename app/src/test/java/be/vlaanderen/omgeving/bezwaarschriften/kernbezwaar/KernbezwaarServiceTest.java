@@ -8,12 +8,15 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringConfig;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.Cluster;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.ClusteringResultaat;
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.DimensieReductiePoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
@@ -28,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -71,19 +75,27 @@ class KernbezwaarServiceTest {
   @Mock
   private PlatformTransactionManager transactionManager;
 
+  @Mock
+  private DimensieReductiePoort dimensieReductiePoort;
+
+  @Spy
+  private ClusteringConfig clusteringConfig = new ClusteringConfig();
+
   private KernbezwaarService service;
 
   @BeforeEach
   void setUp() {
     lenient().when(transactionManager.getTransaction(any()))
         .thenReturn(mock(TransactionStatus.class));
+    // Standaard: UMAP uitgeschakeld zodat bestaande tests ongewijzigd werken
+    clusteringConfig.setUmapEnabled(false);
     service = new KernbezwaarService(
         embeddingPoort, clusteringPoort,
         bezwaarRepository, passageRepository, taakRepository,
         antwoordRepository, themaRepository,
         kernbezwaarRepository, referentieRepository,
         clusteringTaakService, clusteringTaakRepository,
-        transactionManager);
+        transactionManager, dimensieReductiePoort, clusteringConfig);
   }
 
   @Test
@@ -400,7 +412,204 @@ class KernbezwaarServiceTest {
     verify(clusteringTaakRepository).deleteByProjectNaam("windmolens");
   }
 
+  @Test
+  void umapDimensieReductieWordtToegepastAlsIngeschakeld() {
+    // Arrange: UMAP ingeschakeld, genoeg bezwaren (> nNeighbors + 1 = 16)
+    clusteringConfig.setUmapEnabled(true);
+    clusteringConfig.setUmapNNeighbors(2); // laag zodat we weinig bezwaren nodig hebben
+
+    var bezwaar1 = maakBezwaarMetEmbedding(1L, 10L, 1, "bezwaar 1", "Geluid",
+        new float[]{1.0f, 0.0f, 0.0f});
+    var bezwaar2 = maakBezwaarMetEmbedding(2L, 10L, 2, "bezwaar 2", "Geluid",
+        new float[]{0.9f, 0.1f, 0.0f});
+    var bezwaar3 = maakBezwaarMetEmbedding(3L, 10L, 3, "bezwaar 3", "Geluid",
+        new float[]{0.8f, 0.2f, 0.0f});
+    var bezwaren = List.of(bezwaar1, bezwaar2, bezwaar3);
+
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(bezwaren);
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+    when(taakRepository.findById(10L)).thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
+
+    // UMAP reduceert naar lagere dimensie
+    var gereduceerd = List.of(
+        new float[]{0.1f, 0.2f},
+        new float[]{0.3f, 0.4f},
+        new float[]{0.5f, 0.6f});
+    when(dimensieReductiePoort.reduceer(anyList())).thenReturn(gereduceerd);
+
+    // Clustering: noise items (eenvoudig scenario)
+    var resultaat = new ClusteringResultaat(List.of(), List.of(1L, 2L, 3L));
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    // Act
+    var thema = service.clusterEenCategorie("windmolens", "Geluid", null);
+
+    // Assert: UMAP werd aangeroepen
+    verify(dimensieReductiePoort).reduceer(anyList());
+    assertThat(thema.naam()).isEqualTo("Geluid");
+  }
+
+  @Test
+  void umapDimensieReductieWordtNietToegepastAlsUitgeschakeld() {
+    // Arrange: UMAP uitgeschakeld (standaard in setUp)
+    var bezwaar1 = maakBezwaarMetEmbedding(1L, 10L, 1, "bezwaar 1", "Geluid",
+        new float[]{1.0f, 0.0f, 0.0f});
+    var bezwaar2 = maakBezwaarMetEmbedding(2L, 10L, 2, "bezwaar 2", "Geluid",
+        new float[]{0.9f, 0.1f, 0.0f});
+
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(List.of(bezwaar1, bezwaar2));
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+    when(taakRepository.findById(10L)).thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
+
+    var resultaat = new ClusteringResultaat(List.of(), List.of(1L, 2L));
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    // Act
+    service.clusterEenCategorie("windmolens", "Geluid", null);
+
+    // Assert: UMAP werd NIET aangeroepen
+    verify(dimensieReductiePoort, never()).reduceer(anyList());
+  }
+
+  @Test
+  void umapWordtOvergeslagenAlsTeWeinigBezwaren() {
+    // Arrange: UMAP ingeschakeld maar te weinig bezwaren (< nNeighbors + 1)
+    clusteringConfig.setUmapEnabled(true);
+    clusteringConfig.setUmapNNeighbors(15); // standaard, vereist minstens 16 bezwaren
+
+    var bezwaar1 = maakBezwaarMetEmbedding(1L, 10L, 1, "bezwaar 1", "Geluid",
+        new float[]{1.0f, 0.0f});
+    var bezwaar2 = maakBezwaarMetEmbedding(2L, 10L, 2, "bezwaar 2", "Geluid",
+        new float[]{0.9f, 0.1f});
+
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(List.of(bezwaar1, bezwaar2));
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+    when(taakRepository.findById(10L)).thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
+
+    var resultaat = new ClusteringResultaat(List.of(), List.of(1L, 2L));
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    // Act
+    service.clusterEenCategorie("windmolens", "Geluid", null);
+
+    // Assert: UMAP werd NIET aangeroepen (te weinig bezwaren)
+    verify(dimensieReductiePoort, never()).reduceer(anyList());
+  }
+
+  @Test
+  void umapGebruiktOrigineleEmbeddingsVoorCentroidBerekening() {
+    // Arrange: UMAP ingeschakeld, bezwaren met bekende embeddings
+    clusteringConfig.setUmapEnabled(true);
+    clusteringConfig.setUmapNNeighbors(2);
+
+    float[] origEmb1 = {1.0f, 0.0f, 0.0f};
+    float[] origEmb2 = {0.8f, 0.2f, 0.0f};
+    float[] origEmb3 = {0.9f, 0.1f, 0.0f};
+
+    var bezwaar1 = maakBezwaarMetEmbedding(1L, 10L, 1, "samenvatting 1", "Geluid", origEmb1);
+    var bezwaar2 = maakBezwaarMetEmbedding(2L, 10L, 2, "samenvatting 2", "Geluid", origEmb2);
+    var bezwaar3 = maakBezwaarMetEmbedding(3L, 10L, 3, "samenvatting 3", "Geluid", origEmb3);
+
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+    when(taakRepository.findById(10L)).thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
+
+    // UMAP reduceert naar 2D
+    when(dimensieReductiePoort.reduceer(anyList())).thenReturn(List.of(
+        new float[]{0.1f, 0.2f},
+        new float[]{0.3f, 0.4f},
+        new float[]{0.5f, 0.6f}));
+
+    // Clustering: 1 cluster met alle 3, centroid in gereduceerde ruimte (irrelevant na fix)
+    var cluster = new Cluster(0, List.of(1L, 2L, 3L), new float[]{0.3f, 0.4f});
+    var resultaat = new ClusteringResultaat(List.of(cluster), List.of());
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    // Act
+    var thema = service.clusterEenCategorie("windmolens", "Geluid", null);
+
+    // Assert: representatief bezwaar is bezwaar3 (origEmb3={0.9,0.1,0} is dichtst bij
+    // centroid in originele ruimte = gemiddelde van 3 embeddings = {0.9,0.1,0})
+    assertThat(thema.kernbezwaren()).hasSize(1);
+    assertThat(thema.kernbezwaren().get(0).samenvatting()).isEqualTo("samenvatting 3");
+  }
+
   // --- Hulpmethoden ---
+
+  private GeextraheerdBezwaarEntiteit maakBezwaarMetEmbedding(Long id, Long taakId,
+      int passageNr, String samenvatting, String categorie, float[] embedding) {
+    var b = maakBezwaar(id, taakId, passageNr, samenvatting, categorie);
+    b.setEmbedding(embedding);
+    return b;
+  }
 
   private GeextraheerdBezwaarEntiteit maakBezwaar(Long id, Long taakId,
       int passageNr, String samenvatting, String categorie) {

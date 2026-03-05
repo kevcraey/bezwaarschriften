@@ -1,7 +1,9 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringConfig;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.ClusteringInvoer;
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.DimensieReductiePoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -38,6 +41,8 @@ public class KernbezwaarService {
   private final ClusteringTaakService clusteringTaakService;
   private final ClusteringTaakRepository clusteringTaakRepository;
   private final TransactionTemplate transactionTemplate;
+  private final DimensieReductiePoort dimensieReductiePoort;
+  private final ClusteringConfig clusteringConfig;
 
   /**
    * Constructor met alle benodigde afhankelijkheden.
@@ -54,6 +59,8 @@ public class KernbezwaarService {
    * @param clusteringTaakService service voor clustering-taak levenscyclus
    * @param clusteringTaakRepository repository voor clustering-taken
    * @param transactionManager transaction manager voor korte transactieblokken
+   * @param dimensieReductiePoort port voor optionele UMAP-dimensiereductie
+   * @param clusteringConfig configuratie voor clustering-parameters
    */
   public KernbezwaarService(EmbeddingPoort embeddingPoort,
       ClusteringPoort clusteringPoort,
@@ -66,7 +73,9 @@ public class KernbezwaarService {
       KernbezwaarReferentieRepository referentieRepository,
       ClusteringTaakService clusteringTaakService,
       ClusteringTaakRepository clusteringTaakRepository,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      DimensieReductiePoort dimensieReductiePoort,
+      ClusteringConfig clusteringConfig) {
     this.embeddingPoort = embeddingPoort;
     this.clusteringPoort = clusteringPoort;
     this.bezwaarRepository = bezwaarRepository;
@@ -79,6 +88,8 @@ public class KernbezwaarService {
     this.clusteringTaakService = clusteringTaakService;
     this.clusteringTaakRepository = clusteringTaakRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.dimensieReductiePoort = dimensieReductiePoort;
+    this.clusteringConfig = clusteringConfig;
   }
 
   /**
@@ -268,10 +279,24 @@ public class KernbezwaarService {
     }
 
     // Externe call: HDBSCAN-clustering (buiten transactie)
-    var invoer = bezwaren.stream()
+    var origineleInvoer = bezwaren.stream()
         .map(b -> new ClusteringInvoer(b.getId(), b.getEmbedding()))
         .toList();
-    var clusterResultaat = clusteringPoort.cluster(invoer);
+
+    // Optionele UMAP-dimensiereductie
+    var clusterInvoer = origineleInvoer;
+    if (clusteringConfig.isUmapEnabled()
+        && origineleInvoer.size() >= clusteringConfig.getUmapNNeighbors() + 1) {
+      var vectoren = origineleInvoer.stream()
+          .map(ClusteringInvoer::embedding).toList();
+      var gereduceerd = dimensieReductiePoort.reduceer(vectoren);
+      clusterInvoer = IntStream.range(0, origineleInvoer.size())
+          .mapToObj(i -> new ClusteringInvoer(
+              origineleInvoer.get(i).bezwaarId(), gereduceerd.get(i)))
+          .toList();
+    }
+
+    var clusterResultaat = clusteringPoort.cluster(clusterInvoer);
 
     // Lookup voor bezwaren op ID (nodig bij opslaan thema/kernbezwaren)
     var bezwaarById = bezwaren.stream()
@@ -291,7 +316,9 @@ public class KernbezwaarService {
         var clusterBezwaren = cluster.bezwaarIds().stream()
             .map(bezwaarById::get)
             .toList();
-        var representatief = vindDichtstBijCentroid(clusterBezwaren, cluster.centroid());
+        // Herbereken centroid in originele embedding-ruimte
+        var origineleCentroid = berekenOrigineleCentroid(clusterBezwaren);
+        var representatief = vindDichtstBijCentroid(clusterBezwaren, origineleCentroid);
         var samenvatting = representatief.getSamenvatting();
 
         var referenties = bouwReferenties(clusterBezwaren, passageLookup, bestandsnaamLookup);
@@ -312,6 +339,21 @@ public class KernbezwaarService {
 
       return new Thema(categorieNaam, kernbezwaren);
     });
+  }
+
+  private float[] berekenOrigineleCentroid(List<GeextraheerdBezwaarEntiteit> bezwaren) {
+    int dims = bezwaren.get(0).getEmbedding().length;
+    var centroid = new float[dims];
+    for (var bezwaar : bezwaren) {
+      var emb = bezwaar.getEmbedding();
+      for (int i = 0; i < dims; i++) {
+        centroid[i] += emb[i];
+      }
+    }
+    for (int i = 0; i < dims; i++) {
+      centroid[i] /= bezwaren.size();
+    }
+    return centroid;
   }
 
   private GeextraheerdBezwaarEntiteit vindDichtstBijCentroid(
