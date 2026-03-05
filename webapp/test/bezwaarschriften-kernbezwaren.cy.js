@@ -728,3 +728,98 @@ describe('side panel passage-deduplicatie', () => {
         .should('not.exist');
   });
 });
+
+describe('bezwaarschriften-kernbezwaren clustering parameters', () => {
+  const MOCK_CONFIG = {
+    minClusterSize: 5,
+    minSamples: 3,
+    clusterSelectionEpsilon: 0.2,
+    umapEnabled: true,
+    umapNComponents: 5,
+    umapNNeighbors: 15,
+    umapMinDist: 0.1,
+  };
+
+  beforeEach(() => {
+    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
+      statusCode: 404,
+    }).as('kernbezwaren');
+
+    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
+      statusCode: 200,
+      body: {
+        categorieen: [
+          {
+            categorie: 'Mobiliteit', status: 'klaar', taakId: 1,
+            aantalBezwaren: 10, aantalKernbezwaren: 3, foutmelding: null,
+            aangemaaktOp: '2026-03-03T10:00:00Z',
+            verwerkingGestartOp: '2026-03-03T10:00:01Z',
+            verwerkingVoltooidOp: '2026-03-03T10:00:15Z',
+          },
+        ],
+      },
+    }).as('clusteringTaken');
+
+    cy.intercept('GET', '/api/v1/clustering-config', {
+      statusCode: 200,
+      body: MOCK_CONFIG,
+    }).as('getConfig');
+
+    cy.mount(html`<bezwaarschriften-kernbezwaren></bezwaarschriften-kernbezwaren>`);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+
+    cy.wait('@clusteringTaken');
+    cy.wait('@getConfig');
+  });
+
+  it('toont clustering parameters titel', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.clustering-params-titel')
+        .should('contain.text', 'Clustering parameters:');
+  });
+
+  it('toont UMAP toggle als aangevinkt', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.clustering-params input[type="checkbox"]')
+        .should('be.checked');
+  });
+
+  it('toont UMAP parameter-velden als UMAP aan', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.umap-params')
+        .should('be.visible');
+  });
+
+  it('verbergt UMAP parameter-velden als UMAP uit', () => {
+    cy.intercept('PUT', '/api/v1/clustering-config', {
+      statusCode: 200,
+      body: {...MOCK_CONFIG, umapEnabled: false},
+    }).as('updateConfig');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.clustering-params input[type="checkbox"]')
+        .uncheck();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.umap-params')
+        .should('not.be.visible');
+  });
+
+  it('stuurt update bij wijzigen UMAP parameter', () => {
+    cy.intercept('PUT', '/api/v1/clustering-config', (req) => {
+      expect(req.body.umapNComponents).to.equal(10);
+      req.reply({statusCode: 200, body: req.body});
+    }).as('updateConfig');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.umap-params input[type="number"]')
+        .first()
+        .clear()
+        .type('10')
+        .trigger('change');
+
+    cy.wait('@updateConfig');
+  });
+});
