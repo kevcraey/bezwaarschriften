@@ -26,6 +26,11 @@ tmp/
 # Worktrees
 .worktrees/
 
+# Gevoelige data
+testdata/
+input/
+synthetic-dataset/
+
 # Stuff
 .agents/
 richtlijnen/
