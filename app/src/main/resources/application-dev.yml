@@ -10,6 +10,10 @@ bezwaarschriften:
     min-cluster-size: 5
     min-samples: 3
     cluster-selection-epsilon: 0.2
+    umap-enabled: true
+    umap-n-components: 5
+    umap-n-neighbors: 15
+    umap-min-dist: 0.1
   embedding:
     provider: ollama
     model: bge-m3
