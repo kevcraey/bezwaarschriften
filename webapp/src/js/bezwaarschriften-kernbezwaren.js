@@ -809,20 +809,33 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
     const titel = document.createElement('span');
     titel.className = 'clustering-params-titel';
-    titel.textContent = 'HDBSCAN parameters:';
+    titel.textContent = 'Clustering parameters:';
     balk.appendChild(titel);
 
-    const params = [
-      {key: 'minClusterSize', label: 'Min. clustergrootte', min: 2, step: 1, decimals: 0},
-      {key: 'minSamples', label: 'Min. samples', min: 1, step: 1, decimals: 0},
-      {key: 'clusterSelectionEpsilon', label: 'Epsilon', min: 0, step: 0.05, decimals: 2},
-    ];
-
-    // Laad huidige waarden
     fetch('/api/v1/clustering-config')
         .then((r) => r.json())
         .then((config) => {
-          params.forEach(({key, label, min, step, decimals}) => {
+          // UMAP toggle
+          const toggleWrapper = document.createElement('label');
+          toggleWrapper.textContent = 'UMAP: ';
+          const toggle = document.createElement('input');
+          toggle.type = 'checkbox';
+          toggle.checked = config.umapEnabled;
+          toggleWrapper.appendChild(toggle);
+          balk.appendChild(toggleWrapper);
+
+          // UMAP parameters container
+          const umapContainer = document.createElement('span');
+          umapContainer.className = 'umap-params';
+          umapContainer.style.display = config.umapEnabled ? '' : 'none';
+
+          const umapParams = [
+            {key: 'umapNComponents', label: 'Dimensies', min: 2, step: 1, decimals: 0},
+            {key: 'umapNNeighbors', label: 'Buren', min: 2, step: 1, decimals: 0},
+            {key: 'umapMinDist', label: 'Min. afstand', min: 0, step: 0.05, decimals: 2},
+          ];
+
+          umapParams.forEach(({key, label, min, step, decimals}) => {
             const wrapper = document.createElement('label');
             wrapper.textContent = label + ': ';
             const input = document.createElement('input');
@@ -831,17 +844,38 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
             input.step = step;
             input.value = decimals === 0 ? config[key] : Number(config[key]).toFixed(decimals);
             input.addEventListener('change', () => {
-              const waarde = decimals === 0 ? parseInt(input.value, 10) : parseFloat(input.value);
-              fetch('/api/v1/clustering-config')
-                  .then((r) => r.json())
-                  .then((huidig) => {
-                    const nieuw = {...huidig, [key]: waarde};
-                    return fetch('/api/v1/clustering-config', {
-                      method: 'PUT',
-                      headers: {'Content-Type': 'application/json'},
-                      body: JSON.stringify(nieuw),
-                    });
-                  });
+              this._updateClusteringConfig(key,
+                  decimals === 0 ? parseInt(input.value, 10) : parseFloat(input.value));
+            });
+            wrapper.appendChild(input);
+            umapContainer.appendChild(wrapper);
+          });
+
+          balk.appendChild(umapContainer);
+
+          toggle.addEventListener('change', () => {
+            umapContainer.style.display = toggle.checked ? '' : 'none';
+            this._updateClusteringConfig('umapEnabled', toggle.checked);
+          });
+
+          // HDBSCAN parameters
+          const hdbscanParams = [
+            {key: 'minClusterSize', label: 'Min. clustergrootte', min: 2, step: 1, decimals: 0},
+            {key: 'minSamples', label: 'Min. samples', min: 1, step: 1, decimals: 0},
+            {key: 'clusterSelectionEpsilon', label: 'Epsilon', min: 0, step: 0.05, decimals: 2},
+          ];
+
+          hdbscanParams.forEach(({key, label, min, step, decimals}) => {
+            const wrapper = document.createElement('label');
+            wrapper.textContent = label + ': ';
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = min;
+            input.step = step;
+            input.value = decimals === 0 ? config[key] : Number(config[key]).toFixed(decimals);
+            input.addEventListener('change', () => {
+              this._updateClusteringConfig(key,
+                  decimals === 0 ? parseInt(input.value, 10) : parseFloat(input.value));
             });
             wrapper.appendChild(input);
             balk.appendChild(wrapper);
@@ -850,6 +884,19 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .catch(() => {/* stil falen als config niet beschikbaar is */});
 
     inhoud.appendChild(balk);
+  }
+
+  _updateClusteringConfig(key, waarde) {
+    fetch('/api/v1/clustering-config')
+        .then((r) => r.json())
+        .then((huidig) => {
+          const nieuw = {...huidig, [key]: waarde};
+          return fetch('/api/v1/clustering-config', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(nieuw),
+          });
+        });
   }
 
   _clusterAlles() {
