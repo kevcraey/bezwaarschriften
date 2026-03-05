@@ -387,24 +387,44 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     if (this._themas) {
       let totaalBezwaren = 0;
       let totaalKernbezwaren = 0;
+      let nietGeclusterdeBezwaren = 0;
       this._clusteringTaken.forEach((ct) => {
         if (ct.status === 'klaar') {
           const thema = this._themas.find((t) => t.naam === ct.categorie);
           if (thema) {
             totaalBezwaren += ct.aantalBezwaren;
-            totaalKernbezwaren += thema.kernbezwaren.length;
+            thema.kernbezwaren.forEach((kb) => {
+              if (kb.samenvatting === 'Niet-geclusterde bezwaren') {
+                nietGeclusterdeBezwaren += kb.individueleBezwaren.length;
+              } else {
+                totaalKernbezwaren++;
+              }
+            });
           }
         }
       });
       if (totaalKernbezwaren > 0) {
-        const reductie = Math.round(totaalBezwaren / totaalKernbezwaren);
+        const geclusterdeBezwaren = totaalBezwaren - nietGeclusterdeBezwaren;
+        const reductie = Math.round(geclusterdeBezwaren / totaalKernbezwaren);
         const reductieTekst = reductie > 1 ? ` (${reductie}x reductie)` : '';
         const totaalAlert = document.createElement('vl-alert');
         totaalAlert.setAttribute('type', 'success');
         totaalAlert.setAttribute('naked', '');
-        totaalAlert.setAttribute('message', `Er zijn ${totaalBezwaren} individuele bezwaren ` +
+        totaalAlert.setAttribute('size', 'small');
+        totaalAlert.setAttribute('message', `Er zijn ${geclusterdeBezwaren} individuele bezwaren ` +
             `herleid naar ${totaalKernbezwaren} kernbezwaren${reductieTekst}.`);
         inhoud.appendChild(totaalAlert);
+        if (nietGeclusterdeBezwaren > 0) {
+          const waarschuwing = document.createElement('vl-alert');
+          waarschuwing.setAttribute('type', 'warning');
+          waarschuwing.setAttribute('naked', '');
+          waarschuwing.setAttribute('size', 'small');
+          waarschuwing.style.marginTop = 'var(--vl-spacing--xsmall)';
+          const pctNoise = Math.round((nietGeclusterdeBezwaren / totaalBezwaren) * 100);
+          waarschuwing.setAttribute('message', `${nietGeclusterdeBezwaren} individuele bezwaren ` +
+              `(${pctNoise}%) konden niet toegewezen worden aan een cluster.`);
+          inhoud.appendChild(waarschuwing);
+        }
       }
     }
 
