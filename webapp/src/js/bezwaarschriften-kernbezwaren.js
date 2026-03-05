@@ -424,8 +424,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         const thema = this._themas.find((t) => t.naam === ct.categorie);
         if (thema && thema.kernbezwaren.length > 0) {
           const content = document.createElement('div');
+          const uniekePassageCounts = new Map(
+              thema.kernbezwaren.map((k) => [k, groepeerPassages(k.individueleBezwaren).length]),
+          );
           const gesorteerd = [...thema.kernbezwaren].sort(
-              (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
+              (a, b) => uniekePassageCounts.get(b) - uniekePassageCounts.get(a),
           );
           gesorteerd.forEach((kern) => {
             content.appendChild(this._maakKernbezwaarItem(kern));
@@ -466,7 +469,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const totaal = kern.individueleBezwaren.length;
     const groepen = groepeerPassages(kern.individueleBezwaren);
     const aantalGroepen = groepen.length;
-    knop.textContent = totaal === aantalGroepen ? `(${totaal})` : `(${totaal}|${aantalGroepen})`;
+    knop.textContent = `(${totaal}|${aantalGroepen})`;
     knop.addEventListener('click', () => this._toonPassages(kern));
 
     actie.appendChild(knop);
@@ -929,8 +932,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       accordion.setAttribute('default-open', '');
 
       const wrapper = document.createElement('div');
+      const uniekePassageCounts = new Map(
+          thema.kernbezwaren.map((k) => [k, groepeerPassages(k.individueleBezwaren).length]),
+      );
       const gesorteerd = [...thema.kernbezwaren].sort(
-          (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
+          (a, b) => uniekePassageCounts.get(b) - uniekePassageCounts.get(a),
       );
       gesorteerd.forEach((kern) => {
         wrapper.appendChild(this._maakKernbezwaarItem(kern));
@@ -1131,11 +1137,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const totaal = kernbezwaar.individueleBezwaren.length;
 
     const aantalLabel = document.createElement('p');
-    if (groepen.length < totaal) {
-      aantalLabel.textContent = `${totaal} individuele bezwaren, ${groepen.length} unieke passages:`;
-    } else {
-      aantalLabel.textContent = `${totaal} individuele bezwar${totaal === 1 ? '' : 'en'}:`;
-    }
+    aantalLabel.textContent = `${totaal} individuele bezwar${totaal === 1 ? '' : 'en'}, ${groepen.length} unieke passage${groepen.length === 1 ? '' : 's'}:`;
     inhoud.appendChild(aantalLabel);
 
     const MAX_ZICHTBAAR = 5;
