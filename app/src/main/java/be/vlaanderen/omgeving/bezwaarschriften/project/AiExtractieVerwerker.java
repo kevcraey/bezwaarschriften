@@ -128,9 +128,9 @@ public class AiExtractieVerwerker implements ExtractieVerwerker {
     if (node != null && node.isArray()) {
       for (var item : node) {
         lijst.add(new GeextraheerdBezwaar(
-            item.get("passageId").asInt(),
-            item.get("samenvatting").asText(),
-            item.get("categorie").asText()));
+            item.has("passageId") ? item.get("passageId").asInt() : 0,
+            item.has("samenvatting") ? item.get("samenvatting").asText() : "",
+            item.has("categorie") ? item.get("categorie").asText() : "overig"));
       }
     }
     return List.copyOf(lijst);

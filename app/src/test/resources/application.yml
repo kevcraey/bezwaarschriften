@@ -24,6 +24,8 @@ bezwaarschriften:
     folder: input
   testdata:
     pad: testdata
+  scheduling:
+    enabled: false
 
 management:
   endpoint:
