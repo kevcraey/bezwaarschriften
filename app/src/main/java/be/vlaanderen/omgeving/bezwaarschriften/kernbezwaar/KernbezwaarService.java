@@ -299,13 +299,14 @@ public class KernbezwaarService {
         kernbezwaren.add(kern);
       }
 
-      // Verwerk noise items: elk wordt een eigen kernbezwaar met originele tekst
-      for (var noiseId : clusterResultaat.noiseIds()) {
-        var bezwaar = bezwaarById.get(noiseId);
-        var tekst = geefPassageTekst(bezwaar, passageLookup);
-        var referenties = bouwReferenties(
-            List.of(bezwaar), passageLookup, bestandsnaamLookup);
-        var kern = slaKernbezwaarOp(opgeslagenThema.getId(), tekst, referenties);
+      // Verwerk noise items: alle niet-geclusterde bezwaren onder één kernbezwaar
+      if (!clusterResultaat.noiseIds().isEmpty()) {
+        var noiseBezwaren = clusterResultaat.noiseIds().stream()
+            .map(bezwaarById::get)
+            .toList();
+        var referenties = bouwReferenties(noiseBezwaren, passageLookup, bestandsnaamLookup);
+        var kern = slaKernbezwaarOp(
+            opgeslagenThema.getId(), "Niet-geclusterde bezwaren", referenties);
         kernbezwaren.add(kern);
       }
 

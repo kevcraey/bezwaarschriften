@@ -408,7 +408,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         const thema = this._themas.find((t) => t.naam === ct.categorie);
         if (thema && thema.kernbezwaren.length > 0) {
           const content = document.createElement('div');
-          thema.kernbezwaren.forEach((kern) => {
+          const gesorteerd = [...thema.kernbezwaren].sort(
+            (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
+          );
+          gesorteerd.forEach((kern) => {
             content.appendChild(this._maakKernbezwaarItem(kern));
           });
           accordion.appendChild(content);
@@ -907,7 +910,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       accordion.setAttribute('default-open', '');
 
       const wrapper = document.createElement('div');
-      thema.kernbezwaren.forEach((kern) => {
+      const gesorteerd = [...thema.kernbezwaren].sort(
+        (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
+      );
+      gesorteerd.forEach((kern) => {
         wrapper.appendChild(this._maakKernbezwaarItem(kern));
       });
 

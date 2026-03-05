@@ -152,27 +152,30 @@ class KernbezwaarServiceTest {
   }
 
   @Test
-  void noiseItemsWordenEigenKernbezwaar() {
-    // Arrange: 1 bezwaar dat als noise wordt geclassificeerd
-    var bezwaar = maakBezwaar(5L, 20L, 1, "uniek bezwaar", "Mobiliteit");
+  void noiseItemsWordenGebundeldOnderEenKernbezwaar() {
+    // Arrange: 2 bezwaren die als noise worden geclassificeerd
+    var bezwaar1 = maakBezwaar(5L, 20L, 1, "uniek bezwaar 1", "Mobiliteit");
+    var bezwaar2 = maakBezwaar(6L, 20L, 2, "uniek bezwaar 2", "Mobiliteit");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
-        .thenReturn(List.of(bezwaar));
+        .thenReturn(List.of(bezwaar1, bezwaar2));
     when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Mobiliteit"))
-        .thenReturn(List.of(bezwaar));
+        .thenReturn(List.of(bezwaar1, bezwaar2));
 
-    // Passage: originele tekst
-    var passage = maakPassage(20L, 1, "originele noise tekst");
-    when(passageRepository.findByTaakId(20L)).thenReturn(List.of(passage));
+    // Passages: originele tekst
+    var passage1 = maakPassage(20L, 1, "originele noise tekst 1");
+    var passage2 = maakPassage(20L, 2, "originele noise tekst 2");
+    when(passageRepository.findByTaakId(20L)).thenReturn(List.of(passage1, passage2));
 
     var taak = maakTaak(20L, "windmolens", "brief.pdf");
     when(taakRepository.findById(20L)).thenReturn(Optional.of(taak));
 
-    float[] emb = {0.5f, 0.5f};
-    when(embeddingPoort.genereerEmbeddings(anyList())).thenReturn(List.of(emb));
+    float[] emb1 = {0.5f, 0.5f};
+    float[] emb2 = {0.4f, 0.6f};
+    when(embeddingPoort.genereerEmbeddings(anyList())).thenReturn(List.of(emb1, emb2));
     when(bezwaarRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
-    // Clustering: geen clusters, 1 noise item
-    var resultaat = new ClusteringResultaat(List.of(), List.of(5L));
+    // Clustering: geen clusters, 2 noise items
+    var resultaat = new ClusteringResultaat(List.of(), List.of(5L, 6L));
     when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
 
     when(themaRepository.save(any())).thenAnswer(inv -> {
@@ -194,16 +197,13 @@ class KernbezwaarServiceTest {
     // Act
     var themas = service.groepeer("windmolens");
 
-    // Assert
+    // Assert: alle noise items onder 1 kernbezwaar
     assertThat(themas).hasSize(1);
     assertThat(themas.get(0).naam()).isEqualTo("Mobiliteit");
     assertThat(themas.get(0).kernbezwaren()).hasSize(1);
-    // Noise items krijgen de originele passage als samenvatting
     assertThat(themas.get(0).kernbezwaren().get(0).samenvatting())
-        .isEqualTo("originele noise tekst");
-    assertThat(themas.get(0).kernbezwaren().get(0).individueleBezwaren()).hasSize(1);
-    assertThat(themas.get(0).kernbezwaren().get(0).individueleBezwaren().get(0)
-        .bestandsnaam()).isEqualTo("brief.pdf");
+        .isEqualTo("Niet-geclusterde bezwaren");
+    assertThat(themas.get(0).kernbezwaren().get(0).individueleBezwaren()).hasSize(2);
   }
 
   @Test
@@ -301,10 +301,10 @@ class KernbezwaarServiceTest {
     // Act
     var themas = service.groepeer("windmolens");
 
-    // Assert: samenvatting als fallback voor noise-item passage
+    // Assert: noise items worden gebundeld onder "Niet-geclusterde bezwaren"
     assertThat(themas).hasSize(1);
     assertThat(themas.get(0).kernbezwaren().get(0).samenvatting())
-        .isEqualTo("fallback samenvatting");
+        .isEqualTo("Niet-geclusterde bezwaren");
   }
 
   @Test
@@ -364,6 +364,8 @@ class KernbezwaarServiceTest {
 
     assertThat(thema.naam()).isEqualTo("Geluid");
     assertThat(thema.kernbezwaren()).hasSize(1);
+    assertThat(thema.kernbezwaren().get(0).samenvatting())
+        .isEqualTo("Niet-geclusterde bezwaren");
     verify(themaRepository).deleteByProjectNaamAndNaam("windmolens", "Geluid");
   }
 
