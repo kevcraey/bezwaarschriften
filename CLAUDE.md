@@ -3,7 +3,7 @@
 AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hexagonale architectuur.
 
 ## Algemene regels
-
+- Om code te lezen gebruik je jcodemunch mcp server
 - Gebruik voor implementatie altijd de richtlijnen in `richtlijnen/`, de titels spreken voor zich, lees enkel de inhoud als het relevant is voor de taak.
 - We schrijven liever een test teveel dan eentje te weinig.
 - We houden qua documentatie altijd een up-to-date C1 en C2 model bij in `docs/` in mermaid.
@@ -12,6 +12,7 @@ AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hex
 - We schrijven leesbare code: ik ben geen ontwikkelaar, maar kan de code wel lezen als die goed gestructureerd is en geschreven is vanuit de functionele vereisten eerst.
 - Werk altijd in een worktree tijdens implementatie, voor de validatie verwijder je de worktree en check je de feature branch uit.
 - Nooit direct op main werken, altijd feature branches maken. Na merge met main ruim je de branch op.
+- Na oplevering van een feature test ik altijd: eerst worktree verwijderen, dan checkout van feature branch, dan aanbieden om te testen.
 
 ## Documentatie
 - C4 C1 + C2 up-to-date in `docs/`
@@ -22,7 +23,8 @@ AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hex
 - Gebruik altijd de code-review skill en fix de opmerkingen.
 
 ## Front-end ontwikkeling
-
+- storybook van het design system: https://flux.omgeving.vlaanderen.be
+- repo van het design system: https://github.com/milieuinfo/flux-web-components
 - We schrijven ook front-end testen, niet alleen back-end. Zie richtlijnen voor details.
 - We schrijven front-end testen met Cypress.
 - Gebruik voor de front-end enkel componenten uit de component library (@domg-wc). Wijk enkel op expliciete vraag van deze regel af.

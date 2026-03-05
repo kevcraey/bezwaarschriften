@@ -10,6 +10,8 @@ import org.tribuo.clustering.ClusterID;
 import org.tribuo.clustering.ClusteringFactory;
 import org.tribuo.clustering.hdbscan.HdbscanTrainer;
 import org.tribuo.impl.ArrayExample;
+import org.tribuo.math.distance.CosineDistance;
+import org.tribuo.math.neighbour.NeighboursQueryFactoryType;
 import org.tribuo.provenance.SimpleDataSourceProvenance;
 
 /**
@@ -42,9 +44,10 @@ public class TribuoClusteringAdapter implements ClusteringPoort {
     var dataset = bouwDataset(invoer);
     var trainer = new HdbscanTrainer(
         config.getMinClusterSize(),
-        HdbscanTrainer.Distance.EUCLIDEAN,
+        new CosineDistance(),
         config.getMinSamples(),
-        1);
+        1,
+        NeighboursQueryFactoryType.BRUTE_FORCE);
     var model = trainer.train(dataset);
 
     var labels = model.getClusterLabels();
@@ -114,8 +117,9 @@ public class TribuoClusteringAdapter implements ClusteringPoort {
   }
 
   /**
-   * Voegt clusters samen waarvan de centroiden binnen {@code epsilon} Euclidische
-   * afstand van elkaar liggen (transitief, via union-find).
+   * Voegt clusters samen waarvan de centroiden binnen {@code epsilon} cosine-afstand
+   * van elkaar liggen (transitief, via union-find).
+   * Cosine-afstand = 1 - cosine_similarity, bereik [0, 2].
    */
   List<Cluster> samenvoegDichteClusters(List<Cluster> clusters, double epsilon) {
     int n = clusters.size();
@@ -126,7 +130,7 @@ public class TribuoClusteringAdapter implements ClusteringPoort {
 
     for (int i = 0; i < n; i++) {
       for (int j = i + 1; j < n; j++) {
-        if (euclidischeAfstand(clusters.get(i).centroid(),
+        if (cosineAfstand(clusters.get(i).centroid(),
             clusters.get(j).centroid()) < epsilon) {
           union(parent, i, j);
         }
@@ -172,13 +176,20 @@ public class TribuoClusteringAdapter implements ClusteringPoort {
     parent[find(parent, i)] = find(parent, j);
   }
 
-  private double euclidischeAfstand(float[] a, float[] b) {
-    double sum = 0;
+  private double cosineAfstand(float[] a, float[] b) {
+    double dot = 0;
+    double normA = 0;
+    double normB = 0;
     for (int i = 0; i < a.length; i++) {
-      double diff = a[i] - b[i];
-      sum += diff * diff;
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
     }
-    return Math.sqrt(sum);
+    double denom = Math.sqrt(normA) * Math.sqrt(normB);
+    if (denom == 0) {
+      return 1.0;
+    }
+    return 1.0 - (dot / denom);
   }
 
   private float[] berekenCentroid(List<float[]> vectoren) {
