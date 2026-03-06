@@ -68,6 +68,34 @@ public class KernbezwaarController {
     return ResponseEntity.ok().build();
   }
 
+  /**
+   * Geeft top-5 kernbezwaar-suggesties voor een noise-bezwaar.
+   */
+  @GetMapping("/{naam}/noise/{bezwaarId}/suggesties")
+  public ResponseEntity<List<SuggestieResponse>> geefSuggesties(
+      @PathVariable String naam,
+      @PathVariable Long bezwaarId) {
+    var suggesties = kernbezwaarService.geefSuggesties(naam, bezwaarId);
+    var response = suggesties.stream()
+        .map(s -> new SuggestieResponse(s.kernbezwaarId(),
+            (int) Math.round(s.score() * 100),
+            kernbezwaarService.geefSamenvatting(s.kernbezwaarId())))
+        .toList();
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Wijst een referentie handmatig toe aan een kernbezwaar.
+   */
+  @PutMapping("/{naam}/referenties/{referentieId}/toewijzing")
+  public ResponseEntity<Void> wijsToe(
+      @PathVariable String naam,
+      @PathVariable Long referentieId,
+      @RequestBody ToewijzingRequest request) {
+    kernbezwaarService.wijsToeAanKernbezwaar(referentieId, request.kernbezwaarId());
+    return ResponseEntity.ok().build();
+  }
+
   /** Response DTO met kernbezwaren (flat, zonder thema-laag). */
   record KernbezwarenResponse(List<Kernbezwaar> kernbezwaren) {}
 
@@ -76,4 +104,10 @@ public class KernbezwaarController {
 
   /** Response bij 409 Conflict: lijst van getroffen bestandsnamen. */
   record ConflictResponse(List<String> getroffenDocumenten) {}
+
+  /** Response DTO voor een kernbezwaar-suggestie. */
+  record SuggestieResponse(Long kernbezwaarId, int scorePercentage, String samenvatting) {}
+
+  /** Request DTO voor handmatige toewijzing. */
+  record ToewijzingRequest(Long kernbezwaarId) {}
 }
