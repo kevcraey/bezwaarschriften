@@ -3,10 +3,8 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Optional;
 import javax.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +22,6 @@ public class ClusteringTaakService {
       LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final ClusteringTaakRepository taakRepository;
-  private final ThemaRepository themaRepository;
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarAntwoordRepository antwoordRepository;
   private final GeextraheerdBezwaarRepository bezwaarRepository;
@@ -32,14 +29,12 @@ public class ClusteringTaakService {
   private final int maxConcurrent;
 
   public ClusteringTaakService(ClusteringTaakRepository taakRepository,
-      ThemaRepository themaRepository,
       KernbezwaarRepository kernbezwaarRepository,
       KernbezwaarAntwoordRepository antwoordRepository,
       GeextraheerdBezwaarRepository bezwaarRepository,
       ClusteringNotificatie notificatie,
       @Value("${bezwaarschriften.clustering.max-concurrent:2}") int maxConcurrent) {
     this.taakRepository = taakRepository;
-    this.themaRepository = themaRepository;
     this.kernbezwaarRepository = kernbezwaarRepository;
     this.antwoordRepository = antwoordRepository;
     this.bezwaarRepository = bezwaarRepository;
@@ -48,33 +43,29 @@ public class ClusteringTaakService {
   }
 
   /**
-   * Dient een nieuwe clustering-taak in voor een categorie binnen een project.
-   * Verwijdert een eventueel bestaande taak en bijbehorend thema.
+   * Dient een nieuwe clustering-taak in voor een project.
+   * Verwijdert een eventueel bestaande taak.
    *
    * @param projectNaam naam van het project
-   * @param categorie naam van de categorie
    * @return DTO van de aangemaakte taak
    */
   @Transactional
-  public ClusteringTaakDto indienen(String projectNaam, String categorie) {
-    // Verwijder bestaande taak en thema als die er zijn
-    taakRepository.findByProjectNaamAndCategorie(projectNaam, categorie)
+  public ClusteringTaakDto indienen(String projectNaam) {
+    // Verwijder bestaande taak als die er is
+    taakRepository.findByProjectNaam(projectNaam)
         .ifPresent(bestaandeTaak -> {
           taakRepository.delete(bestaandeTaak);
-          taakRepository.flush(); // forceer DELETE naar DB vóór de nieuwe INSERT
-          themaRepository.deleteByProjectNaamAndNaam(projectNaam, categorie);
+          taakRepository.flush(); // forceer DELETE naar DB voor de nieuwe INSERT
         });
 
     // Maak nieuwe taak aan
     var taak = new ClusteringTaak();
     taak.setProjectNaam(projectNaam);
-    taak.setCategorie(categorie);
     taak.setStatus(ClusteringTaakStatus.WACHTEND);
     taak.setAangemaaktOp(Instant.now());
     taak = taakRepository.save(taak);
 
-    int aantalBezwaren = bezwaarRepository.countByProjectNaamAndCategorie(
-        projectNaam, categorie);
+    int aantalBezwaren = bezwaarRepository.countByProjectNaam(projectNaam);
     var dto = ClusteringTaakDto.van(taak, aantalBezwaren, null);
     notificatie.clusteringTaakGewijzigd(dto);
     return dto;
@@ -106,12 +97,12 @@ public class ClusteringTaakService {
       taak.setVerwerkingGestartOp(Instant.now());
       taakRepository.save(taak);
 
-      int aantalBezwaren = bezwaarRepository.countByProjectNaamAndCategorie(
-          taak.getProjectNaam(), taak.getCategorie());
+      int aantalBezwaren = bezwaarRepository.countByProjectNaam(
+          taak.getProjectNaam());
       notificatie.clusteringTaakGewijzigd(
           ClusteringTaakDto.van(taak, aantalBezwaren, null));
-      LOGGER.info("Clustering-taak {} opgepakt: project='{}', categorie='{}'",
-          taak.getId(), taak.getProjectNaam(), taak.getCategorie());
+      LOGGER.info("Clustering-taak {} opgepakt: project='{}'",
+          taak.getId(), taak.getProjectNaam());
     }
 
     return opTePakken;
@@ -131,10 +122,10 @@ public class ClusteringTaakService {
     taak.setVerwerkingVoltooidOp(Instant.now());
     taakRepository.save(taak);
 
-    int aantalBezwaren = bezwaarRepository.countByProjectNaamAndCategorie(
-        taak.getProjectNaam(), taak.getCategorie());
-    Integer aantalKernbezwaren = telKernbezwaren(
-        taak.getProjectNaam(), taak.getCategorie());
+    int aantalBezwaren = bezwaarRepository.countByProjectNaam(
+        taak.getProjectNaam());
+    int aantalKernbezwaren = kernbezwaarRepository.countByProjectNaam(
+        taak.getProjectNaam());
     var dto = ClusteringTaakDto.van(taak, aantalBezwaren, aantalKernbezwaren);
     notificatie.clusteringTaakGewijzigd(dto);
   }
@@ -155,8 +146,8 @@ public class ClusteringTaakService {
     taak.setVerwerkingVoltooidOp(Instant.now());
     taakRepository.save(taak);
 
-    int aantalBezwaren = bezwaarRepository.countByProjectNaamAndCategorie(
-        taak.getProjectNaam(), taak.getCategorie());
+    int aantalBezwaren = bezwaarRepository.countByProjectNaam(
+        taak.getProjectNaam());
     var dto = ClusteringTaakDto.van(taak, aantalBezwaren, null);
     notificatie.clusteringTaakGewijzigd(dto);
   }
@@ -173,8 +164,7 @@ public class ClusteringTaakService {
 
   /**
    * Annuleert een taak als die status WACHTEND of BEZIG heeft.
-   * De taak wordt verwijderd uit de database zodat de categorie
-   * terugkeert naar "todo"-status in het overzicht.
+   * De taak wordt verwijderd uit de database.
    *
    * @param taakId ID van de taak
    * @return true als de taak geannuleerd is, false als de status dat niet toelaat
@@ -192,175 +182,61 @@ public class ClusteringTaakService {
     }
 
     taakRepository.delete(taak);
-    LOGGER.info("Clustering-taak {} geannuleerd en verwijderd: project='{}', categorie='{}'",
-        taak.getId(), taak.getProjectNaam(), taak.getCategorie());
+    LOGGER.info("Clustering-taak {} geannuleerd en verwijderd: project='{}'",
+        taak.getId(), taak.getProjectNaam());
     return true;
   }
 
   /**
-   * Geeft alle clustering-taken voor een project met bijbehorende counts.
+   * Geeft de clustering-taak voor een project met bijbehorende counts.
    *
    * @param projectNaam naam van het project
-   * @return lijst van DTOs
+   * @return de taak als Optional, leeg als er geen taak is
    */
-  public List<ClusteringTaakDto> geefTaken(String projectNaam) {
-    return taakRepository.findByProjectNaam(projectNaam).stream()
+  public Optional<ClusteringTaakDto> geefTaak(String projectNaam) {
+    return taakRepository.findByProjectNaam(projectNaam)
         .map(taak -> {
-          int aantalBezwaren = bezwaarRepository.countByProjectNaamAndCategorie(
-              projectNaam, taak.getCategorie());
+          int aantalBezwaren = bezwaarRepository.countByProjectNaam(projectNaam);
           Integer aantalKernbezwaren = taak.getStatus() == ClusteringTaakStatus.KLAAR
-              ? telKernbezwaren(projectNaam, taak.getCategorie())
+              ? kernbezwaarRepository.countByProjectNaam(projectNaam)
               : null;
           return ClusteringTaakDto.van(taak, aantalBezwaren, aantalKernbezwaren);
-        })
-        .toList();
+        });
   }
 
   /**
-   * Verwijdert clusteringresultaten voor een categorie. Als er antwoorden aan
+   * Verwijdert clusteringresultaten voor een project. Als er antwoorden aan
    * kernbezwaren gekoppeld zijn en bevestiging niet gegeven is, wordt eerst om
    * bevestiging gevraagd.
    *
    * @param projectNaam naam van het project
-   * @param categorie naam van de categorie
    * @param bevestigd true als de gebruiker bevestigd heeft dat antwoorden verloren mogen gaan
    * @return resultaat met verwijderstatus en eventueel bevestigingsverzoek
    */
   @Transactional
-  public VerwijderResultaat verwijderClustering(String projectNaam, String categorie,
-      boolean bevestigd) {
-    var themaOpt = themaRepository.findByProjectNaamAndNaam(projectNaam, categorie);
-    if (themaOpt.isEmpty()) {
-      // Verwijder eventueel een taak zonder thema
-      taakRepository.findByProjectNaamAndCategorie(projectNaam, categorie)
-          .ifPresent(taakRepository::delete);
+  public VerwijderResultaat verwijderClustering(String projectNaam, boolean bevestigd) {
+    var kernbezwaren = kernbezwaarRepository.findByProjectNaam(projectNaam);
+
+    if (kernbezwaren.isEmpty()) {
+      // Geen kernbezwaren, verwijder eventuele taak
+      taakRepository.deleteByProjectNaam(projectNaam);
       return VerwijderResultaat.succesvolVerwijderd();
     }
 
-    var thema = themaOpt.get();
-    var kernbezwaren = kernbezwaarRepository.findByThemaId(thema.getId());
     var kernIds = kernbezwaren.stream().map(KernbezwaarEntiteit::getId).toList();
 
     // Controleer op gekoppelde antwoorden
-    if (!kernIds.isEmpty() && !bevestigd) {
+    if (!bevestigd) {
       long aantalAntwoorden = antwoordRepository.countByKernbezwaarIdIn(kernIds);
       if (aantalAntwoorden > 0) {
         return VerwijderResultaat.bevestigingVereist(aantalAntwoorden);
       }
     }
 
-    // Verwijder thema (cascade ruimt kernbezwaren, referenties en antwoorden op)
-    themaRepository.deleteByProjectNaamAndNaam(projectNaam, categorie);
-
-    // Verwijder bijbehorende taak
-    taakRepository.findByProjectNaamAndCategorie(projectNaam, categorie)
-        .ifPresent(taakRepository::delete);
-
-    return VerwijderResultaat.succesvolVerwijderd();
-  }
-
-  /**
-   * Verwijdert alle clusteringresultaten voor een project. Als er antwoorden aan
-   * kernbezwaren gekoppeld zijn en bevestiging niet gegeven is, wordt eerst om
-   * bevestiging gevraagd.
-   *
-   * @param projectNaam naam van het project
-   * @param bevestigd true als de gebruiker bevestigd heeft dat antwoorden verloren mogen gaan
-   * @return resultaat met verwijderstatus en eventueel bevestigingsverzoek
-   */
-  @Transactional
-  public VerwijderResultaat verwijderAlleClusteringen(String projectNaam, boolean bevestigd) {
-    var themas = themaRepository.findByProjectNaam(projectNaam);
-    var themaIds = themas.stream().map(ThemaEntiteit::getId).toList();
-
-    if (!themaIds.isEmpty() && !bevestigd) {
-      var kernbezwaren = kernbezwaarRepository.findByThemaIdIn(themaIds);
-      var kernIds = kernbezwaren.stream().map(KernbezwaarEntiteit::getId).toList();
-      if (!kernIds.isEmpty()) {
-        long aantalAntwoorden = antwoordRepository.countByKernbezwaarIdIn(kernIds);
-        if (aantalAntwoorden > 0) {
-          return VerwijderResultaat.bevestigingVereist(aantalAntwoorden);
-        }
-      }
-    }
-
-    themaRepository.deleteByProjectNaam(projectNaam);
+    // Verwijder kernbezwaren en taak
+    kernbezwaarRepository.deleteAll(kernbezwaren);
     taakRepository.deleteByProjectNaam(projectNaam);
+
     return VerwijderResultaat.succesvolVerwijderd();
-  }
-
-  /**
-   * Geeft een overzicht van alle categorien met hun clustering-status.
-   * Categorien zonder taak krijgen status "todo".
-   *
-   * @param projectNaam naam van het project
-   * @return lijst van status-items per categorie
-   */
-  public List<CategorieStatus> geefCategorieOverzicht(String projectNaam) {
-    var alleCategorien = bezwaarRepository
-        .findDistinctCategorienByProjectNaam(projectNaam);
-    var taken = geefTaken(projectNaam);
-    var taakPerCategorie = taken.stream()
-        .collect(Collectors.toMap(ClusteringTaakDto::categorie, dto -> dto));
-
-    var items = new ArrayList<CategorieStatus>();
-    for (var categorie : alleCategorien) {
-      var taak = taakPerCategorie.get(categorie);
-      if (taak != null) {
-        items.add(new CategorieStatus(
-            taak.categorie(), taak.status(), taak.id(),
-            taak.aantalBezwaren(), taak.aantalKernbezwaren(),
-            taak.foutmelding()));
-      } else {
-        int aantalBezwaren = bezwaarRepository
-            .countByProjectNaamAndCategorie(projectNaam, categorie);
-        items.add(new CategorieStatus(
-            categorie, "todo", null,
-            aantalBezwaren, null, null));
-      }
-    }
-    return items;
-  }
-
-  /**
-   * Dient clustering-taken in voor alle categorien die nog niet actief zijn
-   * (niet klaar, bezig of wachtend).
-   *
-   * @param projectNaam naam van het project
-   * @return lijst van ingediende DTOs
-   */
-  public List<ClusteringTaakDto> indienenAlleNietActieve(String projectNaam) {
-    var alleCategorien = bezwaarRepository
-        .findDistinctCategorienByProjectNaam(projectNaam);
-    var bestaandeTaken = geefTaken(projectNaam);
-
-    var actieveStatussen = Set.of("klaar", "bezig", "wachtend");
-    var actieveCategorieen = bestaandeTaken.stream()
-        .filter(t -> actieveStatussen.contains(t.status()))
-        .map(ClusteringTaakDto::categorie)
-        .collect(Collectors.toSet());
-
-    var ingediend = new ArrayList<ClusteringTaakDto>();
-    for (var categorie : alleCategorien) {
-      if (!actieveCategorieen.contains(categorie)) {
-        ingediend.add(indienen(projectNaam, categorie));
-      }
-    }
-    return ingediend;
-  }
-
-  /** Status per categorie in het overzicht. */
-  public record CategorieStatus(
-      String categorie,
-      String status,
-      Long taakId,
-      int aantalBezwaren,
-      Integer aantalKernbezwaren,
-      String foutmelding) {}
-
-  private Integer telKernbezwaren(String projectNaam, String categorie) {
-    return themaRepository.findByProjectNaamAndNaam(projectNaam, categorie)
-        .map(thema -> kernbezwaarRepository.countByThemaId(thema.getId()))
-        .orElse(null);
   }
 }

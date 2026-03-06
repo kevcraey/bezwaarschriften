@@ -13,7 +13,7 @@ import javax.persistence.Version;
 
 /**
  * JPA-entiteit voor een clustering-taak in de verwerkingsqueue.
- * Elke taak representeert het clusteren van bezwaren binnen een categorie.
+ * Elke taak representeert het clusteren van alle bezwaren binnen een project.
  */
 @Entity
 @Table(name = "clustering_taak")
@@ -25,9 +25,6 @@ public class ClusteringTaak {
 
   @Column(name = "project_naam", nullable = false)
   private String projectNaam;
-
-  @Column(name = "categorie", nullable = false, length = 50)
-  private String categorie;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 20)
@@ -63,14 +60,6 @@ public class ClusteringTaak {
 
   public void setProjectNaam(String projectNaam) {
     this.projectNaam = projectNaam;
-  }
-
-  public String getCategorie() {
-    return categorie;
-  }
-
-  public void setCategorie(String categorie) {
-    this.categorie = categorie;
   }
 
   public ClusteringTaakStatus getStatus() {
