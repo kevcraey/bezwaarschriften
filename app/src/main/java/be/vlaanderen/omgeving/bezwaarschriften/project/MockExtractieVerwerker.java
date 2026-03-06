@@ -171,7 +171,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
         lijst.add(new GeextraheerdBezwaar(
             item.get("passageId").asInt(),
             item.get("samenvatting").asText(),
-            item.get("categorie").asText()));
+            "Overige"));
       }
     }
     return List.copyOf(lijst);

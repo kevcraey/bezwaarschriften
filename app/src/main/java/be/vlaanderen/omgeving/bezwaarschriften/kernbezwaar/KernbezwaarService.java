@@ -262,7 +262,7 @@ public class KernbezwaarService {
         .toList();
     if (!zonderEmbedding.isEmpty()) {
       var teksten = zonderEmbedding.stream()
-          .map(GeextraheerdBezwaarEntiteit::getSamenvatting)
+          .map(b -> geefPassageTekst(b, passageLookup))
           .toList();
       var embeddings = embeddingPoort.genereerEmbeddings(teksten);
       transactionTemplate.executeWithoutResult(status -> {

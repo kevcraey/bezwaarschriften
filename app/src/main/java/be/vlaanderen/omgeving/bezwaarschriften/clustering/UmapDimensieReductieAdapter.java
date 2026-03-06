@@ -40,6 +40,7 @@ public class UmapDimensieReductieAdapter implements DimensieReductiePoort {
     umap.setNumberComponents(config.getUmapNComponents());
     umap.setNumberNearestNeighbours(config.getUmapNNeighbors());
     umap.setMinDist(config.getUmapMinDist());
+    umap.setMetric("cosine");
     umap.setVerbose(false);
 
     double[][] invoer = naarDoubleMatrix(vectoren);

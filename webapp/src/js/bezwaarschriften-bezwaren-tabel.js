@@ -51,7 +51,7 @@ const STATUS_OPTIES = [
   {value: 'niet ondersteund', label: 'Niet ondersteund'},
 ];
 
-const ITEMS_PER_PAGINA = 50;
+const ITEMS_PER_PAGINA = 300;
 
 export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   static get properties() {
