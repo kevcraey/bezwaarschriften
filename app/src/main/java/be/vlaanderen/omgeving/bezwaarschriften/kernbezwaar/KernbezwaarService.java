@@ -276,7 +276,7 @@ public class KernbezwaarService {
                 Integer scorePercentage = re.getScore() != null
                     ? (int) Math.round(re.getScore() * 100) : null;
                 return new IndividueelBezwaarReferentie(
-                    re.getBezwaarId(), re.getBestandsnaam(), re.getPassage(),
+                    re.getId(), re.getBezwaarId(), re.getBestandsnaam(), re.getPassage(),
                     scorePercentage, re.getToewijzingsmethode());
               })
               .sorted(Comparator.comparing(
@@ -497,7 +497,7 @@ public class KernbezwaarService {
           Double score = scores.get(b.getId());
           Integer scorePercentage = score != null ? (int) Math.round(score * 100) : null;
           return new IndividueelBezwaarReferentie(
-              b.getId(),
+              null, b.getId(),
               bestandsnaamLookup.getOrDefault(b.getTaakId(), "onbekend"),
               geefPassageTekst(b, passageLookup),
               scorePercentage,
