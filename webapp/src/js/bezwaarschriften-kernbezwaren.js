@@ -5,11 +5,12 @@ import {VlAlert} from '@domg-wc/components/block/alert';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
+import {VlLinkComponent} from '@domg-wc/components/atom/link/vl-link.component.js';
 import {vlGlobalStyles, vlGridStyles, vlGroupStyles} from '@domg-wc/styles';
 import {groepeerPassages} from './passage-groepering.js';
 import '@domg-wc/components/form/textarea-rich';
 
-registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent]);
+registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent, VlLinkComponent]);
 
 const PAGE_SIZE = 15;
 
@@ -396,22 +397,29 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const statusDiv = document.createElement('div');
     statusDiv.className = 'lege-staat';
 
-    const pill = document.createElement('vl-pill');
-    pill.setAttribute('type', 'warning');
-    pill.className = 'status-pill';
-    const span = document.createElement('span');
-    span.className = 'timer-tekst';
-    span.textContent = this._formatClusteringStatus(this._clusteringTaak);
-    pill.appendChild(span);
-    statusDiv.appendChild(pill);
+    const actieRij = document.createElement('div');
+    actieRij.style.cssText = 'display:flex;align-items:center;gap:1rem;justify-content:center;';
 
-    const annuleerKnop = document.createElement('vl-button');
-    annuleerKnop.setAttribute('error', '');
-    annuleerKnop.textContent = 'Annuleer';
-    annuleerKnop.style.marginTop = 'var(--vl-spacing--xsmall)';
-    annuleerKnop.addEventListener('click', () => this._annuleerClustering());
-    statusDiv.appendChild(annuleerKnop);
+    const loadingKnop = document.createElement('vl-button');
+    loadingKnop.setAttribute('loading', '');
+    loadingKnop.setAttribute('disabled', '');
+    loadingKnop.className = 'clustering-loading-knop';
+    const loadingTekst = document.createElement('span');
+    loadingTekst.className = 'timer-tekst';
+    loadingTekst.textContent = this._formatClusteringStatus(this._clusteringTaak);
+    loadingKnop.appendChild(loadingTekst);
+    actieRij.appendChild(loadingKnop);
 
+    const annuleerLink = document.createElement('vl-link');
+    annuleerLink.setAttribute('button-as-link', '');
+    annuleerLink.setAttribute('icon', 'cross');
+    annuleerLink.setAttribute('icon-placement', 'before');
+    annuleerLink.textContent = 'Annuleer';
+    annuleerLink.style.cursor = 'pointer';
+    annuleerLink.addEventListener('click', () => this._annuleerClustering());
+    actieRij.appendChild(annuleerLink);
+
+    statusDiv.appendChild(actieRij);
     inhoud.appendChild(statusDiv);
   }
 

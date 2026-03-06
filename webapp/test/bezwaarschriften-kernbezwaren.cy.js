@@ -125,24 +125,24 @@ function mountEnLaad(clusteringTaakBody, kernbezwarenBody) {
 // === Clustering status ===
 
 describe('clustering status weergave', () => {
-  it('toont wachtend-status met annuleerknop', () => {
+  it('toont wachtend-status met loading knop en annuleer-link', () => {
     mountEnLaad(MOCK_CLUSTERING_WACHTEND);
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-pill[type="warning"]')
+        .find('vl-button[loading][disabled]')
         .should('exist')
         .and('contain.text', 'Wachtend');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-button[error]')
+        .find('vl-link[button-as-link]')
         .should('contain.text', 'Annuleer');
   });
 
-  it('toont bezig-status met timer', () => {
+  it('toont bezig-status met loading knop', () => {
     mountEnLaad(MOCK_CLUSTERING_BEZIG);
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-pill[type="warning"]')
+        .find('vl-button[loading][disabled]')
         .should('exist')
         .and('contain.text', 'Bezig');
   });
@@ -165,7 +165,7 @@ describe('clustering status weergave', () => {
     mountEnLaad(MOCK_CLUSTERING_WACHTEND);
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-pill')
+        .find('vl-button[loading]')
         .should('contain.text', 'Wachtend');
 
     cy.get('bezwaarschriften-kernbezwaren')
@@ -174,7 +174,7 @@ describe('clustering status weergave', () => {
         }));
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-pill')
+        .find('vl-button[loading]')
         .should('contain.text', 'Bezig');
   });
 });
@@ -217,7 +217,7 @@ describe('clustering acties', () => {
     cy.wait('@startClustering');
   });
 
-  it('annuleert clustering bij klik op annuleer-knop', () => {
+  it('annuleert clustering bij klik op annuleer-link', () => {
     cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
       statusCode: 200,
     }).as('annuleerClustering');
@@ -225,7 +225,7 @@ describe('clustering acties', () => {
     mountEnLaad(MOCK_CLUSTERING_BEZIG);
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-button[error]')
+        .find('vl-link[button-as-link]')
         .contains('Annuleer')
         .click();
 
