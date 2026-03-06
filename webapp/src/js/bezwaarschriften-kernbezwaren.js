@@ -1303,19 +1303,27 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           body: JSON.stringify({kernbezwaarId}),
         });
     if (response.ok) {
-      await this.laadKernbezwaren(this._projectNaam);
-      // Ververs side panel met bijgewerkte noise data
+      // Verwijder het bezwaar lokaal uit de noise lijst
       const noiseKernbezwaar = this._kernbezwaren.find(
           (k) => k.samenvatting === 'Niet-geclusterde bezwaren');
       if (noiseKernbezwaar) {
-        this._toonPassages(noiseKernbezwaar);
-      } else {
-        const sideSheet = this.shadowRoot.querySelector('#side-sheet');
-        if (sideSheet) {
-          sideSheet.close();
-          this.classList.remove('side-sheet-open');
+        noiseKernbezwaar.individueleBezwaren = noiseKernbezwaar.individueleBezwaren.filter(
+            (b) => b.referentieId !== bezwaar.referentieId);
+        // Update cache en herrender enkel side panel
+        this._huidigGroepen = this._huidigGroepen.filter(
+            (g) => !g.bezwaren.some((b) => b.referentieId === bezwaar.referentieId));
+        if (noiseKernbezwaar.individueleBezwaren.length === 0) {
+          const sideSheet = this.shadowRoot.querySelector('#side-sheet');
+          if (sideSheet) {
+            sideSheet.close();
+            this.classList.remove('side-sheet-open');
+          }
+        } else {
+          this._renderPassagePagina();
         }
       }
+      // Achtergrond: herlaad alles voor consistente state (buiten kritisch pad)
+      this.laadKernbezwaren(this._projectNaam);
     }
   }
 }
