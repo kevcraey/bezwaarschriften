@@ -1227,7 +1227,14 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
       const passage = document.createElement('div');
       passage.className = 'passage-tekst';
-      passage.textContent = `"${groep.passage}"`;
+      passage.appendChild(document.createTextNode(`"${groep.passage}"`));
+
+      if (groep.maxScore != null) {
+        const scoreBadge = document.createElement('span');
+        scoreBadge.style.cssText = 'display:inline-block;background:#e8ebee;border-radius:3px;padding:0.1rem 0.4rem;font-size:0.8rem;font-style:normal;color:#333;margin-left:0.5rem;';
+        scoreBadge.textContent = `${groep.maxScore}%`;
+        passage.appendChild(scoreBadge);
+      }
       groepEl.appendChild(passage);
 
       const docContainer = document.createElement('div');

@@ -52,6 +52,27 @@ describe('passage-groepering', () => {
     expect(groepeerPassages([])).to.deep.equal([]);
   });
 
+  it('berekent maxScore per groep en sorteert aflopend', () => {
+    const bezwaren = [
+      {bestandsnaam: '001.txt', passage: 'Geluidshinder is onaanvaardbaar', scorePercentage: 72},
+      {bestandsnaam: '002.txt', passage: 'Geluidshinder is onaanvaardbaar', scorePercentage: 91},
+      {bestandsnaam: '003.txt', passage: 'Verkeer neemt toe', scorePercentage: 85},
+    ];
+    const groepen = groepeerPassages(bezwaren);
+    expect(groepen).to.have.length(2);
+    expect(groepen[0].maxScore).to.equal(91);
+    expect(groepen[0].passage).to.contain('Geluidshinder');
+    expect(groepen[1].maxScore).to.equal(85);
+  });
+
+  it('zet maxScore op null als geen scores beschikbaar', () => {
+    const bezwaren = [
+      {bestandsnaam: '001.txt', passage: 'Geen score bezwaar'},
+    ];
+    const groepen = groepeerPassages(bezwaren);
+    expect(groepen[0].maxScore).to.be.null;
+  });
+
   it('behoudt alle originele bezwaar-data in groep', () => {
     const bezwaren = [
       {bestandsnaam: '001.txt', passage: 'Geluid is te hard', extraVeld: 'waarde'},

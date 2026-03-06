@@ -37,9 +37,9 @@ const GELIJKENIS_DREMPEL = 0.9;
 
 /**
  * Groepeer individuele bezwaren op basis van passage-gelijkenis.
- * Retourneert array van { passage, bezwaren } gesorteerd op groepsgrootte (aflopend).
+ * Retourneert array van { passage, bezwaren, maxScore } gesorteerd op maxScore (aflopend, nulls last).
  * @param {Array<Object>} bezwaren - Array van bezwaar-objecten met een `passage` property.
- * @return {Array<{passage: string, bezwaren: Array<Object>}>} Gegroepeerde bezwaren.
+ * @return {Array<Object>} Gegroepeerde bezwaren met passage, bezwaren en maxScore.
  */
 export function groepeerPassages(bezwaren) {
   if (!bezwaren || bezwaren.length === 0) return [];
@@ -51,6 +51,11 @@ export function groepeerPassages(bezwaren) {
     for (const groep of groepen) {
       if (diceCoefficient(bezwaar.passage, groep.passage) >= GELIJKENIS_DREMPEL) {
         groep.bezwaren.push(bezwaar);
+        if (bezwaar.scorePercentage != null) {
+          groep.maxScore = groep.maxScore != null ?
+            Math.max(groep.maxScore, bezwaar.scorePercentage) :
+            bezwaar.scorePercentage;
+        }
         if (bezwaar.passage.length > groep.passage.length) {
           groep.passage = bezwaar.passage;
         }
@@ -59,10 +64,19 @@ export function groepeerPassages(bezwaren) {
       }
     }
     if (!gevonden) {
-      groepen.push({passage: bezwaar.passage, bezwaren: [bezwaar]});
+      groepen.push({
+        passage: bezwaar.passage,
+        bezwaren: [bezwaar],
+        maxScore: bezwaar.scorePercentage ?? null,
+      });
     }
   }
 
-  groepen.sort((a, b) => b.bezwaren.length - a.bezwaren.length);
+  groepen.sort((a, b) => {
+    if (a.maxScore == null && b.maxScore == null) return b.bezwaren.length - a.bezwaren.length;
+    if (a.maxScore == null) return 1;
+    if (b.maxScore == null) return -1;
+    return b.maxScore - a.maxScore;
+  });
   return groepen;
 }
