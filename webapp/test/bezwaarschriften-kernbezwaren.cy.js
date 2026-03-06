@@ -382,12 +382,12 @@ describe('kernbezwaren flat list', () => {
         .and('contain', 'niet toegewezen');
   });
 
-  it('noise-kernbezwaar staat altijd onderaan', () => {
+  it('kernbezwaren gesorteerd op aantal bezwaren (grootste eerst)', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.kernbezwaar-item')
-        .last()
+        .first()
         .find('.kernbezwaar-samenvatting')
-        .should('contain.text', 'Niet-geclusterde bezwaren');
+        .should('contain.text', 'Te veel geluidshinder');
   });
 });
 

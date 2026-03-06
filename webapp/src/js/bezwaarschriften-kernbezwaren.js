@@ -479,8 +479,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     // Samenvatting
     const echteKernbezwaren = this._kernbezwaren.filter(
         (k) => k.samenvatting !== 'Niet-geclusterde bezwaren');
-    const noiseKernbezwaar = this._kernbezwaren.find(
-        (k) => k.samenvatting === 'Niet-geclusterde bezwaren');
 
     let totaalBezwaren = 0;
     let aantalHdbscan = 0;
@@ -531,13 +529,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       inhoud.appendChild(waarschuwing);
     }
 
-    // Sorteer kernbezwaren: meeste bezwaren eerst, noise altijd onderaan
-    const gesorteerd = [...echteKernbezwaren].sort(
+    // Sorteer kernbezwaren: meeste bezwaren eerst
+    const gesorteerd = [...this._kernbezwaren].sort(
         (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
     );
-    if (noiseKernbezwaar) {
-      gesorteerd.push(noiseKernbezwaar);
-    }
 
     // Render kernbezwaar items
     gesorteerd.forEach((kern) => {
