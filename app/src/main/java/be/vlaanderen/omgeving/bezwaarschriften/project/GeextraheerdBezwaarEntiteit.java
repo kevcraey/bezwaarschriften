@@ -25,9 +25,6 @@ public class GeextraheerdBezwaarEntiteit {
   @Column(name = "samenvatting", columnDefinition = "text", nullable = false)
   private String samenvatting;
 
-  @Column(name = "categorie", length = 50, nullable = false)
-  private String categorie;
-
   @Column(name = "passage_gevonden", nullable = false)
   private boolean passageGevonden = true;
 
@@ -72,14 +69,6 @@ public class GeextraheerdBezwaarEntiteit {
 
   public void setSamenvatting(String samenvatting) {
     this.samenvatting = samenvatting;
-  }
-
-  public String getCategorie() {
-    return categorie;
-  }
-
-  public void setCategorie(String categorie) {
-    this.categorie = categorie;
   }
 
   public boolean isPassageGevonden() {

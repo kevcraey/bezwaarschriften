@@ -20,25 +20,8 @@ public interface GeextraheerdBezwaarRepository
       @Param("projectNaam") String projectNaam);
 
   @Query("SELECT COUNT(b) FROM GeextraheerdBezwaarEntiteit b "
-      + "WHERE b.categorie = :categorie AND b.taakId IN ("
-      + "  SELECT t.id FROM ExtractieTaak t "
-      + "  WHERE t.projectNaam = :projectNaam AND t.status = 'KLAAR')")
-  int countByProjectNaamAndCategorie(
-      @Param("projectNaam") String projectNaam,
-      @Param("categorie") String categorie);
-
-  @Query("SELECT b FROM GeextraheerdBezwaarEntiteit b "
-      + "WHERE b.categorie = :categorie AND b.taakId IN ("
-      + "  SELECT t.id FROM ExtractieTaak t "
-      + "  WHERE t.projectNaam = :projectNaam AND t.status = 'KLAAR')")
-  List<GeextraheerdBezwaarEntiteit> findByProjectNaamAndCategorie(
-      @Param("projectNaam") String projectNaam,
-      @Param("categorie") String categorie);
-
-  @Query("SELECT DISTINCT b.categorie FROM GeextraheerdBezwaarEntiteit b "
       + "WHERE b.taakId IN ("
       + "  SELECT t.id FROM ExtractieTaak t "
       + "  WHERE t.projectNaam = :projectNaam AND t.status = 'KLAAR')")
-  List<String> findDistinctCategorienByProjectNaam(
-      @Param("projectNaam") String projectNaam);
+  int countByProjectNaam(@Param("projectNaam") String projectNaam);
 }
