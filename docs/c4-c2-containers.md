@@ -2,8 +2,8 @@
 
 ## Bezwaarschriften Verwerkingssysteem - Container View
 
-**Versie:** 1.1
-**Laatst bijgewerkt:** 2026-02-27
+**Versie:** 1.2
+**Laatst bijgewerkt:** 2026-03-06
 **Status:** In ontwikkeling (MS1 - Minimal Viable Pipeline)
 
 ---
@@ -30,7 +30,7 @@ C4Container
         Container(project, "Project Component", "Java NIO", "Beheert projectmappen en coördineert batchverwerking van bezwarenbestanden")
         Container(ingestie, "File Ingestie Component", "Java NIO", "Leest TXT bestanden in en creëert Brondocument objecten")
         Container(extractie, "Bezwaar Extractie Component", "Spring AI", "Extraheert individuele bezwaren uit brondocument via LLM")
-        Container(clustering, "Clustering Component", "Spring AI + pgvector", "Groepeert gelijkaardige bezwaren tot kernen")
+        Container(clustering, "Clustering Component", "Tribuo HDBSCAN + pgvector", "Groepeert bezwaren via HDBSCAN clustering met centroid matching post-processing")
         Container(generatie, "Antwoord Generatie Component", "Spring AI", "Genereert gepersonaliseerde antwoorden via LLM")
 
         ContainerDb(database, "Database", "PostgreSQL 15 + pgvector", "Slaat bezwaren, embeddings, kernen en antwoorden op")
@@ -234,47 +234,76 @@ BezwaarExtractiePoort <-- BezwaarExtractieService --> OpenAI Adapter (Spring AI)
 
 ### 4. Clustering Component
 
-**Verantwoordelijkheid:** Groepeert gelijkaardige bezwaren tot bezwaarkernen via vector similarity.
+**Verantwoordelijkheid:** Groepeert gelijkaardige bezwaren tot kernbezwaren via HDBSCAN density-based clustering, met centroid matching post-processing voor noise-bezwaren.
 
 **Technologie:**
-- Spring AI (embeddings generatie)
-- PostgreSQL pgvector (similarity search)
-- OpenAI text-embedding-3-small / Ollama bge-m3:latest
+- Oracle Tribuo HDBSCAN (density-based clustering)
+- Spring AI (embeddings generatie: bge-m3 1024D)
+- PostgreSQL pgvector (embedding opslag)
+- Optionele UMAP dimensie-reductie (configureerbaar)
 
 **Belangrijkste Klassen:**
-- `ClusteringPoort` (interface/port)
-- `BezwaarGroeperingService` (implementatie)
-- `Bezwaarkern` (JPA entity, toekomstig)
+- `TribuoClusteringAdapter` - HDBSCAN clustering via Tribuo library
+- `CentroidMatchingService` - Centroid-gebaseerde noise post-processing
+- `KernbezwaarService` - Orchestreert clustering + samenvatting generatie
+- `ClusteringTaakService` - Beheer van async clustering taken
+- `ClusteringWorker` - Async verwerking via `@Async`
+- `ClusteringConfig` - Configureerbare parameters (minClusterSize, epsilon, centroidMatchingThreshold)
+- `KernbezwaarEntiteit` / `KernbezwaarReferentieEntiteit` - JPA entities
 
-**Data Flow:**
-1. Haalt alle `IndividueelBezwaar` records op
-2. Genereert embeddings via Spring AI
-3. Slaat embeddings op in pgvector kolom
-4. Voert similarity search uit (cosine distance)
-5. Groepeert bezwaren met similarity > threshold (bijv. 0.85)
-6. Genereert kernbeschrijving via LLM
-7. Persisteert `Bezwaarkern` met gekoppelde bezwaren
+**Clustering Pipeline (per project):**
+1. Haalt alle `GeextraheerdBezwaar` records op voor het project
+2. Gebruikt bestaande bge-m3 embeddings (1024D) uit pgvector
+3. Optioneel: UMAP dimensie-reductie (configureerbaar: nComponents, nNeighbors, minDist)
+4. HDBSCAN clustering: minClusterSize, minSamples, clusterSelectionEpsilon
+5. **Centroid matching post-processing:**
+   - Berekent centroid (gemiddelde vector) per cluster
+   - Voor elk noise-bezwaar (HDBSCAN label -1): cosine similarity naar alle centroids
+   - Als similarity >= threshold (default 0.85): wijs toe aan best matchend cluster (`CENTROID_FALLBACK`)
+   - Onder threshold: blijft noise, top-5 suggesties beschikbaar voor handmatige toewijzing
+6. Genereert samenvatting per kernbezwaar via LLM
+7. Persisteert kernbezwaren direct onder project (geen thema/categorie-laag)
 
-**Vector Similarity Query:**
-```sql
-SELECT b1.id, b1.tekst,
-       1 - (b1.embedding <=> b2.embedding) AS similarity
-FROM individueel_bezwaar b1, individueel_bezwaar b2
-WHERE b1.id != b2.id
-  AND 1 - (b1.embedding <=> b2.embedding) > 0.85
-ORDER BY similarity DESC;
+**Toewijzingsmethoden:**
+- `HDBSCAN` — Direct door HDBSCAN algoritme geclusterd
+- `CENTROID_FALLBACK` — Automatisch toegewezen via centroid matching (boven threshold)
+- `MANUEEL` — Door ambtenaar handmatig toegewezen vanuit noise
+
+**REST Endpoints (clustering):**
+```
+GET  /api/v1/projects/{naam}/clustering-taken
+     → { id, status, aantalBezwaren, ... } (enkele taak per project)
+
+POST /api/v1/projects/{naam}/clustering-taken
+     → Start clustering (202 Accepted)
+
+DELETE /api/v1/projects/{naam}/clustering-taken[?bevestigd=true]
+     → Verwijder clustering (409 als antwoorden bestaan)
 ```
 
-**Clustering Algoritme:**
-- Agglomerative clustering op basis van vector afstand
-- Dynamic threshold aanpassing op basis van domein
-- Handmatige override door ambtenaar mogelijk
+**REST Endpoints (kernbezwaren):**
+```
+GET  /api/v1/projects/{naam}/kernbezwaren
+     → { kernbezwaren: [{ id, samenvatting, individueleBezwaren, antwoord }] }
+
+PUT  /api/v1/projects/{naam}/kernbezwaren/{id}/antwoord
+     → Sla antwoord op (409 bij bestaande consolidatie)
+
+GET  /api/v1/projects/{naam}/noise/{bezwaarId}/suggesties
+     → [{ kernbezwaarId, scorePercentage, samenvatting }] (top-5)
+
+PUT  /api/v1/projects/{naam}/referenties/{referentieId}/toewijzing
+     → Handmatige toewijzing van noise-bezwaar aan kernbezwaar
+```
 
 **Hexagonale Architectuur:**
 ```
-[Port]           [Service]                    [Adapter]
-ClusteringPoort <-- BezwaarGroeperingService --> pgvector Repository
-                                             --> Spring AI Embedding Client
+[Controller]              [Service]                      [Adapter/Repository]
+ClusteringTaakController → ClusteringTaakService         → ClusteringTaakRepository
+                         → ClusteringWorker (async)      → TribuoClusteringAdapter
+KernbezwaarController    → KernbezwaarService            → KernbezwaarRepository
+                         → CentroidMatchingService       → KernbezwaarReferentieRepository
+                                                         → Spring AI Embedding Client
 ```
 
 ---
@@ -448,15 +477,26 @@ POST /api/v1/kernen/{kernId}/genereer
 - Webpack 5 bundeling
 - REST client naar API (fetch API)
 
-**Geïmplementeerde Features (DECIBEL-1706):**
+**Geïmplementeerde Features:**
 - Projectkeuze via dropdown (`vl-select`)
 - Bezwarenlijst met statusweergave (`bezwaarschriften-bezwaren-tabel`)
 - Batchverwerking starten ("Verwerk alles" knop)
 - Foutmeldingen bij API-fouten
+- **Kernbezwaren flat list** — Kernbezwaren direct onder project (geen categorie/thema-laag)
+- **Clustering beheer** — Start/annuleer/retry/verwijder clustering per project
+- **Configureerbare parameters** — HDBSCAN + UMAP parameters in UI
+- **Side panel met paginering** — Passage-deduplicatie, 15 per pagina
+- **Toewijzingsmethode badges** — CENTROID_FALLBACK (oranje), MANUEEL (blauw)
+- **Handmatige toewijzing** — Noise-bezwaren toewijzen via top-5 suggesties dropdown
+- **Antwoord editor** — Rich text editor per kernbezwaar met consolidatie-waarschuwing
+- **Score badges** — Cosine similarity percentage per passage
+
+**Web Components:**
+- `bezwaarschriften-project-selectie` — Orchestrating component
+- `bezwaarschriften-bezwaren-tabel` — Bezwarenlijst met extractie-details
+- `bezwaarschriften-kernbezwaren` — Kernbezwaren lijst, side panel, toewijzing
 
 **Toekomstige Features:**
-- Bezwaar overzicht en filtering
-- Kern beoordeling en antwoord formulering
 - Antwoord preview en goedkeuring
 - Analytics dashboard
 
@@ -499,14 +539,24 @@ API Container
 
 ### Clustering Flow
 ```
-API Container
-  └─> ClusteringPoort.clusterBezwaren()
-       └─> BezwaarGroeperingService
-            ├─> Database (find all bezwaren)
-            ├─> Spring AI (generate embeddings)
-            ├─> Database (pgvector similarity search)
-            └─> Database (save Bezwaarkernen)
-  └─> Retourneert List<Bezwaarkern>
+Web Application
+  └─> POST /api/v1/projects/{naam}/clustering-taken
+       └─> ClusteringTaakController → ClusteringTaakService
+            └─> ClusteringWorker.verwerkTaak (async)
+                 └─> KernbezwaarService.clusterProject(projectNaam, taakId)
+                      ├─> Database (find all bezwaren + embeddings)
+                      ├─> TribuoClusteringAdapter (HDBSCAN clustering)
+                      ├─> CentroidMatchingService.wijsNoiseToe(centroids, noise, threshold)
+                      │    └─> Cosine similarity → CENTROID_FALLBACK of noise
+                      ├─> Spring AI (samenvatting generatie per cluster)
+                      └─> Database (save Kernbezwaar + Referenties met ToewijzingsMethode)
+  └─> WebSocket update naar frontend
+
+  (handmatige toewijzing)
+  └─> GET /api/v1/projects/{naam}/noise/{bezwaarId}/suggesties
+       └─> KernbezwaarService.geefSuggesties → CentroidMatchingService.berekenTop5Suggesties
+  └─> PUT /api/v1/projects/{naam}/referenties/{referentieId}/toewijzing
+       └─> KernbezwaarService.wijsToeAanKernbezwaar → ToewijzingsMethode.MANUEEL
 ```
 
 ---
