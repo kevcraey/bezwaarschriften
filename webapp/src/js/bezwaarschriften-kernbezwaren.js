@@ -202,6 +202,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .suggestie-item:hover {
           background: #e8ebee;
         }
+        .suggestie-item.suggestie-geselecteerd {
+          background: #d4e5f7;
+          outline: 2px solid #0055cc;
+        }
         .suggestie-score {
           font-weight: bold;
           color: #687483;
@@ -233,6 +237,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     this._kernbezwaren = [];
     this._clusteringTaak = null;
     this._huidigKernbezwaar = null;
+    this._huidigGroepen = null;
     this._huidigePagina = 1;
     this._timerInterval = null;
   }
@@ -509,12 +514,9 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       inhoud.appendChild(waarschuwing);
     }
 
-    // Sorteer kernbezwaren: meeste unieke passages eerst, noise altijd onderaan
-    const uniekePassageCounts = new Map(
-        this._kernbezwaren.map((k) => [k, groepeerPassages(k.individueleBezwaren).length]),
-    );
+    // Sorteer kernbezwaren: meeste bezwaren eerst, noise altijd onderaan
     const gesorteerd = [...echteKernbezwaren].sort(
-        (a, b) => uniekePassageCounts.get(b) - uniekePassageCounts.get(a),
+        (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
     );
     if (noiseKernbezwaar) {
       gesorteerd.push(noiseKernbezwaar);
@@ -551,10 +553,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const knop = document.createElement('vl-button');
     knop.setAttribute('ghost', '');
     knop.setAttribute('icon', 'search');
-    const totaal = kern.individueleBezwaren.length;
-    const groepen = groepeerPassages(kern.individueleBezwaren);
-    const aantalGroepen = groepen.length;
-    knop.textContent = `(${totaal}|${aantalGroepen})`;
+    knop.textContent = `(${kern.individueleBezwaren.length})`;
     knop.addEventListener('click', () => this._toonPassages(kern));
 
     actie.appendChild(knop);
@@ -1055,6 +1054,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _toonPassages(kernbezwaar) {
     this._huidigKernbezwaar = kernbezwaar;
+    this._huidigGroepen = groepeerPassages(kernbezwaar.individueleBezwaren);
     this._huidigePagina = 1;
     this._renderPassagePagina();
   }
@@ -1066,12 +1066,12 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     if (!sideSheet || !inhoud) return;
 
     const kernbezwaar = this._huidigKernbezwaar;
-    if (!kernbezwaar) return;
+    const groepen = this._huidigGroepen;
+    if (!kernbezwaar || !groepen) return;
 
     inhoud.innerHTML = '';
     if (titelEl) titelEl.textContent = kernbezwaar.samenvatting;
 
-    const groepen = groepeerPassages(kernbezwaar.individueleBezwaren);
     const totaal = kernbezwaar.individueleBezwaren.length;
     const totaalPaginas = Math.max(1, Math.ceil(groepen.length / PAGE_SIZE));
     if (this._huidigePagina > totaalPaginas) this._huidigePagina = totaalPaginas;
@@ -1234,6 +1234,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       leeg.style.color = '#687483';
       dropdown.appendChild(leeg);
     } else {
+      let geselecteerdId = null;
+
       suggesties.forEach((s) => {
         const item = document.createElement('div');
         item.className = 'suggestie-item';
@@ -1249,10 +1251,26 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
         item.appendChild(tekst);
         item.appendChild(score);
-        item.addEventListener('click', () =>
-          this._voerToewijzingUit(bezwaar, s.kernbezwaarId));
+        item.addEventListener('click', () => {
+          dropdown.querySelectorAll('.suggestie-item').forEach(
+              (el) => el.classList.remove('suggestie-geselecteerd'));
+          item.classList.add('suggestie-geselecteerd');
+          geselecteerdId = s.kernbezwaarId;
+          voegToeKnop.removeAttribute('disabled');
+        });
         dropdown.appendChild(item);
       });
+
+      const voegToeKnop = document.createElement('vl-button');
+      voegToeKnop.textContent = 'Voeg toe';
+      voegToeKnop.setAttribute('disabled', '');
+      voegToeKnop.style.marginTop = '0.5rem';
+      voegToeKnop.addEventListener('click', () => {
+        if (geselecteerdId) {
+          this._voerToewijzingUit(bezwaar, geselecteerdId);
+        }
+      });
+      dropdown.appendChild(voegToeKnop);
     }
 
     groepEl.appendChild(dropdown);
@@ -1268,6 +1286,18 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
     if (response.ok) {
       await this.laadKernbezwaren(this._projectNaam);
+      // Ververs side panel met bijgewerkte noise data
+      const noiseKernbezwaar = this._kernbezwaren.find(
+          (k) => k.samenvatting === 'Niet-geclusterde bezwaren');
+      if (noiseKernbezwaar) {
+        this._toonPassages(noiseKernbezwaar);
+      } else {
+        const sideSheet = this.shadowRoot.querySelector('#side-sheet');
+        if (sideSheet) {
+          sideSheet.close();
+          this.classList.remove('side-sheet-open');
+        }
+      }
     }
   }
 }

@@ -358,12 +358,12 @@ describe('kernbezwaren flat list', () => {
         .should('exist');
   });
 
-  it('toont search-knop met (totaal|groepen) formaat', () => {
-    // Te veel geluidshinder: 3 bezwaren, 2 unieke groepen
+  it('toont search-knop met (totaal) formaat', () => {
+    // Te veel geluidshinder: 3 bezwaren
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.kernbezwaar-actie vl-button[icon="search"]')
         .first()
-        .should('contain.text', '(3|2)');
+        .should('contain.text', '(3)');
   });
 
   it('toont reductie-samenvatting alert', () => {
@@ -767,7 +767,7 @@ describe('handmatige toewijzing voor noise bezwaren', () => {
         .and('contain.text', '82%');
   });
 
-  it('voert toewijzing uit bij klik op suggestie', () => {
+  it('voegt toe knop is disabled tot selectie, voert toewijzing uit na klik', () => {
     cy.intercept('GET', '/api/v1/projects/testproject/noise/300/suggesties', {
       statusCode: 200,
       body: [
@@ -793,9 +793,33 @@ describe('handmatige toewijzing voor noise bezwaren', () => {
 
     cy.wait('@suggesties');
 
+    // Voeg toe knop is disabled
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzen-dropdown vl-button')
+        .contains('Voeg toe')
+        .should('have.attr', 'disabled');
+
+    // Selecteer suggestie
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.suggestie-item')
         .first()
+        .click();
+
+    // Suggestie is geselecteerd
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.suggestie-item.suggestie-geselecteerd')
+        .should('exist');
+
+    // Voeg toe knop is nu enabled
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzen-dropdown vl-button')
+        .contains('Voeg toe')
+        .should('not.have.attr', 'disabled');
+
+    // Klik voeg toe
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzen-dropdown vl-button')
+        .contains('Voeg toe')
         .click();
 
     cy.wait('@toewijzing').its('request.body')
