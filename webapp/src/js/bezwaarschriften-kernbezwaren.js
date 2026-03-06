@@ -483,10 +483,19 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         (k) => k.samenvatting === 'Niet-geclusterde bezwaren');
 
     let totaalBezwaren = 0;
+    let aantalHdbscan = 0;
+    let aantalCentroid = 0;
+    let aantalManueel = 0;
     let nietGeclusterd = 0;
     this._kernbezwaren.forEach((k) => {
       if (k.samenvatting === 'Niet-geclusterde bezwaren') {
         nietGeclusterd += k.individueleBezwaren.length;
+      } else {
+        k.individueleBezwaren.forEach((b) => {
+          if (b.toewijzingsmethode === 'HDBSCAN') aantalHdbscan++;
+          else if (b.toewijzingsmethode === 'CENTROID_FALLBACK') aantalCentroid++;
+          else if (b.toewijzingsmethode === 'MANUEEL') aantalManueel++;
+        });
       }
       totaalBezwaren += k.individueleBezwaren.length;
     });
@@ -499,8 +508,13 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       totaalAlert.setAttribute('type', 'success');
       totaalAlert.setAttribute('naked', '');
       totaalAlert.setAttribute('size', 'small');
+      const delen = [];
+      if (aantalHdbscan > 0) delen.push(`${aantalHdbscan} clustering`);
+      if (aantalCentroid > 0) delen.push(`${aantalCentroid} centroid`);
+      if (aantalManueel > 0) delen.push(`${aantalManueel} handmatig`);
+      const verdelingTekst = delen.length > 0 ? ` (${delen.join(', ')})` : '';
       totaalAlert.setAttribute('message',
-          `${geclusterdeBezwaren} individuele bezwaren herleid naar ` +
+          `${geclusterdeBezwaren} individuele bezwaren${verdelingTekst} herleid naar ` +
           `${echteKernbezwaren.length} kernbezwaren${reductieTekst}.`);
       inhoud.appendChild(totaalAlert);
     }
@@ -513,8 +527,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       waarschuwing.setAttribute('size', 'small');
       waarschuwing.style.marginTop = 'var(--vl-spacing--xsmall)';
       waarschuwing.setAttribute('message',
-          `${nietGeclusterd} individuele bezwaren (${pctNoise}%) konden niet ` +
-          'toegewezen worden aan een cluster.');
+          `${nietGeclusterd} individuele bezwaren (${pctNoise}%) niet toegewezen.`);
       inhoud.appendChild(waarschuwing);
     }
 

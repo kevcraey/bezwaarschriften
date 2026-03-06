@@ -366,18 +366,20 @@ describe('kernbezwaren flat list', () => {
         .should('contain.text', '(3)');
   });
 
-  it('toont reductie-samenvatting alert', () => {
+  it('toont reductie-samenvatting alert met verdeling per methode', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-alert[type="success"]')
         .should('have.attr', 'message')
-        .and('contain', 'kernbezwaren');
+        .and('contain', 'kernbezwaren')
+        .and('contain', 'clustering')
+        .and('contain', 'centroid');
   });
 
   it('toont noise-waarschuwing als er niet-geclusterde bezwaren zijn', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-alert[type="warning"]')
         .should('have.attr', 'message')
-        .and('contain', 'niet');
+        .and('contain', 'niet toegewezen');
   });
 
   it('noise-kernbezwaar staat altijd onderaan', () => {
