@@ -149,9 +149,10 @@ public class ProjectService {
    */
   @Transactional
   public int verwijderBezwaren(String projectNaam, List<String> bestandsnamen) {
+    extractieTaakRepository.deleteByProjectNaamAndBestandsnaamIn(
+        projectNaam, bestandsnamen);
     int aantalVerwijderd = 0;
     for (String bestandsnaam : bestandsnamen) {
-      extractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
       if (projectPoort.verwijderBestand(projectNaam, bestandsnaam)) {
         aantalVerwijderd++;
       }

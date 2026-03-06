@@ -3,6 +3,9 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -68,4 +71,20 @@ public interface ExtractieTaakRepository extends JpaRepository<ExtractieTaak, Lo
    * @param projectNaam de naam van het project
    */
   void deleteByProjectNaam(String projectNaam);
+
+  /**
+   * Verwijdert alle extractie-taken voor meerdere bestanden binnen een project via
+   * JPQL bulk delete. Voorkomt JPA first-level cache problemen bij herhaalde
+   * derived deletes in dezelfde transactie.
+   *
+   * @param projectNaam de naam van het project
+   * @param bestandsnamen de lijst van bestandsnamen
+   */
+  @Modifying(clearAutomatically = true)
+  @Query("DELETE FROM ExtractieTaak t "
+      + "WHERE t.projectNaam = :projectNaam "
+      + "AND t.bestandsnaam IN :bestandsnamen")
+  void deleteByProjectNaamAndBestandsnaamIn(
+      @Param("projectNaam") String projectNaam,
+      @Param("bestandsnamen") List<String> bestandsnamen);
 }

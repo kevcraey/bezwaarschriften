@@ -216,9 +216,8 @@ class ProjectServiceTest {
 
     assertThat(aantalVerwijderd).isEqualTo(3);
 
-    for (String naam : bestandsnamen) {
-      verify(extractieTaakRepository).deleteByProjectNaamAndBestandsnaam("windmolens", naam);
-    }
+    verify(extractieTaakRepository).deleteByProjectNaamAndBestandsnaamIn(
+        "windmolens", bestandsnamen);
 
     verify(kernbezwaarService, times(1)).ruimOpNaBestandenVerwijdering("windmolens", bestandsnamen);
 
