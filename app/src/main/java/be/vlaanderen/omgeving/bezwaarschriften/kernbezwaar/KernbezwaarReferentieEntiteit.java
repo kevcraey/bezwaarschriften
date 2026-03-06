@@ -27,6 +27,9 @@ public class KernbezwaarReferentieEntiteit {
   @Column(name = "passage", columnDefinition = "text", nullable = false)
   private String passage;
 
+  @Column(name = "score")
+  private Double score;
+
   public Long getId() {
     return id;
   }
@@ -65,5 +68,13 @@ public class KernbezwaarReferentieEntiteit {
 
   public void setPassage(String passage) {
     this.passage = passage;
+  }
+
+  public Double getScore() {
+    return score;
+  }
+
+  public void setScore(Double score) {
+    this.score = score;
   }
 }
