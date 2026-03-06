@@ -169,10 +169,10 @@ class ClusteringTaakServiceTest {
 
     var kern1 = new KernbezwaarEntiteit();
     kern1.setId(200L);
-    kern1.setThemaId(100L);
+    kern1.setProjectNaam("windmolens");
     var kern2 = new KernbezwaarEntiteit();
     kern2.setId(201L);
-    kern2.setThemaId(100L);
+    kern2.setProjectNaam("windmolens");
     when(kernbezwaarRepository.findByThemaId(100L)).thenReturn(List.of(kern1, kern2));
     when(antwoordRepository.countByKernbezwaarIdIn(List.of(200L, 201L))).thenReturn(2L);
 
@@ -195,7 +195,7 @@ class ClusteringTaakServiceTest {
 
     var kern = new KernbezwaarEntiteit();
     kern.setId(200L);
-    kern.setThemaId(100L);
+    kern.setProjectNaam("windmolens");
     when(kernbezwaarRepository.findByThemaId(100L)).thenReturn(List.of(kern));
 
     var resultaat = service.verwijderClustering("windmolens", "Geluid", true);
@@ -349,10 +349,10 @@ class ClusteringTaakServiceTest {
 
     var kern1 = new KernbezwaarEntiteit();
     kern1.setId(200L);
-    kern1.setThemaId(100L);
+    kern1.setProjectNaam("windmolens");
     var kern2 = new KernbezwaarEntiteit();
     kern2.setId(201L);
-    kern2.setThemaId(101L);
+    kern2.setProjectNaam("windmolens");
     when(kernbezwaarRepository.findByThemaIdIn(List.of(100L, 101L)))
         .thenReturn(List.of(kern1, kern2));
     when(antwoordRepository.countByKernbezwaarIdIn(List.of(200L, 201L))).thenReturn(3L);
@@ -372,7 +372,7 @@ class ClusteringTaakServiceTest {
 
     var kern = new KernbezwaarEntiteit();
     kern.setId(200L);
-    kern.setThemaId(100L);
+    kern.setProjectNaam("windmolens");
     when(kernbezwaarRepository.findByThemaIdIn(List.of(100L))).thenReturn(List.of(kern));
     when(antwoordRepository.countByKernbezwaarIdIn(List.of(200L))).thenReturn(0L);
 

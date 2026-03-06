@@ -184,31 +184,32 @@ public class KernbezwaarService {
     var refPerKern = refEntiteiten.stream()
         .collect(Collectors.groupingBy(KernbezwaarReferentieEntiteit::getKernbezwaarId));
 
-    // Groepeer kernbezwaren per thema
-    var kernPerThema = kernEntiteiten.stream()
-        .collect(Collectors.groupingBy(KernbezwaarEntiteit::getThemaId));
+    // Groepeer kernbezwaren per project (thema-laag verwijderd)
+    var kernPerProject = kernEntiteiten.stream()
+        .collect(Collectors.groupingBy(KernbezwaarEntiteit::getProjectNaam));
 
-    // Assembleer domain records
-    var themas = themaEntiteiten.stream()
-        .map(te -> {
-          var kernen = kernPerThema.getOrDefault(te.getId(), List.of()).stream()
-              .map(ke -> {
-                var refs = refPerKern.getOrDefault(ke.getId(), List.of()).stream()
-                    .map(re -> {
-                      Integer scorePercentage = re.getScore() != null
-                          ? (int) Math.round(re.getScore() * 100) : null;
-                      return new IndividueelBezwaarReferentie(
-                          re.getBezwaarId(), re.getBestandsnaam(), re.getPassage(), scorePercentage);
-                    })
-                    .sorted(Comparator.comparing(
-                        IndividueelBezwaarReferentie::scorePercentage,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                    .toList();
-                return new Kernbezwaar(ke.getId(), ke.getSamenvatting(), refs, null);
+    // Assembleer domain records (flat, thema-laag verwijderd)
+    var kernen = kernEntiteiten.stream()
+        .map(ke -> {
+          var refs = refPerKern.getOrDefault(ke.getId(), List.of()).stream()
+              .map(re -> {
+                Integer scorePercentage = re.getScore() != null
+                    ? (int) Math.round(re.getScore() * 100) : null;
+                return new IndividueelBezwaarReferentie(
+                    re.getBezwaarId(), re.getBestandsnaam(), re.getPassage(),
+                    scorePercentage, re.getToewijzingsmethode());
               })
+              .sorted(Comparator.comparing(
+                  IndividueelBezwaarReferentie::scorePercentage,
+                  Comparator.nullsLast(Comparator.reverseOrder())))
               .toList();
-          return new Thema(te.getNaam(), kernen);
+          return new Kernbezwaar(ke.getId(), ke.getSamenvatting(), refs, null);
         })
+        .toList();
+
+    // Wrap in enkel thema voor backward compatibility (wordt in Task 5 opgeruimd)
+    var themas = themaEntiteiten.stream()
+        .map(te -> new Thema(te.getNaam(), kernen))
         .toList();
 
     return Optional.of(verrijkMetAntwoorden(themas));
@@ -359,7 +360,7 @@ public class KernbezwaarService {
         }
 
         var referenties = bouwReferenties(clusterBezwaren, passageLookup, bestandsnaamLookup, scores);
-        var kern = slaKernbezwaarOp(opgeslagenThema.getId(), samenvatting, referenties);
+        var kern = slaKernbezwaarOp(projectNaam, samenvatting, referenties);
         kernbezwaren.add(kern);
       }
 
@@ -370,7 +371,7 @@ public class KernbezwaarService {
             .toList();
         var referenties = bouwReferenties(noiseBezwaren, passageLookup, bestandsnaamLookup, Map.of());
         var kern = slaKernbezwaarOp(
-            opgeslagenThema.getId(), "Niet-geclusterde bezwaren", referenties);
+            projectNaam, "Niet-geclusterde bezwaren", referenties);
         kernbezwaren.add(kern);
       }
 
@@ -426,10 +427,10 @@ public class KernbezwaarService {
         : bezwaar.getEmbeddingSamenvatting();
   }
 
-  private Kernbezwaar slaKernbezwaarOp(Long themaId, String samenvatting,
+  private Kernbezwaar slaKernbezwaarOp(String projectNaam, String samenvatting,
       List<IndividueelBezwaarReferentie> referenties) {
     var kernEntiteit = new KernbezwaarEntiteit();
-    kernEntiteit.setThemaId(themaId);
+    kernEntiteit.setProjectNaam(projectNaam);
     kernEntiteit.setSamenvatting(samenvatting);
     kernEntiteit = kernbezwaarRepository.save(kernEntiteit);
 
@@ -462,7 +463,8 @@ public class KernbezwaarService {
               b.getId(),
               bestandsnaamLookup.getOrDefault(b.getTaakId(), "onbekend"),
               geefPassageTekst(b, passageLookup),
-              scorePercentage);
+              scorePercentage,
+              ToewijzingsMethode.HDBSCAN);
         })
         .toList();
   }

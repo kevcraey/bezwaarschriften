@@ -232,7 +232,7 @@ class KernbezwaarServiceTest {
 
     var kernEntiteit = new KernbezwaarEntiteit();
     kernEntiteit.setId(20L);
-    kernEntiteit.setThemaId(10L);
+    kernEntiteit.setProjectNaam("windmolens");
     kernEntiteit.setSamenvatting("Verkeershinder");
     when(kernbezwaarRepository.findByThemaIdIn(List.of(10L)))
         .thenReturn(List.of(kernEntiteit));
@@ -786,7 +786,7 @@ class KernbezwaarServiceTest {
 
     var kernEntiteit = new KernbezwaarEntiteit();
     kernEntiteit.setId(20L);
-    kernEntiteit.setThemaId(10L);
+    kernEntiteit.setProjectNaam("windmolens");
     kernEntiteit.setSamenvatting("Geluidshinder");
     when(kernbezwaarRepository.findByThemaIdIn(List.of(10L)))
         .thenReturn(List.of(kernEntiteit));
@@ -846,7 +846,7 @@ class KernbezwaarServiceTest {
 
     var kernEntiteit = new KernbezwaarEntiteit();
     kernEntiteit.setId(20L);
-    kernEntiteit.setThemaId(10L);
+    kernEntiteit.setProjectNaam("windmolens");
     kernEntiteit.setSamenvatting("Geluidshinder");
     when(kernbezwaarRepository.findByThemaIdIn(List.of(10L)))
         .thenReturn(List.of(kernEntiteit));

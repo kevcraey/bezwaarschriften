@@ -34,7 +34,7 @@ class KernbezwaarPersistentieTest {
     thema = themaRepository.save(thema);
 
     var kern = new KernbezwaarEntiteit();
-    kern.setThemaId(thema.getId());
+    kern.setProjectNaam(thema.getProjectNaam());
     kern.setSamenvatting("Geluid overschrijdt normen");
     kern = kernbezwaarRepository.save(kern);
 
@@ -73,7 +73,7 @@ class KernbezwaarPersistentieTest {
     thema = themaRepository.save(thema);
 
     var kern = new KernbezwaarEntiteit();
-    kern.setThemaId(thema.getId());
+    kern.setProjectNaam(thema.getProjectNaam());
     kern.setSamenvatting("Verkeershinder");
     kern = kernbezwaarRepository.save(kern);
 
@@ -112,7 +112,7 @@ class KernbezwaarPersistentieTest {
     thema = themaRepository.save(thema);
 
     var kern = new KernbezwaarEntiteit();
-    kern.setThemaId(thema.getId());
+    kern.setProjectNaam(thema.getProjectNaam());
     kern.setSamenvatting("Stankoverlast");
     kern = kernbezwaarRepository.save(kern);
 

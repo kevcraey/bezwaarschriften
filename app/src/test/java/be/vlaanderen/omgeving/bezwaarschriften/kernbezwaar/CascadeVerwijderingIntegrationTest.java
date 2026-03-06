@@ -530,7 +530,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
 
   private KernbezwaarEntiteit maakKernbezwaar(Long themaId, String samenvatting) {
     var kern = new KernbezwaarEntiteit();
-    kern.setThemaId(themaId);
+    kern.setProjectNaam("test-project");
     kern.setSamenvatting(samenvatting);
     return kernbezwaarRepository.save(kern);
   }

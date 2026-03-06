@@ -94,7 +94,7 @@ class KernbezwaarAntwoordRepositoryTest {
     entityManager.persist(thema);
 
     var kern = new KernbezwaarEntiteit();
-    kern.setThemaId(thema.getId());
+    kern.setProjectNaam(thema.getProjectNaam());
     kern.setSamenvatting(samenvatting);
     entityManager.persist(kern);
     entityManager.flush();
