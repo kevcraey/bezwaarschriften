@@ -8,17 +8,16 @@ import org.springframework.data.repository.query.Param;
 
 public interface KernbezwaarRepository extends JpaRepository<KernbezwaarEntiteit, Long> {
 
-  List<KernbezwaarEntiteit> findByThemaIdIn(List<Long> themaIds);
+  List<KernbezwaarEntiteit> findByProjectNaam(String projectNaam);
 
-  List<KernbezwaarEntiteit> findByThemaId(Long themaId);
-
-  int countByThemaId(Long themaId);
+  int countByProjectNaam(String projectNaam);
 
   @Modifying(clearAutomatically = true)
   @Query("DELETE FROM KernbezwaarEntiteit k "
-      + "WHERE k.themaId IN ("
-      + "  SELECT t.id FROM ThemaEntiteit t WHERE t.projectNaam = :projectNaam) "
+      + "WHERE k.projectNaam = :projectNaam "
       + "AND k.id NOT IN ("
       + "  SELECT DISTINCT r.kernbezwaarId FROM KernbezwaarReferentieEntiteit r)")
   void deleteZonderReferenties(@Param("projectNaam") String projectNaam);
+
+  void deleteByProjectNaam(String projectNaam);
 }
