@@ -151,4 +151,26 @@ class ProjectControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.messages[0].code").value("invalid.argument"));
   }
+
+  @Test
+  void verwijdertMeerdereBezwaren() throws Exception {
+    when(projectService.verwijderBezwaren("windmolens", List.of("doc-a.txt", "doc-b.txt")))
+        .thenReturn(2);
+
+    mockMvc.perform(delete("/api/v1/projects/windmolens/bezwaren")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"bestandsnamen\":[\"doc-a.txt\",\"doc-b.txt\"]}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.aantalVerwijderd").value(2));
+  }
+
+  @Test
+  void verwijderBezwaren_geeft400BijLegeLijst() throws Exception {
+    mockMvc.perform(delete("/api/v1/projects/windmolens/bezwaren")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"bestandsnamen\":[]}"))
+        .andExpect(status().isBadRequest());
+  }
 }

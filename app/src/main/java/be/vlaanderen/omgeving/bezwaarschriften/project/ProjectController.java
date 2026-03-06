@@ -153,6 +153,24 @@ public class ProjectController {
   }
 
   /**
+   * Verwijdert meerdere bezwaarbestanden in bulk.
+   *
+   * @param naam Projectnaam
+   * @param request Lijst van te verwijderen bestandsnamen
+   * @return Aantal verwijderde bestanden
+   */
+  @DeleteMapping("/{naam}/bezwaren")
+  public ResponseEntity<?> verwijderBezwaren(
+      @PathVariable String naam,
+      @RequestBody VerwijderBezwarenRequest request) {
+    if (request.bestandsnamen() == null || request.bestandsnamen().isEmpty()) {
+      return ResponseEntity.badRequest().build();
+    }
+    int aantalVerwijderd = projectService.verwijderBezwaren(naam, request.bestandsnamen());
+    return ResponseEntity.ok(new VerwijderBezwarenResponse(aantalVerwijderd));
+  }
+
+  /**
    * Verwijdert een bezwaarbestand en bijhorende extractie-taken.
    *
    * @param naam Projectnaam
@@ -208,4 +226,10 @@ public class ProjectController {
 
   /** DTO voor een uploadfout per bestand. */
   record UploadFoutDto(String bestandsnaam, String reden) {}
+
+  /** Request DTO voor bulk verwijdering van bezwaarbestanden. */
+  record VerwijderBezwarenRequest(List<String> bestandsnamen) {}
+
+  /** Response DTO voor bulk verwijdering van bezwaarbestanden. */
+  record VerwijderBezwarenResponse(int aantalVerwijderd) {}
 }

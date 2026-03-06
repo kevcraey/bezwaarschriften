@@ -386,6 +386,118 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(clusteringTaakRepository.findByProjectNaam("testproject")).hasSize(1);
   }
 
+  // --- Scenario 8: Bulk verwijdering ruimt alles op ---
+
+  @Test
+  @DisplayName("Bulk verwijdering van alle documenten ruimt alles op")
+  void bulkVerwijderingRuimtAlleKernbezwarenOp() {
+    // Arrange: 3 documenten
+    maakExtractieTaak("testproject", "doc-a.txt");
+    maakExtractieTaak("testproject", "doc-b.txt");
+    maakExtractieTaak("testproject", "doc-c.txt");
+
+    // Thema "milieu": K1 gedeeld over alle 3 docs, K2 gedeeld over doc-a+doc-b
+    var themaMilieu = maakThema("testproject", "milieu");
+    var k1 = maakKernbezwaar(themaMilieu.getId(), "Geluidshinder gedeeld");
+    maakReferentie(k1.getId(), "doc-a.txt", "geluid passage A");
+    maakReferentie(k1.getId(), "doc-b.txt", "geluid passage B");
+    maakReferentie(k1.getId(), "doc-c.txt", "geluid passage C");
+    maakAntwoord(k1.getId(), "<p>Antwoord op geluid</p>");
+
+    var k2 = maakKernbezwaar(themaMilieu.getId(), "Fijnstof doc-a en doc-b");
+    maakReferentie(k2.getId(), "doc-a.txt", "fijnstof passage A");
+    maakReferentie(k2.getId(), "doc-b.txt", "fijnstof passage B");
+
+    // Thema "verkeer": K3 enkel op doc-c
+    var themaVerkeer = maakThema("testproject", "verkeer");
+    var k3 = maakKernbezwaar(themaVerkeer.getId(), "Verkeersoverlast enkel doc-c");
+    maakReferentie(k3.getId(), "doc-c.txt", "verkeer passage C");
+    maakAntwoord(k3.getId(), "<p>Antwoord op verkeer</p>");
+
+    // Clustering-taken voor beide thema's
+    maakClusteringTaak("testproject", "milieu");
+    maakClusteringTaak("testproject", "verkeer");
+
+    // Act: bulk verwijder alle 3 documenten
+    int aantalVerwijderd = projectService.verwijderBezwaren("testproject",
+        List.of("doc-a.txt", "doc-b.txt", "doc-c.txt"));
+
+    // Assert: alle 3 bestanden verwijderd
+    assertThat(aantalVerwijderd).isEqualTo(3);
+
+    // Assert: alle extractie-taken weg
+    assertThat(extractieTaakRepository.findByProjectNaam("testproject")).isEmpty();
+
+    // Assert: alle kernbezwaren weg
+    assertThat(kernbezwaarRepository.findById(k1.getId())).isEmpty();
+    assertThat(kernbezwaarRepository.findById(k2.getId())).isEmpty();
+    assertThat(kernbezwaarRepository.findById(k3.getId())).isEmpty();
+
+    // Assert: alle antwoorden weg
+    assertThat(antwoordRepository.findById(k1.getId())).isEmpty();
+    assertThat(antwoordRepository.findById(k3.getId())).isEmpty();
+
+    // Assert: alle referenties weg
+    assertThat(referentieRepository.findByProjectNaam("testproject")).isEmpty();
+
+    // Assert: alle thema's weg
+    assertThat(themaRepository.findByProjectNaam("testproject")).isEmpty();
+
+    // Assert: alle clustering-taken weg
+    assertThat(clusteringTaakRepository.findByProjectNaam("testproject")).isEmpty();
+  }
+
+  // --- Scenario 9: Bulk verwijdering behoudt kernbezwaren met overblijvende referenties ---
+
+  @Test
+  @DisplayName("Bulk verwijdering behoudt kernbezwaren die nog referenties hebben naar overblijvende documenten")
+  void bulkVerwijderingBehoudtKernbezwarenMetOverblijvendeReferenties() {
+    // Arrange: 3 documenten
+    maakExtractieTaak("testproject", "doc-a.txt");
+    maakExtractieTaak("testproject", "doc-b.txt");
+    maakExtractieTaak("testproject", "doc-c.txt");
+
+    var thema = maakThema("testproject", "milieu");
+
+    // K1: gedeeld over alle 3 docs
+    var k1 = maakKernbezwaar(thema.getId(), "Geluidshinder gedeeld over 3 docs");
+    maakReferentie(k1.getId(), "doc-a.txt", "geluid passage A");
+    maakReferentie(k1.getId(), "doc-b.txt", "geluid passage B");
+    maakReferentie(k1.getId(), "doc-c.txt", "geluid passage C");
+
+    // K2: enkel doc-a + doc-b, met antwoord
+    var k2 = maakKernbezwaar(thema.getId(), "Fijnstof enkel doc-a en doc-b");
+    maakReferentie(k2.getId(), "doc-a.txt", "fijnstof passage A");
+    maakReferentie(k2.getId(), "doc-b.txt", "fijnstof passage B");
+    maakAntwoord(k2.getId(), "<p>Antwoord op fijnstof</p>");
+
+    // Act: bulk verwijder doc-a en doc-b (doc-c blijft)
+    int aantalVerwijderd = projectService.verwijderBezwaren("testproject",
+        List.of("doc-a.txt", "doc-b.txt"));
+
+    // Assert: 2 bestanden verwijderd
+    assertThat(aantalVerwijderd).isEqualTo(2);
+
+    // Assert: extractie-taken van doc-a en doc-b weg, doc-c blijft
+    assertThat(extractieTaakRepository.findByProjectNaam("testproject")).hasSize(1);
+    assertThat(extractieTaakRepository.findByProjectNaam("testproject").get(0).getBestandsnaam())
+        .isEqualTo("doc-c.txt");
+
+    // Assert: K1 bestaat nog met enkel de doc-c referentie
+    assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
+    var k1Refs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
+    assertThat(k1Refs).hasSize(1);
+    assertThat(k1Refs.get(0).getBestandsnaam()).isEqualTo("doc-c.txt");
+
+    // Assert: K2 is verwijderd (alle referenties waren naar doc-a en doc-b)
+    assertThat(kernbezwaarRepository.findById(k2.getId())).isEmpty();
+    assertThat(antwoordRepository.findById(k2.getId())).isEmpty();
+    assertThat(referentieRepository.findByKernbezwaarIdIn(List.of(k2.getId()))).isEmpty();
+
+    // Assert: thema blijft bestaan (K1 zit er nog in)
+    assertThat(themaRepository.findById(thema.getId())).isPresent();
+  }
+
   // --- Helper methoden voor testdata-aanmaak ---
 
   private ExtractieTaak maakExtractieTaak(String projectNaam, String bestandsnaam) {

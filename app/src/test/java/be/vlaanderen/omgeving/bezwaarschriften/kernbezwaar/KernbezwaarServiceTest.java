@@ -408,6 +408,20 @@ class KernbezwaarServiceTest {
   }
 
   @Test
+  void ruimOpNaBestandenVerwijdering_verwijdertReferentiesVoorAlleBestandenDanOrphanedData() {
+    var bestandsnamen = List.of("doc-a.txt", "doc-b.txt");
+
+    service.ruimOpNaBestandenVerwijdering("testproject", bestandsnamen);
+
+    verify(referentieRepository).deleteByBestandsnaamAndProjectNaam("doc-a.txt", "testproject");
+    verify(referentieRepository).deleteByBestandsnaamAndProjectNaam("doc-b.txt", "testproject");
+
+    verify(kernbezwaarRepository).deleteZonderReferenties("testproject");
+    verify(themaRepository).deleteZonderKernbezwaren("testproject");
+    verify(clusteringTaakRepository).deleteZonderThema("testproject");
+  }
+
+  @Test
   void ruimAllesOpVoorProject_verwijdertAlleKernbezwaarEnClusteringData() {
     service.ruimAllesOpVoorProject("windmolens");
 

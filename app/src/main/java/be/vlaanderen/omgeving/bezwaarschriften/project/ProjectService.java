@@ -139,6 +139,29 @@ public class ProjectService {
   }
 
   /**
+   * Verwijdert meerdere bezwaarbestanden en bijhorende data in één transactie.
+   * Ruimt kernbezwaar-referenties op voor alle bestanden tegelijk, waarna
+   * orphaned kernbezwaren, thema's en clustering-taken verwijderd worden.
+   *
+   * @param projectNaam Naam van het project
+   * @param bestandsnamen Lijst van te verwijderen bestandsnamen
+   * @return Aantal succesvol verwijderde bestanden
+   */
+  @Transactional
+  public int verwijderBezwaren(String projectNaam, List<String> bestandsnamen) {
+    extractieTaakRepository.deleteByProjectNaamAndBestandsnaamIn(
+        projectNaam, bestandsnamen);
+    int aantalVerwijderd = 0;
+    for (String bestandsnaam : bestandsnamen) {
+      if (projectPoort.verwijderBestand(projectNaam, bestandsnaam)) {
+        aantalVerwijderd++;
+      }
+    }
+    kernbezwaarService.ruimOpNaBestandenVerwijdering(projectNaam, bestandsnamen);
+    return aantalVerwijderd;
+  }
+
+  /**
    * Geeft het volledige pad naar een bezwaarbestand.
    *
    * @param projectNaam Naam van het project
