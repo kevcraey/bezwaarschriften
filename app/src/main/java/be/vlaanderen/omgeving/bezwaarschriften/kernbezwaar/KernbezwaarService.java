@@ -12,6 +12,7 @@ import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntite
 import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -193,8 +194,15 @@ public class KernbezwaarService {
           var kernen = kernPerThema.getOrDefault(te.getId(), List.of()).stream()
               .map(ke -> {
                 var refs = refPerKern.getOrDefault(ke.getId(), List.of()).stream()
-                    .map(re -> new IndividueelBezwaarReferentie(
-                        re.getBezwaarId(), re.getBestandsnaam(), re.getPassage()))
+                    .map(re -> {
+                      Integer scorePercentage = re.getScore() != null
+                          ? (int) Math.round(re.getScore() * 100) : null;
+                      return new IndividueelBezwaarReferentie(
+                          re.getBezwaarId(), re.getBestandsnaam(), re.getPassage(), scorePercentage);
+                    })
+                    .sorted(Comparator.comparing(
+                        IndividueelBezwaarReferentie::scorePercentage,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                     .toList();
                 return new Kernbezwaar(ke.getId(), ke.getSamenvatting(), refs, null);
               })
@@ -343,7 +351,14 @@ public class KernbezwaarService {
         var representatief = vindDichtstBijCentroid(clusterBezwaren, origineleCentroid);
         var samenvatting = representatief.getSamenvatting();
 
-        var referenties = bouwReferenties(clusterBezwaren, passageLookup, bestandsnaamLookup);
+        // Bereken score per bezwaar
+        var scores = new HashMap<Long, Double>();
+        for (var bezwaar : clusterBezwaren) {
+          scores.put(bezwaar.getId(),
+              cosinusGelijkenis(geefEmbedding(bezwaar), origineleCentroid));
+        }
+
+        var referenties = bouwReferenties(clusterBezwaren, passageLookup, bestandsnaamLookup, scores);
         var kern = slaKernbezwaarOp(opgeslagenThema.getId(), samenvatting, referenties);
         kernbezwaren.add(kern);
       }
@@ -353,7 +368,7 @@ public class KernbezwaarService {
         var noiseBezwaren = clusterResultaat.noiseIds().stream()
             .map(bezwaarById::get)
             .toList();
-        var referenties = bouwReferenties(noiseBezwaren, passageLookup, bestandsnaamLookup);
+        var referenties = bouwReferenties(noiseBezwaren, passageLookup, bestandsnaamLookup, Map.of());
         var kern = slaKernbezwaarOp(
             opgeslagenThema.getId(), "Niet-geclusterde bezwaren", referenties);
         kernbezwaren.add(kern);
@@ -425,6 +440,7 @@ public class KernbezwaarService {
       refEntiteit.setBezwaarId(ref.bezwaarId());
       refEntiteit.setBestandsnaam(ref.bestandsnaam());
       refEntiteit.setPassage(ref.passage());
+      refEntiteit.setScore(ref.scorePercentage() != null ? ref.scorePercentage() / 100.0 : null);
       referentieRepository.save(refEntiteit);
       opgeslagenReferenties.add(ref);
     }
@@ -436,12 +452,18 @@ public class KernbezwaarService {
   private List<IndividueelBezwaarReferentie> bouwReferenties(
       List<GeextraheerdBezwaarEntiteit> bezwaren,
       Map<Long, Map<Integer, String>> passageLookup,
-      Map<Long, String> bestandsnaamLookup) {
+      Map<Long, String> bestandsnaamLookup,
+      Map<Long, Double> scores) {
     return bezwaren.stream()
-        .map(b -> new IndividueelBezwaarReferentie(
-            b.getId(),
-            bestandsnaamLookup.getOrDefault(b.getTaakId(), "onbekend"),
-            geefPassageTekst(b, passageLookup)))
+        .map(b -> {
+          Double score = scores.get(b.getId());
+          Integer scorePercentage = score != null ? (int) Math.round(score * 100) : null;
+          return new IndividueelBezwaarReferentie(
+              b.getId(),
+              bestandsnaamLookup.getOrDefault(b.getTaakId(), "onbekend"),
+              geefPassageTekst(b, passageLookup),
+              scorePercentage);
+        })
         .toList();
   }
 

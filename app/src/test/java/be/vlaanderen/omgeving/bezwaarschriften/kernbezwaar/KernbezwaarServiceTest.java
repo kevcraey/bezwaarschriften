@@ -670,6 +670,265 @@ class KernbezwaarServiceTest {
     assertArrayEquals(samenvattingEmb, invoer.get(0).embedding());
   }
 
+  @Test
+  void clusteringBerekentScorePercentageVoorClusterReferenties() {
+    // Arrange: 2 bezwaren in cluster met bekende embeddings
+    // emb1 = {1, 0, 0}, emb2 = {0.6, 0.8, 0}
+    // centroid = {0.8, 0.4, 0} (gemiddelde)
+    // cosinus(emb1, centroid) = 0.8 / (1 * sqrt(0.64+0.16)) = 0.8 / 0.8944 ≈ 0.8944 → 89
+    // cosinus(emb2, centroid) = (0.48+0.32) / (1 * 0.8944) = 0.80 / 0.8944 ≈ 0.8944 → 89
+    // Beide hebben identieke cosinus met centroid (wiskundig symmetrisch in 2D)
+    // Gebruik duidelijker embeddings: emb1 = {1, 0, 0}, emb2 = {0, 1, 0}
+    // centroid = {0.5, 0.5, 0}, norm = sqrt(0.5) ≈ 0.7071
+    // cosinus(emb1, centroid) = 0.5 / (1 * 0.7071) ≈ 0.7071 → 71
+    // cosinus(emb2, centroid) = 0.5 / (1 * 0.7071) ≈ 0.7071 → 71
+    // Beter: 3 bezwaren met verschil in afstand
+    float[] emb1 = {1.0f, 0.0f, 0.0f};
+    float[] emb2 = {0.9f, 0.1f, 0.0f};
+    float[] emb3 = {0.5f, 0.5f, 0.0f};
+    // centroid ≈ {0.8, 0.2, 0}
+    // emb2 is dichtst bij centroid, emb1 iets verder, emb3 verst
+
+    var bezwaar1 = maakBezwaarMetEmbedding(1L, 10L, 1, "bezwaar A", "Geluid", emb1);
+    var bezwaar2 = maakBezwaarMetEmbedding(2L, 10L, 2, "bezwaar B", "Geluid", emb2);
+    var bezwaar3 = maakBezwaarMetEmbedding(3L, 10L, 3, "bezwaar C", "Geluid", emb3);
+
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+    when(taakRepository.findById(10L))
+        .thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
+
+    // 1 cluster met alle 3
+    var cluster = new Cluster(0, List.of(1L, 2L, 3L), emb1);
+    var resultaat = new ClusteringResultaat(List.of(cluster), List.of());
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    // Act
+    var thema = service.clusterEenCategorie("windmolens", "Geluid", null);
+
+    // Assert: alle referenties hebben een scorePercentage (niet null)
+    var refs = thema.kernbezwaren().get(0).individueleBezwaren();
+    assertThat(refs).hasSize(3);
+    assertThat(refs).allSatisfy(ref ->
+        assertThat(ref.scorePercentage()).isNotNull().isBetween(0, 100));
+  }
+
+  @Test
+  void noiseItemsKrijgenNullAlsScorePercentage() {
+    // Arrange: 2 bezwaren als noise
+    var bezwaar1 = maakBezwaarMetEmbedding(5L, 20L, 1, "noise 1", "Geluid",
+        new float[]{0.5f, 0.5f});
+    var bezwaar2 = maakBezwaarMetEmbedding(6L, 20L, 2, "noise 2", "Geluid",
+        new float[]{0.4f, 0.6f});
+
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(List.of(bezwaar1, bezwaar2));
+    when(passageRepository.findByTaakId(20L)).thenReturn(List.of());
+    when(taakRepository.findById(20L))
+        .thenReturn(Optional.of(maakTaak(20L, "windmolens", "brief.pdf")));
+
+    // Clustering: geen clusters, 2 noise items
+    var resultaat = new ClusteringResultaat(List.of(), List.of(5L, 6L));
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(500L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(600L);
+      return e;
+    });
+
+    // Act
+    var thema = service.clusterEenCategorie("windmolens", "Geluid", null);
+
+    // Assert: noise referenties hebben null scorePercentage
+    var refs = thema.kernbezwaren().get(0).individueleBezwaren();
+    assertThat(refs).hasSize(2);
+    assertThat(refs).allSatisfy(ref ->
+        assertThat(ref.scorePercentage()).isNull());
+  }
+
+  @Test
+  void geefKernbezwarenSorteertReferentiesOpScoreAflopend() {
+    // Arrange: thema met kernbezwaar met 3 referenties met verschillende scores
+    var themaEntiteit = new ThemaEntiteit();
+    themaEntiteit.setId(10L);
+    themaEntiteit.setProjectNaam("windmolens");
+    themaEntiteit.setNaam("Geluid");
+    when(themaRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(themaEntiteit));
+
+    var kernEntiteit = new KernbezwaarEntiteit();
+    kernEntiteit.setId(20L);
+    kernEntiteit.setThemaId(10L);
+    kernEntiteit.setSamenvatting("Geluidshinder");
+    when(kernbezwaarRepository.findByThemaIdIn(List.of(10L)))
+        .thenReturn(List.of(kernEntiteit));
+
+    // 3 referenties met scores in ongesorteerde volgorde
+    var ref1 = new KernbezwaarReferentieEntiteit();
+    ref1.setId(31L);
+    ref1.setKernbezwaarId(20L);
+    ref1.setBezwaarId(1L);
+    ref1.setBestandsnaam("b1.txt");
+    ref1.setPassage("passage laag");
+    ref1.setScore(0.60); // 60%
+
+    var ref2 = new KernbezwaarReferentieEntiteit();
+    ref2.setId(32L);
+    ref2.setKernbezwaarId(20L);
+    ref2.setBezwaarId(2L);
+    ref2.setBestandsnaam("b2.txt");
+    ref2.setPassage("passage hoog");
+    ref2.setScore(0.95); // 95%
+
+    var ref3 = new KernbezwaarReferentieEntiteit();
+    ref3.setId(33L);
+    ref3.setKernbezwaarId(20L);
+    ref3.setBezwaarId(3L);
+    ref3.setBestandsnaam("b3.txt");
+    ref3.setPassage("passage midden");
+    ref3.setScore(0.78); // 78%
+
+    when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
+        .thenReturn(List.of(ref1, ref2, ref3));
+
+    when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
+        .thenReturn(List.of());
+
+    // Act
+    var resultaat = service.geefKernbezwaren("windmolens");
+
+    // Assert: referenties zijn gesorteerd op score aflopend (95, 78, 60)
+    assertThat(resultaat).isPresent();
+    var refs = resultaat.get().get(0).kernbezwaren().get(0).individueleBezwaren();
+    assertThat(refs).hasSize(3);
+    assertThat(refs.get(0).scorePercentage()).isEqualTo(95);
+    assertThat(refs.get(1).scorePercentage()).isEqualTo(78);
+    assertThat(refs.get(2).scorePercentage()).isEqualTo(60);
+  }
+
+  @Test
+  void geefKernbezwarenPlaatstNullScoresAchteraan() {
+    // Arrange: referenties met mix van scores en null
+    var themaEntiteit = new ThemaEntiteit();
+    themaEntiteit.setId(10L);
+    themaEntiteit.setProjectNaam("windmolens");
+    themaEntiteit.setNaam("Geluid");
+    when(themaRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(themaEntiteit));
+
+    var kernEntiteit = new KernbezwaarEntiteit();
+    kernEntiteit.setId(20L);
+    kernEntiteit.setThemaId(10L);
+    kernEntiteit.setSamenvatting("Geluidshinder");
+    when(kernbezwaarRepository.findByThemaIdIn(List.of(10L)))
+        .thenReturn(List.of(kernEntiteit));
+
+    var refMetScore = new KernbezwaarReferentieEntiteit();
+    refMetScore.setId(31L);
+    refMetScore.setKernbezwaarId(20L);
+    refMetScore.setBezwaarId(1L);
+    refMetScore.setBestandsnaam("b1.txt");
+    refMetScore.setPassage("passage met score");
+    refMetScore.setScore(0.85);
+
+    var refZonderScore = new KernbezwaarReferentieEntiteit();
+    refZonderScore.setId(32L);
+    refZonderScore.setKernbezwaarId(20L);
+    refZonderScore.setBezwaarId(2L);
+    refZonderScore.setBestandsnaam("b2.txt");
+    refZonderScore.setPassage("passage zonder score");
+    refZonderScore.setScore(null);
+
+    // Retourneer in volgorde: null eerst, score daarna — om sortering te bewijzen
+    when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
+        .thenReturn(List.of(refZonderScore, refMetScore));
+
+    when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
+        .thenReturn(List.of());
+
+    // Act
+    var resultaat = service.geefKernbezwaren("windmolens");
+
+    // Assert: score-referentie eerst, null-score achteraan
+    assertThat(resultaat).isPresent();
+    var refs = resultaat.get().get(0).kernbezwaren().get(0).individueleBezwaren();
+    assertThat(refs).hasSize(2);
+    assertThat(refs.get(0).scorePercentage()).isEqualTo(85);
+    assertThat(refs.get(1).scorePercentage()).isNull();
+  }
+
+  @Test
+  void scoreWordtOpgeslagenBijKernbezwaarReferentie() {
+    // Arrange: 1 bezwaar in cluster → score wordt berekend en opgeslagen
+    float[] emb = {1.0f, 0.0f};
+    var bezwaar = maakBezwaarMetEmbedding(1L, 10L, 1, "bezwaar", "Geluid", emb);
+
+    when(bezwaarRepository.findByProjectNaamAndCategorie("windmolens", "Geluid"))
+        .thenReturn(List.of(bezwaar));
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+    when(taakRepository.findById(10L))
+        .thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
+
+    // 1 cluster met 1 bezwaar → cosinus(emb, centroid) = 1.0 → score = 100
+    var cluster = new Cluster(0, List.of(1L), emb);
+    var resultaat = new ClusteringResultaat(List.of(cluster), List.of());
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var e = (ThemaEntiteit) inv.getArgument(0);
+      e.setId(100L);
+      return e;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    // Act
+    service.clusterEenCategorie("windmolens", "Geluid", null);
+
+    // Assert: score wordt opgeslagen op de referentie-entiteit
+    var captor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
+    verify(referentieRepository).save(captor.capture());
+    assertThat(captor.getValue().getScore()).isNotNull();
+    // 1 bezwaar = centroid, cosinus(emb, emb) = 1.0
+    assertThat(captor.getValue().getScore()).isEqualTo(1.0);
+  }
+
   // --- Hulpmethoden ---
 
   private GeextraheerdBezwaarEntiteit maakBezwaarMetEmbedding(Long id, Long taakId,
