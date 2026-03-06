@@ -18,6 +18,7 @@ public class ClusteringConfig {
   private int umapNNeighbors = 15;
   private float umapMinDist = 0.1f;
   private boolean clusterOpPassages = true;
+  private double centroidMatchingThreshold = 0.85;
 
   public int getMinClusterSize() {
     return minClusterSize;
@@ -81,5 +82,13 @@ public class ClusteringConfig {
 
   public void setClusterOpPassages(boolean clusterOpPassages) {
     this.clusterOpPassages = clusterOpPassages;
+  }
+
+  public double getCentroidMatchingThreshold() {
+    return centroidMatchingThreshold;
+  }
+
+  public void setCentroidMatchingThreshold(double centroidMatchingThreshold) {
+    this.centroidMatchingThreshold = centroidMatchingThreshold;
   }
 }
