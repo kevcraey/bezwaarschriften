@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -9,12 +10,14 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringConfig;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.Cluster;
+import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.ClusteringInvoer;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.ClusteringResultaat;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.DimensieReductiePoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
@@ -159,7 +162,7 @@ class KernbezwaarServiceTest {
     // Referenties bevatten beide bezwaren
     assertThat(themas.get(0).kernbezwaren().get(0).individueleBezwaren()).hasSize(2);
     verify(themaRepository).deleteByProjectNaam("windmolens");
-    verify(embeddingPoort).genereerEmbeddings(anyList());
+    verify(embeddingPoort, times(2)).genereerEmbeddings(anyList());
     verify(clusteringPoort).cluster(anyList());
   }
 
@@ -602,12 +605,64 @@ class KernbezwaarServiceTest {
     assertThat(thema.kernbezwaren().get(0).samenvatting()).isEqualTo("samenvatting 3");
   }
 
+  @Test
+  void gebruiktSamenvattingEmbeddingsBijClusterOpPassagesFalse() {
+    clusteringConfig.setClusterOpPassages(false);
+
+    var passageEmb = new float[]{1.0f, 0.0f, 0.0f};
+    var samenvattingEmb = new float[]{0.0f, 1.0f, 0.0f};
+
+    var b1 = maakBezwaar(1L, 100L, 1, "samenvatting 1", "milieu");
+    b1.setEmbeddingPassage(passageEmb);
+    b1.setEmbeddingSamenvatting(samenvattingEmb);
+    var b2 = maakBezwaar(2L, 100L, 2, "samenvatting 2", "milieu");
+    b2.setEmbeddingPassage(passageEmb);
+    b2.setEmbeddingSamenvatting(samenvattingEmb);
+
+    when(bezwaarRepository.findByProjectNaamAndCategorie("test", "milieu"))
+        .thenReturn(List.of(b1, b2));
+    when(passageRepository.findByTaakId(100L)).thenReturn(List.of());
+    when(taakRepository.findById(100L))
+        .thenReturn(Optional.of(maakTaak(100L, "test", "doc.pdf")));
+
+    var cluster = new Cluster(0, List.of(1L, 2L), samenvattingEmb);
+    var resultaat = new ClusteringResultaat(List.of(cluster), List.of());
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    when(themaRepository.save(any())).thenAnswer(inv -> {
+      var t = (ThemaEntiteit) inv.getArgument(0);
+      t.setId(1L);
+      return t;
+    });
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    service.clusterEenCategorie("test", "milieu", null);
+
+    // Verify clustering used samenvatting embedding
+    @SuppressWarnings("unchecked")
+    var invoerCaptor = ArgumentCaptor.forClass(List.class);
+    verify(clusteringPoort).cluster(invoerCaptor.capture());
+    @SuppressWarnings("unchecked")
+    var invoer = (List<ClusteringInvoer>) invoerCaptor.getValue();
+    assertArrayEquals(samenvattingEmb, invoer.get(0).embedding());
+  }
+
   // --- Hulpmethoden ---
 
   private GeextraheerdBezwaarEntiteit maakBezwaarMetEmbedding(Long id, Long taakId,
       int passageNr, String samenvatting, String categorie, float[] embedding) {
     var b = maakBezwaar(id, taakId, passageNr, samenvatting, categorie);
-    b.setEmbedding(embedding);
+    b.setEmbeddingPassage(embedding);
+    b.setEmbeddingSamenvatting(embedding);
     return b;
   }
 
