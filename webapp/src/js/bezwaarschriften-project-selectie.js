@@ -614,13 +614,15 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this._zetBezig(true);
     this._verbergFout();
 
-    const verwijderPromises = bestandsnamen.map((naam) =>
-      fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/bezwaren/${encodeURIComponent(naam)}`, {
-        method: 'DELETE',
-      }),
-    );
-
-    Promise.all(verwijderPromises)
+    fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/bezwaren`, {
+      method: 'DELETE',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bestandsnamen}),
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Verwijdering mislukt');
+          return response.json();
+        })
         .then(() => {
           this._laadBezwaren(this.__geselecteerdProject);
         })
