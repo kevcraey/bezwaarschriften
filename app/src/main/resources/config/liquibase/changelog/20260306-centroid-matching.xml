@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <!-- 1. Voeg project_naam toe aan kernbezwaar (gevuld vanuit thema) -->
+  <changeSet id="20260306-cm-1" author="kenzo">
+    <addColumn tableName="kernbezwaar">
+      <column name="project_naam" type="varchar(255)"/>
+    </addColumn>
+    <sql>
+      UPDATE kernbezwaar k
+      SET project_naam = (SELECT t.project_naam FROM thema t WHERE t.id = k.thema_id)
+    </sql>
+    <addNotNullConstraint tableName="kernbezwaar" columnName="project_naam"/>
+  </changeSet>
+
+  <!-- 2. Voeg toewijzingsmethode toe aan kernbezwaar_referentie -->
+  <changeSet id="20260306-cm-2" author="kenzo">
+    <addColumn tableName="kernbezwaar_referentie">
+      <column name="toewijzingsmethode" type="varchar(20)" defaultValue="HDBSCAN">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <!-- 3. Verwijder categorie van geextraheerd_bezwaar -->
+  <changeSet id="20260306-cm-3" author="kenzo">
+    <dropColumn tableName="geextraheerd_bezwaar" columnName="categorie"/>
+  </changeSet>
+
+  <!-- 4. Verwijder unique constraint en categorie van clustering_taak -->
+  <changeSet id="20260306-cm-4" author="kenzo">
+    <dropUniqueConstraint tableName="clustering_taak"
+        constraintName="uq_clustering_taak_project_categorie"/>
+    <dropColumn tableName="clustering_taak" columnName="categorie"/>
+  </changeSet>
+
+  <!-- 5. Drop FK en thema_id van kernbezwaar, drop thema tabel -->
+  <changeSet id="20260306-cm-5" author="kenzo">
+    <dropForeignKeyConstraint baseTableName="kernbezwaar"
+        constraintName="fk_kernbezwaar_thema"/>
+    <dropColumn tableName="kernbezwaar" columnName="thema_id"/>
+    <dropTable tableName="thema"/>
+  </changeSet>
+
+</databaseChangeLog>
