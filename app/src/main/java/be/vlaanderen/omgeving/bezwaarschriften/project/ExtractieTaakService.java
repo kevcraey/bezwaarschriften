@@ -196,7 +196,6 @@ public class ExtractieTaakService {
       entiteit.setTaakId(taakId);
       entiteit.setPassageNr(bezwaar.passageId());
       entiteit.setSamenvatting(bezwaar.samenvatting());
-      entiteit.setCategorie(bezwaar.categorie());
       bezwaarEntiteiten.add(entiteit);
     }
 
@@ -453,7 +452,6 @@ public class ExtractieTaakService {
     bezwaarEntiteit.setTaakId(taak.getId());
     bezwaarEntiteit.setPassageNr(volgendPassageNr);
     bezwaarEntiteit.setSamenvatting(samenvatting);
-    bezwaarEntiteit.setCategorie("overig");
     bezwaarEntiteit.setPassageGevonden(true);
     bezwaarEntiteit.setManueel(true);
 

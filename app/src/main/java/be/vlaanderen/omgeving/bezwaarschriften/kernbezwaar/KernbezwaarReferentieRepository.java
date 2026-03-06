@@ -16,8 +16,7 @@ public interface KernbezwaarReferentieRepository extends JpaRepository<Kernbezwa
 
   @Query("SELECT r FROM KernbezwaarReferentieEntiteit r "
       + "JOIN KernbezwaarEntiteit k ON r.kernbezwaarId = k.id "
-      + "JOIN ThemaEntiteit t ON k.themaId = t.id "
-      + "WHERE t.projectNaam = :projectNaam")
+      + "WHERE k.projectNaam = :projectNaam")
   List<KernbezwaarReferentieEntiteit> findByProjectNaam(@Param("projectNaam") String projectNaam);
 
   @Modifying(clearAutomatically = true)
@@ -25,9 +24,7 @@ public interface KernbezwaarReferentieRepository extends JpaRepository<Kernbezwa
       + "WHERE r.bestandsnaam = :bestandsnaam "
       + "AND r.kernbezwaarId IN ("
       + "  SELECT k.id FROM KernbezwaarEntiteit k "
-      + "  WHERE k.themaId IN ("
-      + "    SELECT t.id FROM ThemaEntiteit t "
-      + "    WHERE t.projectNaam = :projectNaam))")
+      + "  WHERE k.projectNaam = :projectNaam)")
   void deleteByBestandsnaamAndProjectNaam(
       @Param("bestandsnaam") String bestandsnaam,
       @Param("projectNaam") String projectNaam);
