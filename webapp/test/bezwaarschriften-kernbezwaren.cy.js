@@ -444,16 +444,21 @@ describe('side panel passage-weergave', () => {
         .should('contain.text', '%');
   });
 
-  it('toont toewijzingsmethode badge voor CENTROID_FALLBACK', () => {
+  it('toont toewijzingsmethode badges voor HDBSCAN en CENTROID_FALLBACK', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.kernbezwaar-actie vl-button[icon="search"]')
         .first()
         .click();
 
     cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzing-badge--hdbscan')
+        .should('exist')
+        .and('contain.text', 'Clustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
         .find('.toewijzing-badge--centroid')
         .should('exist')
-        .and('contain.text', 'Automatisch toegewezen');
+        .and('contain.text', 'Centroid');
   });
 });
 

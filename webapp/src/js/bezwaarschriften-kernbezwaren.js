@@ -168,6 +168,10 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           border-radius: 3px;
           margin-left: 0.5rem;
         }
+        .toewijzing-badge--hdbscan {
+          background: #e8f5e9;
+          color: #2e7d32;
+        }
         .toewijzing-badge--centroid {
           background: #fff3e0;
           color: #e65100;
@@ -1106,17 +1110,18 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       const eersteBezwaar = groep.bezwaren[0];
       if (eersteBezwaar && eersteBezwaar.toewijzingsmethode) {
         const methode = eersteBezwaar.toewijzingsmethode;
-        if (methode === 'CENTROID_FALLBACK') {
-          const badge = document.createElement('span');
+        const badge = document.createElement('span');
+        if (methode === 'HDBSCAN') {
+          badge.className = 'toewijzing-badge toewijzing-badge--hdbscan';
+          badge.textContent = 'Clustering';
+        } else if (methode === 'CENTROID_FALLBACK') {
           badge.className = 'toewijzing-badge toewijzing-badge--centroid';
-          badge.textContent = 'Automatisch toegewezen';
-          passage.appendChild(badge);
+          badge.textContent = 'Centroid';
         } else if (methode === 'MANUEEL') {
-          const badge = document.createElement('span');
           badge.className = 'toewijzing-badge toewijzing-badge--manueel';
           badge.textContent = 'Handmatig';
-          passage.appendChild(badge);
         }
+        if (badge.className) passage.appendChild(badge);
       }
 
       groepEl.appendChild(passage);
