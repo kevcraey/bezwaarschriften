@@ -4,4 +4,5 @@ public record IndividueelBezwaarReferentie(
     Long bezwaarId,
     String bestandsnaam,
     String passage,
-    Integer scorePercentage) {}
+    Integer scorePercentage,
+    ToewijzingsMethode toewijzingsmethode) {}

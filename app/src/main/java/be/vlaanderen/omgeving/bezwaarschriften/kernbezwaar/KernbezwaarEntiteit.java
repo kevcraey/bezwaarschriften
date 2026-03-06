@@ -15,8 +15,8 @@ public class KernbezwaarEntiteit {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "thema_id", nullable = false)
-  private Long themaId;
+  @Column(name = "project_naam", nullable = false)
+  private String projectNaam;
 
   @Column(name = "samenvatting", columnDefinition = "text", nullable = false)
   private String samenvatting;
@@ -29,12 +29,12 @@ public class KernbezwaarEntiteit {
     this.id = id;
   }
 
-  public Long getThemaId() {
-    return themaId;
+  public String getProjectNaam() {
+    return projectNaam;
   }
 
-  public void setThemaId(Long themaId) {
-    this.themaId = themaId;
+  public void setProjectNaam(String projectNaam) {
+    this.projectNaam = projectNaam;
   }
 
   public String getSamenvatting() {
