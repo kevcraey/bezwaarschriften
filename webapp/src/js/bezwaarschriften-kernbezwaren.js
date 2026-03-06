@@ -858,6 +858,18 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
             this._updateClusteringConfig('umapEnabled', toggle.checked);
           });
 
+          // Cluster op passages toggle
+          const passageToggleWrapper = document.createElement('label');
+          passageToggleWrapper.textContent = 'Cluster op passages: ';
+          const passageToggle = document.createElement('input');
+          passageToggle.type = 'checkbox';
+          passageToggle.checked = config.clusterOpPassages;
+          passageToggle.addEventListener('change', () => {
+            this._updateClusteringConfig('clusterOpPassages', passageToggle.checked);
+          });
+          passageToggleWrapper.appendChild(passageToggle);
+          balk.appendChild(passageToggleWrapper);
+
           // HDBSCAN parameters
           const hdbscanParams = [
             {key: 'minClusterSize', label: 'Min. clustergrootte', min: 2, step: 1, decimals: 0},
