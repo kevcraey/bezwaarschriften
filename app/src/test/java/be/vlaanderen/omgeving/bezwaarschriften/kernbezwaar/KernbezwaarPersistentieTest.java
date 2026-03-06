@@ -12,9 +12,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 class KernbezwaarPersistentieTest {
 
   @Autowired
-  private ThemaRepository themaRepository;
-
-  @Autowired
   private KernbezwaarRepository kernbezwaarRepository;
 
   @Autowired
@@ -27,14 +24,9 @@ class KernbezwaarPersistentieTest {
   private TestEntityManager entityManager;
 
   @Test
-  void slaatThemaMetKernbezwaarEnReferentieOp() {
-    var thema = new ThemaEntiteit();
-    thema.setProjectNaam("windmolens");
-    thema.setNaam("Geluidshinder");
-    thema = themaRepository.save(thema);
-
+  void slaatKernbezwaarMetReferentieOp() {
     var kern = new KernbezwaarEntiteit();
-    kern.setProjectNaam(thema.getProjectNaam());
+    kern.setProjectNaam("windmolens");
     kern.setSamenvatting("Geluid overschrijdt normen");
     kern = kernbezwaarRepository.save(kern);
 
@@ -48,12 +40,7 @@ class KernbezwaarPersistentieTest {
     entityManager.flush();
     entityManager.clear();
 
-    var themas = themaRepository.findByProjectNaam("windmolens");
-    assertThat(themas).hasSize(1);
-    assertThat(themas.get(0).getNaam()).isEqualTo("Geluidshinder");
-
-    var kernen = kernbezwaarRepository.findByThemaIdIn(
-        themas.stream().map(ThemaEntiteit::getId).toList());
+    var kernen = kernbezwaarRepository.findByProjectNaam("windmolens");
     assertThat(kernen).hasSize(1);
     assertThat(kernen.get(0).getSamenvatting()).isEqualTo("Geluid overschrijdt normen");
 
@@ -66,14 +53,9 @@ class KernbezwaarPersistentieTest {
 
   @Test
   void cascadeDeleteVerwijdertAlleGerelateerdeData() {
-    // Maak thema → kernbezwaar → referentie + antwoord
-    var thema = new ThemaEntiteit();
-    thema.setProjectNaam("windmolens");
-    thema.setNaam("Mobiliteit");
-    thema = themaRepository.save(thema);
-
+    // Maak kernbezwaar -> referentie + antwoord
     var kern = new KernbezwaarEntiteit();
-    kern.setProjectNaam(thema.getProjectNaam());
+    kern.setProjectNaam("windmolens");
     kern.setSamenvatting("Verkeershinder");
     kern = kernbezwaarRepository.save(kern);
 
@@ -93,26 +75,21 @@ class KernbezwaarPersistentieTest {
     entityManager.flush();
     entityManager.clear();
 
-    // Verwijder thema → alles moet weg zijn
-    themaRepository.deleteByProjectNaam("windmolens");
+    // Verwijder kernbezwaren -> alles moet weg zijn (DB cascade)
+    kernbezwaarRepository.deleteByProjectNaam("windmolens");
     entityManager.flush();
     entityManager.clear();
 
-    assertThat(themaRepository.findByProjectNaam("windmolens")).isEmpty();
-    assertThat(kernbezwaarRepository.findByThemaIdIn(java.util.List.of(thema.getId()))).isEmpty();
-    assertThat(referentieRepository.findByKernbezwaarIdIn(java.util.List.of(kern.getId()))).isEmpty();
+    assertThat(kernbezwaarRepository.findByProjectNaam("windmolens")).isEmpty();
+    assertThat(referentieRepository.findByKernbezwaarIdIn(java.util.List.of(kern.getId())))
+        .isEmpty();
     assertThat(antwoordRepository.findById(kern.getId())).isEmpty();
   }
 
   @Test
   void referentieMetNullBezwaarId() {
-    var thema = new ThemaEntiteit();
-    thema.setProjectNaam("windmolens");
-    thema.setNaam("Geurhinder");
-    thema = themaRepository.save(thema);
-
     var kern = new KernbezwaarEntiteit();
-    kern.setProjectNaam(thema.getProjectNaam());
+    kern.setProjectNaam("windmolens");
     kern.setSamenvatting("Stankoverlast");
     kern = kernbezwaarRepository.save(kern);
 

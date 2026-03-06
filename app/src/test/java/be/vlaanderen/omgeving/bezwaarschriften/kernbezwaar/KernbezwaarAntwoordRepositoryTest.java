@@ -20,7 +20,7 @@ class KernbezwaarAntwoordRepositoryTest {
 
   @Test
   void slaatAntwoordOpEnHaaltHetOp() {
-    var kernId = maakKernbezwaar("Thema 1", "Samenvatting 1");
+    var kernId = maakKernbezwaar("Samenvatting 1");
 
     var entiteit = new KernbezwaarAntwoordEntiteit();
     entiteit.setKernbezwaarId(kernId);
@@ -38,7 +38,7 @@ class KernbezwaarAntwoordRepositoryTest {
 
   @Test
   void vindAntwoordenVoorMeerdereKernbezwaarIds() {
-    var kern1 = maakKernbezwaar("Thema A", "Samenvatting A");
+    var kern1 = maakKernbezwaar("Samenvatting A");
 
     var e1 = new KernbezwaarAntwoordEntiteit();
     e1.setKernbezwaarId(kern1);
@@ -46,7 +46,7 @@ class KernbezwaarAntwoordRepositoryTest {
     e1.setBijgewerktOp(Instant.now());
     repository.save(e1);
 
-    var kern2 = maakKernbezwaar("Thema B", "Samenvatting B");
+    var kern2 = maakKernbezwaar("Samenvatting B");
 
     var e2 = new KernbezwaarAntwoordEntiteit();
     e2.setKernbezwaarId(kern2);
@@ -63,7 +63,7 @@ class KernbezwaarAntwoordRepositoryTest {
 
   @Test
   void upsertBijBestaandAntwoord() {
-    var kernId = maakKernbezwaar("Thema X", "Samenvatting X");
+    var kernId = maakKernbezwaar("Samenvatting X");
 
     var entiteit = new KernbezwaarAntwoordEntiteit();
     entiteit.setKernbezwaarId(kernId);
@@ -87,14 +87,9 @@ class KernbezwaarAntwoordRepositoryTest {
     assertThat(opgehaald.get().getInhoud()).isEqualTo("<p>Nieuw</p>");
   }
 
-  private Long maakKernbezwaar(String themaNaam, String samenvatting) {
-    var thema = new ThemaEntiteit();
-    thema.setProjectNaam("test-project");
-    thema.setNaam(themaNaam);
-    entityManager.persist(thema);
-
+  private Long maakKernbezwaar(String samenvatting) {
     var kern = new KernbezwaarEntiteit();
-    kern.setProjectNaam(thema.getProjectNaam());
+    kern.setProjectNaam("test-project");
     kern.setSamenvatting(samenvatting);
     entityManager.persist(kern);
     entityManager.flush();

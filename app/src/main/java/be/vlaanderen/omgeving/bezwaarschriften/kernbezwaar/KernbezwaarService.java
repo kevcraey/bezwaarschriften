@@ -399,6 +399,10 @@ public class KernbezwaarService {
       referentieRepository.deleteByBestandsnaamAndProjectNaam(bestandsnaam, projectNaam);
     }
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
+    // Als er geen kernbezwaren meer over zijn, ruim ook de clustering-taak op
+    if (kernbezwaarRepository.countByProjectNaam(projectNaam) == 0) {
+      clusteringTaakRepository.deleteByProjectNaam(projectNaam);
+    }
   }
 
   /**

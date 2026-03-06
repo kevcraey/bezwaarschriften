@@ -36,30 +36,18 @@ class KernbezwaarControllerTest {
   }
 
   @Test
-  void groepeerRetourneertThemas() {
-    var thema = new Thema("Geluid", List.of(
-        new Kernbezwaar(1L, "samenvatting", List.of(
-            new IndividueelBezwaarReferentie(1L, "b1.txt", "passage", null, ToewijzingsMethode.HDBSCAN)), null)));
-    when(kernbezwaarService.groepeer("windmolens")).thenReturn(List.of(thema));
-
-    var response = controller.groepeer("windmolens");
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody().themas()).hasSize(1);
-    assertThat(response.getBody().themas().get(0).naam()).isEqualTo("Geluid");
-    verify(kernbezwaarService).groepeer("windmolens");
-  }
-
-  @Test
   void geefKernbezwarenRetourneertCachedResultaat() {
-    var thema = new Thema("Mobiliteit", List.of());
+    var kernbezwaar = new Kernbezwaar(1L, "samenvatting", List.of(
+        new IndividueelBezwaarReferentie(
+            1L, "b1.txt", "passage", null, ToewijzingsMethode.HDBSCAN)),
+        null);
     when(kernbezwaarService.geefKernbezwaren("windmolens"))
-        .thenReturn(Optional.of(List.of(thema)));
+        .thenReturn(Optional.of(List.of(kernbezwaar)));
 
     var response = controller.geefKernbezwaren("windmolens");
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody().themas()).hasSize(1);
+    assertThat(response.getBody().kernbezwaren()).hasSize(1);
   }
 
   @Test
