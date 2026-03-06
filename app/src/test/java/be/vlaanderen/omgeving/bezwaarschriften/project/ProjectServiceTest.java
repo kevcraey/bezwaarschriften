@@ -2,7 +2,10 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -202,5 +205,36 @@ class ProjectServiceTest {
     assertThat(resultaat.get(0).aantalDocumenten()).isEqualTo(3);
     assertThat(resultaat.get(1).naam()).isEqualTo("leeg-project");
     assertThat(resultaat.get(1).aantalDocumenten()).isEqualTo(0);
+  }
+
+  @Test
+  void verwijderBezwaren_verwijdertAlleBestandenEnRuimtKernbezwaarDataOp() {
+    var bestandsnamen = List.of("bezwaar-001.txt", "bezwaar-002.txt", "bezwaar-003.txt");
+    when(projectPoort.verwijderBestand(eq("windmolens"), anyString())).thenReturn(true);
+
+    int aantalVerwijderd = service.verwijderBezwaren("windmolens", bestandsnamen);
+
+    assertThat(aantalVerwijderd).isEqualTo(3);
+
+    for (String naam : bestandsnamen) {
+      verify(extractieTaakRepository).deleteByProjectNaamAndBestandsnaam("windmolens", naam);
+    }
+
+    verify(kernbezwaarService, times(1)).ruimOpNaBestandenVerwijdering("windmolens", bestandsnamen);
+
+    for (String naam : bestandsnamen) {
+      verify(projectPoort).verwijderBestand("windmolens", naam);
+    }
+  }
+
+  @Test
+  void verwijderBezwaren_teltEnkelSuccesvolVerwijderdeBestandenMee() {
+    when(projectPoort.verwijderBestand("windmolens", "bestaat.txt")).thenReturn(true);
+    when(projectPoort.verwijderBestand("windmolens", "bestaat-niet.txt")).thenReturn(false);
+
+    int aantalVerwijderd = service.verwijderBezwaren("windmolens",
+        List.of("bestaat.txt", "bestaat-niet.txt"));
+
+    assertThat(aantalVerwijderd).isEqualTo(1);
   }
 }

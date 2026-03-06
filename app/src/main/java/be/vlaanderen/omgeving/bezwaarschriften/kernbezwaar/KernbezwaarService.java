@@ -239,6 +239,23 @@ public class KernbezwaarService {
   }
 
   /**
+   * Ruimt kernbezwaar-data op na verwijdering van meerdere bestanden.
+   * Verwijdert referenties voor alle bestanden, daarna lege kernbezwaren, lege thema's,
+   * en clustering-taken waarvan het corresponderende thema niet meer bestaat.
+   *
+   * @param projectNaam naam van het project
+   * @param bestandsnamen lijst van bestandsnamen die verwijderd worden
+   */
+  public void ruimOpNaBestandenVerwijdering(String projectNaam, List<String> bestandsnamen) {
+    for (String bestandsnaam : bestandsnamen) {
+      referentieRepository.deleteByBestandsnaamAndProjectNaam(bestandsnaam, projectNaam);
+    }
+    kernbezwaarRepository.deleteZonderReferenties(projectNaam);
+    themaRepository.deleteZonderKernbezwaren(projectNaam);
+    clusteringTaakRepository.deleteZonderThema(projectNaam);
+  }
+
+  /**
    * Ruimt alle kernbezwaar- en clusteringdata op voor een project.
    * Kernbezwaren, referenties en antwoorden worden via ON DELETE CASCADE
    * op database-niveau meeverwijderd bij het verwijderen van thema's.
