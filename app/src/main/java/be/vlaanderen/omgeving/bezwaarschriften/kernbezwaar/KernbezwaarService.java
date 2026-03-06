@@ -258,16 +258,21 @@ public class KernbezwaarService {
 
     // Genereer embeddings alleen voor bezwaren die er nog geen hebben (legacy data)
     var zonderEmbedding = bezwaren.stream()
-        .filter(b -> b.getEmbedding() == null)
+        .filter(b -> b.getEmbeddingPassage() == null)
         .toList();
     if (!zonderEmbedding.isEmpty()) {
-      var teksten = zonderEmbedding.stream()
+      var passageTeksten = zonderEmbedding.stream()
           .map(b -> geefPassageTekst(b, passageLookup))
           .toList();
-      var embeddings = embeddingPoort.genereerEmbeddings(teksten);
+      var samenvattingen = zonderEmbedding.stream()
+          .map(GeextraheerdBezwaarEntiteit::getSamenvatting)
+          .toList();
+      var passageEmbeddings = embeddingPoort.genereerEmbeddings(passageTeksten);
+      var samenvattingEmbeddings = embeddingPoort.genereerEmbeddings(samenvattingen);
       transactionTemplate.executeWithoutResult(status -> {
         for (int i = 0; i < zonderEmbedding.size(); i++) {
-          zonderEmbedding.get(i).setEmbedding(embeddings.get(i));
+          zonderEmbedding.get(i).setEmbeddingPassage(passageEmbeddings.get(i));
+          zonderEmbedding.get(i).setEmbeddingSamenvatting(samenvattingEmbeddings.get(i));
         }
         bezwaarRepository.saveAll(zonderEmbedding);
       });
@@ -280,7 +285,7 @@ public class KernbezwaarService {
 
     // Externe call: HDBSCAN-clustering (buiten transactie)
     var origineleInvoer = bezwaren.stream()
-        .map(b -> new ClusteringInvoer(b.getId(), b.getEmbedding()))
+        .map(b -> new ClusteringInvoer(b.getId(), geefEmbedding(b)))
         .toList();
 
     // Optionele UMAP-dimensiereductie
@@ -342,10 +347,10 @@ public class KernbezwaarService {
   }
 
   private float[] berekenOrigineleCentroid(List<GeextraheerdBezwaarEntiteit> bezwaren) {
-    int dims = bezwaren.get(0).getEmbedding().length;
+    int dims = geefEmbedding(bezwaren.get(0)).length;
     var centroid = new float[dims];
     for (var bezwaar : bezwaren) {
-      var emb = bezwaar.getEmbedding();
+      var emb = geefEmbedding(bezwaar);
       for (int i = 0; i < dims; i++) {
         centroid[i] += emb[i];
       }
@@ -361,7 +366,7 @@ public class KernbezwaarService {
     GeextraheerdBezwaarEntiteit dichtstbij = null;
     double hoogsteGelijkenis = Double.NEGATIVE_INFINITY;
     for (var bezwaar : bezwaren) {
-      double gelijkenis = cosinusGelijkenis(bezwaar.getEmbedding(), centroid);
+      double gelijkenis = cosinusGelijkenis(geefEmbedding(bezwaar), centroid);
       if (gelijkenis > hoogsteGelijkenis) {
         hoogsteGelijkenis = gelijkenis;
         dichtstbij = bezwaar;
@@ -381,6 +386,12 @@ public class KernbezwaarService {
     }
     double deler = Math.sqrt(normA) * Math.sqrt(normB);
     return deler == 0.0 ? 0.0 : dot / deler;
+  }
+
+  private float[] geefEmbedding(GeextraheerdBezwaarEntiteit bezwaar) {
+    return clusteringConfig.isClusterOpPassages()
+        ? bezwaar.getEmbeddingPassage()
+        : bezwaar.getEmbeddingSamenvatting();
   }
 
   private Kernbezwaar slaKernbezwaarOp(Long themaId, String samenvatting,

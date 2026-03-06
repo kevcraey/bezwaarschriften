@@ -167,7 +167,7 @@ class ExtractieTaakServiceTest {
     verify(bezwaarRepository, times(4)).save(bezwaarCaptor.capture());
     assertThat(bezwaarCaptor.getAllValues().get(0).getSamenvatting()).isEqualTo("Samenvatting een");
     assertThat(bezwaarCaptor.getAllValues().get(0).getTaakId()).isEqualTo(1L);
-    assertThat(bezwaarCaptor.getAllValues().get(2).getEmbedding()).isNotNull();
+    assertThat(bezwaarCaptor.getAllValues().get(2).getEmbeddingPassage()).isNotNull();
   }
 
   @Test
@@ -490,7 +490,7 @@ class ExtractieTaakServiceTest {
     assertThat(bezwaarCaptor.getAllValues().get(0).isManueel()).isTrue();
     assertThat(bezwaarCaptor.getAllValues().get(0).getPassageNr()).isEqualTo(4);
     assertThat(bezwaarCaptor.getAllValues().get(0).getCategorie()).isEqualTo("overig");
-    assertThat(bezwaarCaptor.getAllValues().get(1).getEmbedding()).isNotNull();
+    assertThat(bezwaarCaptor.getAllValues().get(1).getEmbeddingPassage()).isNotNull();
 
     assertThat(taak.isHeeftManueel()).isTrue();
     assertThat(taak.getAantalBezwaren()).isEqualTo(1);

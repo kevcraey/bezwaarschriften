@@ -6,7 +6,7 @@ import {VlSearchFilterComponent} from '@domg-wc/components/block/search-filter/v
 import {VlPagerComponent} from '@domg-wc/components/block/pager/vl-pager.component.js';
 import {VlInputFieldComponent} from '@domg-wc/components/form/input-field/vl-input-field.component.js';
 import {VlFormLabelComponent} from '@domg-wc/components/form/form-label/vl-form-label.component.js';
-import {VlSelectComponent} from '@domg-wc/components/form/select/vl-select.component.js';
+import {VlSelectRichComponent} from '@domg-wc/components/form/select-rich/vl-select-rich.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {VlTabsComponent} from '@domg-wc/components/block/tabs/vl-tabs.component.js';
 import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.component.js';
@@ -18,7 +18,7 @@ import {vlGlobalStyles} from '@domg-wc/styles';
 registerWebComponents([
   VlRichDataTable, VlRichDataField, VlPillComponent,
   VlSearchFilterComponent, VlPagerComponent,
-  VlInputFieldComponent, VlFormLabelComponent, VlSelectComponent,
+  VlInputFieldComponent, VlFormLabelComponent, VlSelectRichComponent,
   VlSideSheet, VlTabsComponent, VlTabsPaneComponent,
   VlTextareaComponent, VlButtonComponent, VlModalComponent,
 ]);
@@ -42,7 +42,6 @@ const STATUS_PILL_TYPES = {
 };
 
 const STATUS_OPTIES = [
-  {value: '', label: 'Alle statussen'},
   {value: 'todo', label: 'Te verwerken'},
   {value: 'wachtend', label: 'Wachtend'},
   {value: 'bezig', label: 'Bezig'},
@@ -160,7 +159,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               </div>
               <div>
                 <vl-form-label for="filter-status" label="Status" light></vl-form-label>
-                <vl-select id="filter-status" name="status" placeholder="Alle statussen" block></vl-select>
+                <vl-select-rich id="filter-status" name="status" placeholder="Alle statussen" multiple block></vl-select-rich>
               </div>
             </section>
           </form>
@@ -251,6 +250,20 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       this._configureerStatusOpties();
       this._herbereken();
     });
+
+    const statusFilter = this.shadowRoot.querySelector('#filter-status');
+    if (statusFilter) {
+      statusFilter.addEventListener('vl-input', (e) => {
+        const geselecteerd = e.detail?.value;
+        if (!geselecteerd || (Array.isArray(geselecteerd) && geselecteerd.length === 0)) {
+          delete this.__filters.status;
+        } else {
+          this.__filters.status = Array.isArray(geselecteerd) ? geselecteerd : [geselecteerd];
+        }
+        this.__huidigePagina = 1;
+        this._herbereken();
+      });
+    }
   }
 
   disconnectedCallback() {
@@ -294,7 +307,9 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   _configureerStatusOpties() {
     const select = this.shadowRoot.querySelector('#filter-status');
     if (select) {
-      select.options = STATUS_OPTIES;
+      customElements.whenDefined('vl-select-rich').then(() => {
+        select.setOptions(STATUS_OPTIES);
+      });
     }
   }
 
@@ -690,11 +705,17 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
     // Bouw filters altijd opnieuw vanuit formData — vl-rich-data retourneert
     // undefined als alle filterwaarden leeg zijn (bv. "Alle statussen").
+    // Bewaar huidige status-filter (wordt apart beheerd via vl-select-rich event)
+    const huidigeStatus = this.__filters.status;
     const nieuweFilters = {};
     if (detail.formData) {
       for (const [key, value] of detail.formData.entries()) {
-        if (value) nieuweFilters[key] = value;
+        if (!value || key === 'status') continue;
+        nieuweFilters[key] = value;
       }
+    }
+    if (huidigeStatus) {
+      nieuweFilters.status = huidigeStatus;
     }
     if (JSON.stringify(nieuweFilters) !== JSON.stringify(this.__filters)) {
       this.__filters = nieuweFilters;
@@ -757,8 +778,9 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           !b.bestandsnaam.toLowerCase().includes(filters.bestandsnaam.toLowerCase())) {
         return false;
       }
-      if (filters.status && b.status !== filters.status) {
-        return false;
+      if (filters.status) {
+        const statussen = Array.isArray(filters.status) ? filters.status : [filters.status];
+        if (!statussen.includes(b.status)) return false;
       }
       return true;
     });

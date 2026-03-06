@@ -17,6 +17,7 @@ public class ClusteringConfig {
   private int umapNComponents = 5;
   private int umapNNeighbors = 15;
   private float umapMinDist = 0.1f;
+  private boolean clusterOpPassages = true;
 
   public int getMinClusterSize() {
     return minClusterSize;
@@ -72,5 +73,13 @@ public class ClusteringConfig {
 
   public void setUmapMinDist(float umapMinDist) {
     this.umapMinDist = umapMinDist;
+  }
+
+  public boolean isClusterOpPassages() {
+    return clusterOpPassages;
+  }
+
+  public void setClusterOpPassages(boolean clusterOpPassages) {
+    this.clusterOpPassages = clusterOpPassages;
   }
 }

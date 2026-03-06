@@ -34,7 +34,7 @@ class ClusteringConfigControllerTest {
 
   @Test
   void updatePastUmapVeldenAan() {
-    var dto = new ConfigDto(3, 2, 0.5, false, 10, 30, 0.5f);
+    var dto = new ConfigDto(3, 2, 0.5, false, 10, 30, 0.5f, true);
 
     var response = controller.update(dto);
 
@@ -43,5 +43,6 @@ class ClusteringConfigControllerTest {
     verify(config).setUmapNComponents(10);
     verify(config).setUmapNNeighbors(30);
     verify(config).setUmapMinDist(0.5f);
+    verify(config).setClusterOpPassages(true);
   }
 }

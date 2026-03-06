@@ -220,17 +220,22 @@ public class ExtractieTaakService {
       bezwaarRepository.save(entiteit);
     }
 
-    // Genereer embeddings voor alle bezwaren (batch) en sla op
+    // Genereer embeddings voor alle bezwaren (batch): passage + samenvatting
     if (!bezwaarEntiteiten.isEmpty()) {
-      var teksten = bezwaarEntiteiten.stream()
+      var passageTeksten = bezwaarEntiteiten.stream()
           .map(b -> {
             var tekst = passageMap.get(b.getPassageNr());
             return tekst != null ? tekst : b.getSamenvatting();
           })
           .toList();
-      var embeddings = embeddingPoort.genereerEmbeddings(teksten);
+      var samenvattingen = bezwaarEntiteiten.stream()
+          .map(GeextraheerdBezwaarEntiteit::getSamenvatting)
+          .toList();
+      var passageEmbeddings = embeddingPoort.genereerEmbeddings(passageTeksten);
+      var samenvattingEmbeddings = embeddingPoort.genereerEmbeddings(samenvattingen);
       for (int i = 0; i < bezwaarEntiteiten.size(); i++) {
-        bezwaarEntiteiten.get(i).setEmbedding(embeddings.get(i));
+        bezwaarEntiteiten.get(i).setEmbeddingPassage(passageEmbeddings.get(i));
+        bezwaarEntiteiten.get(i).setEmbeddingSamenvatting(samenvattingEmbeddings.get(i));
         bezwaarRepository.save(bezwaarEntiteiten.get(i));
       }
     }
@@ -461,8 +466,9 @@ public class ExtractieTaakService {
 
     var opgeslagen = bezwaarRepository.save(bezwaarEntiteit);
 
-    var embedding = embeddingPoort.genereerEmbeddings(List.of(passageTekst)).get(0);
-    opgeslagen.setEmbedding(embedding);
+    var embeddings = embeddingPoort.genereerEmbeddings(List.of(passageTekst, samenvatting));
+    opgeslagen.setEmbeddingPassage(embeddings.get(0));
+    opgeslagen.setEmbeddingSamenvatting(embeddings.get(1));
     bezwaarRepository.save(opgeslagen);
 
     return new ExtractieDetailDto.BezwaarDetail(

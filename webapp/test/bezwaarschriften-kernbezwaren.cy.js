@@ -738,6 +738,7 @@ describe('bezwaarschriften-kernbezwaren clustering parameters', () => {
     umapNComponents: 5,
     umapNNeighbors: 15,
     umapMinDist: 0.1,
+    clusterOpPassages: true,
   };
 
   beforeEach(() => {
@@ -783,6 +784,7 @@ describe('bezwaarschriften-kernbezwaren clustering parameters', () => {
   it('toont UMAP toggle als aangevinkt', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.clustering-params input[type="checkbox"]')
+        .first()
         .should('be.checked');
   });
 
@@ -800,6 +802,7 @@ describe('bezwaarschriften-kernbezwaren clustering parameters', () => {
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.clustering-params input[type="checkbox"]')
+        .first()
         .uncheck();
 
     cy.get('bezwaarschriften-kernbezwaren')
@@ -821,5 +824,26 @@ describe('bezwaarschriften-kernbezwaren clustering parameters', () => {
         .trigger('change');
 
     cy.wait('@updateConfig');
+  });
+
+  it('toont cluster-op-passages checkbox als aangevinkt', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.clustering-params input[type="checkbox"]')
+        .last()
+        .should('be.checked');
+  });
+
+  it('stuurt update bij uitvinken cluster-op-passages', () => {
+    cy.intercept('PUT', '/api/v1/clustering-config', (req) => {
+      expect(req.body.clusterOpPassages).to.equal(false);
+      req.reply({statusCode: 200, body: {...MOCK_CONFIG, clusterOpPassages: false}});
+    }).as('updatePassages');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.clustering-params input[type="checkbox"]')
+        .last()
+        .uncheck();
+
+    cy.wait('@updatePassages');
   });
 });

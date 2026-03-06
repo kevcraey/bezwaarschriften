@@ -17,5 +17,6 @@
 
   <include file="config/liquibase/changelog/20260303-clustering-taak.xml"/>
   <include file="config/liquibase/changelog/20260304-verwijder-geannuleerd.xml"/>
+  <include file="config/liquibase/changelog/20260306-dual-embedding.xml"/>
 
 </databaseChangeLog>
