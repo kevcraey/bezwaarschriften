@@ -35,8 +35,12 @@ public class GeextraheerdBezwaarEntiteit {
   private boolean manueel = false;
 
   @Type(type = "be.vlaanderen.omgeving.bezwaarschriften.config.VectorType")
-  @Column(name = "embedding", columnDefinition = "vector(1024)")
-  private float[] embedding;
+  @Column(name = "embedding_passage", columnDefinition = "vector(1024)")
+  private float[] embeddingPassage;
+
+  @Type(type = "be.vlaanderen.omgeving.bezwaarschriften.config.VectorType")
+  @Column(name = "embedding_samenvatting", columnDefinition = "vector(1024)")
+  private float[] embeddingSamenvatting;
 
   public Long getId() {
     return id;
@@ -94,11 +98,19 @@ public class GeextraheerdBezwaarEntiteit {
     this.manueel = manueel;
   }
 
-  public float[] getEmbedding() {
-    return embedding;
+  public float[] getEmbeddingPassage() {
+    return embeddingPassage;
   }
 
-  public void setEmbedding(float[] embedding) {
-    this.embedding = embedding;
+  public void setEmbeddingPassage(float[] embeddingPassage) {
+    this.embeddingPassage = embeddingPassage;
+  }
+
+  public float[] getEmbeddingSamenvatting() {
+    return embeddingSamenvatting;
+  }
+
+  public void setEmbeddingSamenvatting(float[] embeddingSamenvatting) {
+    this.embeddingSamenvatting = embeddingSamenvatting;
   }
 }
