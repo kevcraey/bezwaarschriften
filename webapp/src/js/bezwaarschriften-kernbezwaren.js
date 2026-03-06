@@ -599,32 +599,23 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   _formatClusteringStatus(ct, nu) {
     nu = nu || Date.now();
 
-    if (ct.status === 'wachtend' && ct.aangemaaktOp) {
-      const wachtMs = nu - new Date(ct.aangemaaktOp).getTime();
-      return `Wachtend (${this._formatTijd(wachtMs)})`;
+    if (ct.status === 'wachtend') {
+      return 'Wachtend...';
     }
 
     if (ct.status === 'bezig') {
-      const wachtMs = ct.verwerkingGestartOp && ct.aangemaaktOp ?
-        new Date(ct.verwerkingGestartOp).getTime() -
-            new Date(ct.aangemaaktOp).getTime() :
-        0;
       const verwerkMs = ct.verwerkingGestartOp ?
         nu - new Date(ct.verwerkingGestartOp).getTime() :
         0;
-      return `Bezig (${this._formatTijd(wachtMs)}+${this._formatTijd(verwerkMs)})`;
+      return `Bezig (${this._formatTijd(verwerkMs)})`;
     }
 
     if (ct.status === 'klaar') {
-      const wachtMs = ct.verwerkingGestartOp && ct.aangemaaktOp ?
-        new Date(ct.verwerkingGestartOp).getTime() -
-            new Date(ct.aangemaaktOp).getTime() :
-        0;
       const verwerkMs = ct.verwerkingVoltooidOp && ct.verwerkingGestartOp ?
         new Date(ct.verwerkingVoltooidOp).getTime() -
             new Date(ct.verwerkingGestartOp).getTime() :
         0;
-      return `Klaar (${this._formatTijd(wachtMs)}+${this._formatTijd(verwerkMs)})`;
+      return `Klaar (${this._formatTijd(verwerkMs)})`;
     }
 
     return ct.status;
