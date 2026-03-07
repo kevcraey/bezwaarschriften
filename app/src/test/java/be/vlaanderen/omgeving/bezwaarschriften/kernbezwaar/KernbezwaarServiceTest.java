@@ -404,21 +404,33 @@ class KernbezwaarServiceTest {
     verify(kernbezwaarRepository).save(any());
   }
 
-  // TODO: task 9 - herschrijf cascade verwijdering tests met passage_groep model
   @Test
-  void ruimOpNaDocumentVerwijdering_verwijdertLegeKernbezwaren() {
+  void ruimOpNaDocumentVerwijdering_cascadeVerwijderingViaPassageGroepModel() {
     service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
 
-    verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
+    var inOrder = org.mockito.Mockito.inOrder(
+        passageGroepLidRepository, passageGroepRepository,
+        referentieRepository, kernbezwaarRepository);
+    inOrder.verify(passageGroepLidRepository)
+        .deleteByBestandsnaamIn(List.of("bezwaar-001.txt"));
+    inOrder.verify(passageGroepRepository).deleteZonderLeden();
+    inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
+    inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
   }
 
   @Test
-  void ruimOpNaBestandenVerwijdering_verwijdertOrphanedData() {
+  void ruimOpNaBestandenVerwijdering_cascadeVerwijderingViaPassageGroepModel() {
     var bestandsnamen = List.of("doc-a.txt", "doc-b.txt");
 
     service.ruimOpNaBestandenVerwijdering("testproject", bestandsnamen);
 
-    verify(kernbezwaarRepository).deleteZonderReferenties("testproject");
+    var inOrder = org.mockito.Mockito.inOrder(
+        passageGroepLidRepository, passageGroepRepository,
+        referentieRepository, kernbezwaarRepository);
+    inOrder.verify(passageGroepLidRepository).deleteByBestandsnaamIn(bestandsnamen);
+    inOrder.verify(passageGroepRepository).deleteZonderLeden();
+    inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
+    inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("testproject");
   }
 
   @Test

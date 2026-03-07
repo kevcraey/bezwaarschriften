@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,7 +92,6 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   // --- Scenario 1: Document verwijderd, gedeeld kernbezwaar blijft bestaan ---
 
   @Test
-  @Disabled("Wacht op Task 9: cascade verwijdering met passage_groep model")
   @DisplayName("Gedeeld kernbezwaar behoudt referentie naar ander document na verwijdering")
   void gedeeldKernbezwaarBlijftBestaanNaDocumentVerwijdering() {
     // Arrange: 2 documenten in "testproject"
@@ -113,13 +111,16 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
     var overgeblevenRefs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(overgeblevenRefs).hasSize(1);
-    // TODO: task 9 - assertie op bestandsnaam via passage_groep_lid
+    // Controleer dat de overgebleven referentie naar doc-b wijst via passage_groep_lid
+    var groepId = overgeblevenRefs.get(0).getPassageGroepId();
+    var leden = passageGroepLidRepository.findByPassageGroepId(groepId);
+    assertThat(leden).hasSize(1);
+    assertThat(leden.get(0).getBestandsnaam()).isEqualTo("doc-b.txt");
   }
 
   // --- Scenario 2: Document verwijderd, niet-gedeeld kernbezwaar verdwijnt ---
 
   @Test
-  @Disabled("Wacht op Task 9: cascade verwijdering met passage_groep model")
   @DisplayName("Niet-gedeeld kernbezwaar en antwoord worden verwijderd met document")
   void nietGedeeldKernbezwaarVerdwijntBijDocumentVerwijdering() {
     // Arrange: 2 documenten, K2 heeft enkel referenties naar doc-a
@@ -195,7 +196,6 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   // --- Gecombineerd scenario: gedeeld + niet-gedeeld ---
 
   @Test
-  @Disabled("Wacht op Task 9: cascade verwijdering met passage_groep model")
   @DisplayName("Documentverwijdering behandelt gedeelde en niet-gedeelde kernbezwaren correct")
   void gecombineerdScenarioDocumentVerwijdering() {
     // Arrange: 2 documenten, mix van gedeelde en niet-gedeelde kernbezwaren
@@ -223,7 +223,11 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
     var k1Refs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(k1Refs).hasSize(1);
-    // TODO: task 9 - assertie op bestandsnaam via passage_groep_lid
+    // Controleer dat de overgebleven referentie naar doc-b wijst via passage_groep_lid
+    var groepId = k1Refs.get(0).getPassageGroepId();
+    var leden = passageGroepLidRepository.findByPassageGroepId(groepId);
+    assertThat(leden).hasSize(1);
+    assertThat(leden.get(0).getBestandsnaam()).isEqualTo("doc-b.txt");
 
     // Assert: K2 is verwijderd samen met antwoord (DB cascade)
     assertThat(kernbezwaarRepository.findById(k2.getId())).isEmpty();
@@ -236,7 +240,6 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   // --- Scenario: Totaalaantal referenties na verwijdering ---
 
   @Test
-  @Disabled("Wacht op Task 9: cascade verwijdering met passage_groep model")
   @DisplayName("Na documentverwijdering telt het totaal referenties enkel bezwaren uit het overblijvende document")
   void totaalAantalReferentiesKloptNaDocumentVerwijdering() {
     // Arrange: doc-a met 10 bezwaren, doc-b met 15 bezwaren
@@ -288,10 +291,9 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     // Act: verwijder doc-a
     projectService.verwijderBezwaar("testproject", "doc-a.txt");
 
-    // Assert: enkel doc-b referenties blijven over
+    // Assert: enkel doc-b referenties blijven over (10 doc-b refs)
     var alleRefsPost = referentieRepository.findByProjectNaam("testproject");
-    // TODO: task 9 - herschrijf cascade testen met passage_groep model
-    assertThat(alleRefsPost).isNotNull();
+    assertThat(alleRefsPost).hasSize(10);
 
     // Assert: K4 (enkel doc-a) is verwijderd, rest bestaat nog
     assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
@@ -308,7 +310,6 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   // --- Scenario: Bulk verwijdering ruimt alles op ---
 
   @Test
-  @Disabled("Wacht op Task 9: cascade verwijdering met passage_groep model")
   @DisplayName("Bulk verwijdering van alle documenten ruimt alles op")
   void bulkVerwijderingRuimtAlleKernbezwarenOp() {
     // Arrange: 3 documenten
@@ -361,7 +362,6 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   // --- Scenario: Bulk verwijdering behoudt kernbezwaren met overblijvende referenties ---
 
   @Test
-  @Disabled("Wacht op Task 9: cascade verwijdering met passage_groep model")
   @DisplayName("Bulk verwijdering behoudt kernbezwaren die nog referenties hebben naar overblijvende documenten")
   void bulkVerwijderingBehoudtKernbezwarenMetOverblijvendeReferenties() {
     // Arrange: 3 documenten
@@ -397,7 +397,11 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
     var k1Refs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(k1Refs).hasSize(1);
-    // TODO: task 9 - assertie op bestandsnaam via passage_groep_lid
+    // Controleer dat de overgebleven referentie naar doc-c wijst via passage_groep_lid
+    var groepId = k1Refs.get(0).getPassageGroepId();
+    var leden = passageGroepLidRepository.findByPassageGroepId(groepId);
+    assertThat(leden).hasSize(1);
+    assertThat(leden.get(0).getBestandsnaam()).isEqualTo("doc-c.txt");
 
     // Assert: K2 is verwijderd (alle referenties waren naar doc-a en doc-b)
     assertThat(kernbezwaarRepository.findById(k2.getId())).isEmpty();

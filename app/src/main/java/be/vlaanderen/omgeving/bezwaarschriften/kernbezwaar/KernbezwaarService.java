@@ -579,10 +579,14 @@ public class KernbezwaarService {
 
   /**
    * Ruimt kernbezwaar-data op na verwijdering van een document.
-   * Verwijdert referenties voor het bestand, daarna lege kernbezwaren.
+   * Verwijdert passage_groep_lid records voor het bestand, daarna lege passage_groepen,
+   * orphaned referenties en lege kernbezwaren.
    */
+  @Transactional
   public void ruimOpNaDocumentVerwijdering(String projectNaam, String bestandsnaam) {
-    // TODO: task 9 - cascade verwijdering aanpassen voor passage_groep model
+    passageGroepLidRepository.deleteByBestandsnaamIn(List.of(bestandsnaam));
+    passageGroepRepository.deleteZonderLeden();
+    referentieRepository.deleteMetVerwijderdePassageGroep();
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
   }
 
@@ -593,8 +597,11 @@ public class KernbezwaarService {
    * @param projectNaam naam van het project
    * @param bestandsnamen lijst van bestandsnamen die verwijderd worden
    */
+  @Transactional
   public void ruimOpNaBestandenVerwijdering(String projectNaam, List<String> bestandsnamen) {
-    // TODO: task 9 - cascade verwijdering aanpassen voor passage_groep model
+    passageGroepLidRepository.deleteByBestandsnaamIn(bestandsnamen);
+    passageGroepRepository.deleteZonderLeden();
+    referentieRepository.deleteMetVerwijderdePassageGroep();
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
     // Als er geen kernbezwaren meer over zijn, ruim ook de clustering-taak op
     if (kernbezwaarRepository.countByProjectNaam(projectNaam) == 0) {
