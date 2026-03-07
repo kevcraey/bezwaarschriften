@@ -428,18 +428,31 @@ public class KernbezwaarService {
     var groepById = passageGroepRepository.findAllById(alleGroepIds).stream()
         .collect(Collectors.toMap(PassageGroepEntiteit::getId, g -> g));
 
+    // Haal passage-groep leden op voor documentenlijst
+    var alleLeden = passageGroepLidRepository.findByPassageGroepIdIn(alleGroepIds);
+    var ledenPerGroep = alleLeden.stream()
+        .collect(Collectors.groupingBy(PassageGroepLidEntiteit::getPassageGroepId));
+
     var kernen = kernEntiteiten.stream()
         .map(ke -> {
           var refs = refPerKern.getOrDefault(ke.getId(), List.of()).stream()
               .map(re -> {
                 var groep = groepById.get(re.getPassageGroepId());
+                var ledenVoorGroep = ledenPerGroep
+                    .getOrDefault(re.getPassageGroepId(), List.of());
+                var passageGroepDto = groep != null ? new PassageGroepDto(
+                    groep.getId(), groep.getPassage(),
+                    ledenVoorGroep.stream()
+                        .map(l -> new PassageGroepDocument(
+                            l.getBezwaarId(), l.getBestandsnaam()))
+                        .toList()) : null;
                 return new IndividueelBezwaarReferentie(
                     re.getId(),
-                    null,
-                    null,
+                    groep != null ? groep.getSamenvatting() : null,
                     groep != null ? groep.getPassage() : null,
                     groep != null ? groep.getScorePercentage() : null,
-                    re.getToewijzingsmethode());
+                    re.getToewijzingsmethode(),
+                    passageGroepDto);
               })
               .sorted(Comparator.comparing(
                   IndividueelBezwaarReferentie::scorePercentage,

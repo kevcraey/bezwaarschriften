@@ -260,10 +260,16 @@ class KernbezwaarServiceTest {
     var refEntiteit = new KernbezwaarReferentieEntiteit();
     refEntiteit.setId(30L);
     refEntiteit.setKernbezwaarId(20L);
-    refEntiteit.setPassageGroepId(0L); // TODO: task 8
+    refEntiteit.setPassageGroepId(100L);
     refEntiteit.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of(refEntiteit));
+
+    var groep = maakPassageGroep(100L, "Verkeershinder passage", 85);
+    when(passageGroepRepository.findAllById(List.of(100L)))
+        .thenReturn(List.of(groep));
+    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+        .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of());
@@ -758,7 +764,7 @@ class KernbezwaarServiceTest {
     // Assert: alle referenties zijn opgeslagen
     var captor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
     verify(referentieRepository, times(3)).save(captor.capture());
-    // TODO: task 8 - score zit nu op passage_groep, niet op referentie
+
     assertThat(captor.getAllValues()).hasSize(3);
   }
 
@@ -800,7 +806,7 @@ class KernbezwaarServiceTest {
     // Assert: noise referenties zijn opgeslagen
     var captor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
     verify(referentieRepository, times(2)).save(captor.capture());
-    // TODO: task 8 - score zit nu op passage_groep, niet op referentie
+
     assertThat(captor.getAllValues()).hasSize(2);
   }
 
@@ -840,6 +846,8 @@ class KernbezwaarServiceTest {
     var groep102 = maakPassageGroep(102L, "passage C", 78);
     when(passageGroepRepository.findAllById(anyList()))
         .thenReturn(List.of(groep100, groep101, groep102));
+    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
+        .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of());
@@ -886,6 +894,8 @@ class KernbezwaarServiceTest {
     var groep101 = maakPassageGroep(101L, "passage B", null);
     when(passageGroepRepository.findAllById(anyList()))
         .thenReturn(List.of(groep100, groep101));
+    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
+        .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of());
@@ -1116,6 +1126,67 @@ class KernbezwaarServiceTest {
 
     // Assert: 2 referenties (1 per passage-groep)
     verify(referentieRepository, times(2)).save(any());
+  }
+
+  @Test
+  void geefKernbezwaren_assembleertPassageGroepen() {
+    // Arrange: kernbezwaar met referentie naar passage_groep
+    var kernEntiteit = new KernbezwaarEntiteit();
+    kernEntiteit.setId(20L);
+    kernEntiteit.setProjectNaam("windmolens");
+    kernEntiteit.setSamenvatting("Geluidshinder");
+    when(kernbezwaarRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(kernEntiteit));
+
+    var refEntiteit = new KernbezwaarReferentieEntiteit();
+    refEntiteit.setId(30L);
+    refEntiteit.setKernbezwaarId(20L);
+    refEntiteit.setPassageGroepId(100L);
+    refEntiteit.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
+    when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
+        .thenReturn(List.of(refEntiteit));
+
+    var groep = maakPassageGroep(100L, "Geluidshinder passage", 90);
+    when(passageGroepRepository.findAllById(List.of(100L)))
+        .thenReturn(List.of(groep));
+
+    // Passage groep met 2 leden (documenten)
+    var lid1 = new PassageGroepLidEntiteit();
+    lid1.setPassageGroepId(100L);
+    lid1.setBezwaarId(1L);
+    lid1.setBestandsnaam("bezwaar1.pdf");
+    var lid2 = new PassageGroepLidEntiteit();
+    lid2.setPassageGroepId(100L);
+    lid2.setBezwaarId(2L);
+    lid2.setBestandsnaam("bezwaar2.pdf");
+    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+        .thenReturn(List.of(lid1, lid2));
+
+    when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
+        .thenReturn(List.of());
+
+    // Act
+    var resultaat = service.geefKernbezwaren("windmolens");
+
+    // Assert: PassageGroepDto is correct geassembleerd met documenten
+    assertThat(resultaat).isPresent();
+    var refs = resultaat.get().get(0).individueleBezwaren();
+    assertThat(refs).hasSize(1);
+
+    var ref = refs.get(0);
+    assertThat(ref.samenvatting()).isEqualTo("Geluidshinder passage");
+    assertThat(ref.passage()).isEqualTo("Geluidshinder passage");
+    assertThat(ref.scorePercentage()).isEqualTo(90);
+    assertThat(ref.passageGroep()).isNotNull();
+    assertThat(ref.passageGroep().id()).isEqualTo(100L);
+    assertThat(ref.passageGroep().passage()).isEqualTo("Geluidshinder passage");
+    assertThat(ref.passageGroep().documenten()).hasSize(2);
+    assertThat(ref.passageGroep().documenten().get(0).bezwaarId()).isEqualTo(1L);
+    assertThat(ref.passageGroep().documenten().get(0).bestandsnaam())
+        .isEqualTo("bezwaar1.pdf");
+    assertThat(ref.passageGroep().documenten().get(1).bezwaarId()).isEqualTo(2L);
+    assertThat(ref.passageGroep().documenten().get(1).bestandsnaam())
+        .isEqualTo("bezwaar2.pdf");
   }
 
   // --- Hulpmethoden ---

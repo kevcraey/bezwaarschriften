@@ -42,7 +42,7 @@ class KernbezwaarControllerTest {
   void geefKernbezwarenRetourneertCachedResultaat() {
     var kernbezwaar = new Kernbezwaar(1L, "samenvatting", List.of(
         new IndividueelBezwaarReferentie(
-            100L, 1L, "b1.txt", "passage", null, ToewijzingsMethode.HDBSCAN)),
+            100L, "samenvatting", "passage", null, ToewijzingsMethode.HDBSCAN, null)),
         null);
     when(kernbezwaarService.geefKernbezwaren("windmolens"))
         .thenReturn(Optional.of(List.of(kernbezwaar)));

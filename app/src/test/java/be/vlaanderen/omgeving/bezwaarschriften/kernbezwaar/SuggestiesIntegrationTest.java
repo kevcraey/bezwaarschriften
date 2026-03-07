@@ -17,9 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Integratietest voor suggesties-functionaliteit.
- * TODO: task 8 - herschrijf centroid-testen met passage_groep_lid model.
- * De originele berekenCentroidsOpPassage/Samenvatting queries zijn verwijderd
- * bij de passage-deduplicatie migratie.
+ * Centroid-berekening verloopt nu via passage_groep_lid model.
  */
 class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
 
