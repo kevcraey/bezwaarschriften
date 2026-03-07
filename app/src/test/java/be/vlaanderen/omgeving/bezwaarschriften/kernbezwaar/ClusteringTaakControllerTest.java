@@ -52,12 +52,23 @@ class ClusteringTaakControllerTest {
   @Test
   void startClustering_retourneert202() {
     var dto = maakDto(1L, "wachtend", 10, null);
-    when(taakService.indienen("windmolens")).thenReturn(dto);
+    when(taakService.indienen("windmolens", true)).thenReturn(dto);
 
-    var response = controller.startClustering("windmolens");
+    var response = controller.startClustering("windmolens", true);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-    verify(taakService).indienen("windmolens");
+    verify(taakService).indienen("windmolens", true);
+  }
+
+  @Test
+  void indienenMetDeduplicatieVoorClustering() {
+    var dto = maakDto(1L, "wachtend", 10, null);
+    when(taakService.indienen("windmolens", false)).thenReturn(dto);
+
+    var response = controller.startClustering("windmolens", false);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    verify(taakService).indienen("windmolens", false);
   }
 
   @Test
@@ -124,6 +135,6 @@ class ClusteringTaakControllerTest {
       int aantalBezwaren, Integer aantalKernbezwaren) {
     return new ClusteringTaakDto(
         id, "windmolens", status, aantalBezwaren,
-        aantalKernbezwaren, Instant.now(), null, null, null);
+        aantalKernbezwaren, Instant.now(), null, null, null, true);
   }
 }

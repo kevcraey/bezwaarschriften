@@ -39,8 +39,10 @@ public class ClusteringTaakController {
    * Start clustering voor een project.
    */
   @PostMapping("/{naam}/clustering-taken")
-  public ResponseEntity<ClusteringTaakDto> startClustering(@PathVariable String naam) {
-    var dto = taakService.indienen(naam);
+  public ResponseEntity<ClusteringTaakDto> startClustering(
+      @PathVariable String naam,
+      @RequestParam(defaultValue = "true") boolean deduplicatieVoorClustering) {
+    var dto = taakService.indienen(naam, deduplicatieVoorClustering);
     return ResponseEntity.accepted().body(dto);
   }
 

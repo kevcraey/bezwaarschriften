@@ -56,16 +56,18 @@ class ClusteringTaakServiceTest {
       return taak;
     });
 
-    var dto = service.indienen("windmolens");
+    var dto = service.indienen("windmolens", true);
 
     assertThat(dto.status()).isEqualTo("wachtend");
     assertThat(dto.projectNaam()).isEqualTo("windmolens");
     assertThat(dto.aantalBezwaren()).isEqualTo(5);
     assertThat(dto.aantalKernbezwaren()).isNull();
+    assertThat(dto.deduplicatieVoorClustering()).isTrue();
 
     var captor = ArgumentCaptor.forClass(ClusteringTaak.class);
     verify(taakRepository).save(captor.capture());
     assertThat(captor.getValue().getStatus()).isEqualTo(ClusteringTaakStatus.WACHTEND);
+    assertThat(captor.getValue().isDeduplicatieVoorClustering()).isTrue();
     assertThat(captor.getValue().getAangemaaktOp()).isNotNull();
 
     verify(notificatie).clusteringTaakGewijzigd(any(ClusteringTaakDto.class));
@@ -84,7 +86,7 @@ class ClusteringTaakServiceTest {
       return taak;
     });
 
-    var dto = service.indienen("windmolens");
+    var dto = service.indienen("windmolens", true);
 
     var inOrder = org.mockito.Mockito.inOrder(taakRepository);
     inOrder.verify(taakRepository).delete(bestaandeTaak);

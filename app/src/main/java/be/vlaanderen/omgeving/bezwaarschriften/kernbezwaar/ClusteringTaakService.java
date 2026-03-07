@@ -47,10 +47,11 @@ public class ClusteringTaakService {
    * Verwijdert een eventueel bestaande taak.
    *
    * @param projectNaam naam van het project
+   * @param deduplicatieVoorClustering of passage-deduplicatie voor clustering uitgevoerd moet worden
    * @return DTO van de aangemaakte taak
    */
   @Transactional
-  public ClusteringTaakDto indienen(String projectNaam) {
+  public ClusteringTaakDto indienen(String projectNaam, boolean deduplicatieVoorClustering) {
     // Verwijder bestaande taak als die er is
     taakRepository.findByProjectNaam(projectNaam)
         .ifPresent(bestaandeTaak -> {
@@ -62,6 +63,7 @@ public class ClusteringTaakService {
     var taak = new ClusteringTaak();
     taak.setProjectNaam(projectNaam);
     taak.setStatus(ClusteringTaakStatus.WACHTEND);
+    taak.setDeduplicatieVoorClustering(deduplicatieVoorClustering);
     taak.setAangemaaktOp(Instant.now());
     taak = taakRepository.save(taak);
 

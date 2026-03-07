@@ -14,6 +14,7 @@ import java.time.Instant;
  * @param verwerkingGestartOp tijdstip waarop verwerking gestart is, kan null zijn
  * @param verwerkingVoltooidOp tijdstip waarop verwerking voltooid is, kan null zijn
  * @param foutmelding foutmelding bij mislukking, kan null zijn
+ * @param deduplicatieVoorClustering of passage-deduplicatie voor clustering uitgevoerd wordt
  */
 public record ClusteringTaakDto(
     Long id,
@@ -24,7 +25,8 @@ public record ClusteringTaakDto(
     Instant aangemaaktOp,
     Instant verwerkingGestartOp,
     Instant verwerkingVoltooidOp,
-    String foutmelding
+    String foutmelding,
+    boolean deduplicatieVoorClustering
 ) {
 
   /**
@@ -46,7 +48,8 @@ public record ClusteringTaakDto(
         taak.getAangemaaktOp(),
         taak.getVerwerkingGestartOp(),
         taak.getVerwerkingVoltooidOp(),
-        taak.getFoutmelding()
+        taak.getFoutmelding(),
+        taak.isDeduplicatieVoorClustering()
     );
   }
 }
