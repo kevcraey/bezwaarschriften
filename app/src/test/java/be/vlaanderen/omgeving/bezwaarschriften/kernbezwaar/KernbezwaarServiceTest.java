@@ -101,6 +101,7 @@ class KernbezwaarServiceTest {
 
   private KernbezwaarService service;
 
+  private static final Long TEST_TAAK_ID = 99L;
   private final AtomicLong passageGroepIdCounter = new AtomicLong(1000L);
 
   @BeforeEach
@@ -110,6 +111,13 @@ class KernbezwaarServiceTest {
     // Standaard: UMAP uitgeschakeld zodat bestaande tests ongewijzigd werken
     clusteringConfig.setUmapEnabled(false);
     passageGroepIdCounter.set(1000L);
+
+    // Standaard: clustering-taak zonder deduplicatie (modus B)
+    var standaardTaak = new ClusteringTaak();
+    standaardTaak.setId(TEST_TAAK_ID);
+    standaardTaak.setDeduplicatieVoorClustering(false);
+    lenient().when(clusteringTaakRepository.findById(TEST_TAAK_ID))
+        .thenReturn(Optional.of(standaardTaak));
 
     // Standaard: deduplicatieService geeft 1 groep per bezwaar terug
     lenient().when(deduplicatieService.groepeer(anyList(), anyMap(), anyMap()))
@@ -190,7 +198,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert
     verify(kernbezwaarRepository).deleteByProjectNaam("windmolens");
@@ -239,7 +247,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: kernbezwaar met samenvatting "Niet-geclusterde bezwaren" wordt aangemaakt
     var captor = ArgumentCaptor.forClass(KernbezwaarEntiteit.class);
@@ -335,7 +343,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: noise items worden gebundeld onder "Niet-geclusterde bezwaren"
     var captor = ArgumentCaptor.forClass(KernbezwaarEntiteit.class);
@@ -398,7 +406,7 @@ class KernbezwaarServiceTest {
     });
 
     // taakId = null: geen annuleringscontrole
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     verify(kernbezwaarRepository).deleteByProjectNaam("windmolens");
     verify(kernbezwaarRepository).save(any());
@@ -412,7 +420,7 @@ class KernbezwaarServiceTest {
         passageGroepLidRepository, passageGroepRepository,
         referentieRepository, kernbezwaarRepository);
     inOrder.verify(passageGroepLidRepository)
-        .deleteByBestandsnaamIn(List.of("bezwaar-001.txt"));
+        .deleteByBestandsnaamInAndProjectNaam(List.of("bezwaar-001.txt"), "windmolens");
     inOrder.verify(passageGroepRepository).deleteZonderLeden();
     inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
@@ -427,7 +435,8 @@ class KernbezwaarServiceTest {
     var inOrder = org.mockito.Mockito.inOrder(
         passageGroepLidRepository, passageGroepRepository,
         referentieRepository, kernbezwaarRepository);
-    inOrder.verify(passageGroepLidRepository).deleteByBestandsnaamIn(bestandsnamen);
+    inOrder.verify(passageGroepLidRepository)
+        .deleteByBestandsnaamInAndProjectNaam(bestandsnamen, "testproject");
     inOrder.verify(passageGroepRepository).deleteZonderLeden();
     inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("testproject");
@@ -488,7 +497,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: UMAP werd aangeroepen
     verify(dimensieReductiePoort).reduceer(anyList());
@@ -545,7 +554,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act: dit moet NIET crashen met ArrayIndexOutOfBoundsException
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: clustering is geslaagd (geen ArrayIndexOutOfBoundsException)
     verify(kernbezwaarRepository).save(any());
@@ -583,7 +592,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: UMAP werd NIET aangeroepen
     verify(dimensieReductiePoort, never()).reduceer(anyList());
@@ -624,7 +633,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: UMAP werd NIET aangeroepen (te weinig bezwaren)
     verify(dimensieReductiePoort, never()).reduceer(anyList());
@@ -677,7 +686,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: representatief bezwaar is bezwaar3 (origEmb3={0.9,0.1,0} is dichtst bij
     // centroid in originele ruimte = gemiddelde van 3 embeddings = {0.9,0.1,0})
@@ -724,7 +733,7 @@ class KernbezwaarServiceTest {
       return e;
     });
 
-    service.clusterProject("test", null);
+    service.clusterProject("test", TEST_TAAK_ID);
 
     // Verify clustering used samenvatting embedding
     @SuppressWarnings("unchecked")
@@ -771,7 +780,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: alle referenties zijn opgeslagen
     var captor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
@@ -813,7 +822,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: noise referenties zijn opgeslagen
     var captor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
@@ -955,7 +964,7 @@ class KernbezwaarServiceTest {
     });
 
     // Act
-    service.clusterProject("windmolens", null);
+    service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: passage groep wordt opgeslagen met score
     var groepCaptor = ArgumentCaptor.forClass(PassageGroepEntiteit.class);

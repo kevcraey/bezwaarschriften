@@ -246,6 +246,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     this._timerInterval = null;
   }
 
+  _telDocumenten(kern) {
+    return kern.individueleBezwaren.reduce(
+        (sum, ref) => sum + (ref.passageGroep ? ref.passageGroep.documenten.length : 1), 0);
+  }
+
   connectedCallback() {
     super.connectedCallback();
     const sluitKnop = this.shadowRoot.querySelector('#side-sheet-sluit-knop');
@@ -499,8 +504,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     let aantalManueel = 0;
     let nietGeclusterd = 0;
     this._kernbezwaren.forEach((k) => {
-      const docCount = k.individueleBezwaren.reduce(
-          (sum, ref) => sum + (ref.passageGroep ? ref.passageGroep.documenten.length : 1), 0);
+      const docCount = this._telDocumenten(k);
       if (k.samenvatting === 'Niet-geclusterde bezwaren') {
         nietGeclusterd += docCount;
       } else {
@@ -546,10 +550,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     }
 
     // Sorteer kernbezwaren: meeste bezwaren eerst (op basis van totaal documenten)
-    const telDocumenten = (k) => k.individueleBezwaren.reduce(
-        (sum, ref) => sum + (ref.passageGroep ? ref.passageGroep.documenten.length : 1), 0);
     const gesorteerd = [...this._kernbezwaren].sort(
-        (a, b) => telDocumenten(b) - telDocumenten(a),
+        (a, b) => this._telDocumenten(b) - this._telDocumenten(a),
     );
 
     // Render kernbezwaar items
@@ -583,9 +585,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const knop = document.createElement('vl-button');
     knop.setAttribute('ghost', '');
     knop.setAttribute('icon', 'search');
-    const docAantal = kern.individueleBezwaren.reduce(
-        (sum, ref) => sum + (ref.passageGroep ? ref.passageGroep.documenten.length : 1), 0);
-    knop.textContent = `(${docAantal})`;
+    knop.textContent = `(${this._telDocumenten(kern)})`;
     knop.addEventListener('click', () => this._toonPassages(kern));
 
     actie.appendChild(knop);
@@ -1112,8 +1112,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     inhoud.innerHTML = '';
     if (titelEl) titelEl.textContent = kernbezwaar.samenvatting;
 
-    const totaal = kernbezwaar.individueleBezwaren.reduce(
-        (sum, ref) => sum + (ref.passageGroep ? ref.passageGroep.documenten.length : 1), 0);
+    const totaal = this._telDocumenten(kernbezwaar);
     const totaalPaginas = Math.max(1, Math.ceil(groepen.length / PAGE_SIZE));
     if (this._huidigePagina > totaalPaginas) this._huidigePagina = totaalPaginas;
 

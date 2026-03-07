@@ -15,6 +15,11 @@ public interface PassageGroepLidRepository extends JpaRepository<PassageGroepLid
   void deleteByBezwaarIdIn(List<Long> bezwaarIds);
 
   @Modifying(clearAutomatically = true)
-  @Query("DELETE FROM PassageGroepLidEntiteit l WHERE l.bestandsnaam IN :bestandsnamen")
-  void deleteByBestandsnaamIn(@Param("bestandsnamen") List<String> bestandsnamen);
+  @Query("DELETE FROM PassageGroepLidEntiteit l WHERE l.bestandsnaam IN :bestandsnamen "
+      + "AND l.passageGroepId IN (SELECT g.id FROM PassageGroepEntiteit g "
+      + "JOIN ClusteringTaak t ON g.clusteringTaakId = t.id "
+      + "WHERE t.projectNaam = :projectNaam)")
+  void deleteByBestandsnaamInAndProjectNaam(
+      @Param("bestandsnamen") List<String> bestandsnamen,
+      @Param("projectNaam") String projectNaam);
 }

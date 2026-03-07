@@ -373,12 +373,10 @@ public class KernbezwaarService {
         var deduplicatieGroepen = deduplicatieService.groepeer(
             clusterBezwaren, passageLookup, bestandsnaamLookup);
 
-        var alleBezwaarIds = clusterBezwaren.stream()
-            .map(GeextraheerdBezwaarEntiteit::getId).toList();
         var passageGroepIds = persisteerPassageGroepen(
             taakId, projectNaam, deduplicatieGroepen, scores);
         var groepIdMethoden = koppelMethodenAanGroepenModus(
-            alleBezwaarIds, passageGroepIds, deduplicatieGroepen, methoden);
+            passageGroepIds, deduplicatieGroepen, methoden);
         slaKernbezwaarOp(projectNaam, samenvatting, passageGroepIds, groepIdMethoden);
       }
 
@@ -584,7 +582,8 @@ public class KernbezwaarService {
    */
   @Transactional
   public void ruimOpNaDocumentVerwijdering(String projectNaam, String bestandsnaam) {
-    passageGroepLidRepository.deleteByBestandsnaamIn(List.of(bestandsnaam));
+    passageGroepLidRepository.deleteByBestandsnaamInAndProjectNaam(
+        List.of(bestandsnaam), projectNaam);
     passageGroepRepository.deleteZonderLeden();
     referentieRepository.deleteMetVerwijderdePassageGroep();
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
@@ -599,7 +598,8 @@ public class KernbezwaarService {
    */
   @Transactional
   public void ruimOpNaBestandenVerwijdering(String projectNaam, List<String> bestandsnamen) {
-    passageGroepLidRepository.deleteByBestandsnaamIn(bestandsnamen);
+    passageGroepLidRepository.deleteByBestandsnaamInAndProjectNaam(
+        bestandsnamen, projectNaam);
     passageGroepRepository.deleteZonderLeden();
     referentieRepository.deleteMetVerwijderdePassageGroep();
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
@@ -692,7 +692,10 @@ public class KernbezwaarService {
     var groepIds = new ArrayList<Long>();
     for (var groep : groepen) {
       var entiteit = new PassageGroepEntiteit();
-      entiteit.setClusteringTaakId(taakId != null ? taakId : 0L);
+      if (taakId == null) {
+        throw new IllegalArgumentException("taakId mag niet null zijn bij persisteren passage-groepen");
+      }
+      entiteit.setClusteringTaakId(taakId);
       entiteit.setPassage(groep.passage());
       entiteit.setSamenvatting(groep.samenvatting());
       entiteit.setCategorie(categorie);
@@ -751,7 +754,7 @@ public class KernbezwaarService {
    * Zoekt per groep de meest restrictieve methode van de leden.
    */
   private Map<Long, ToewijzingsMethode> koppelMethodenAanGroepenModus(
-      List<Long> bezwaarIds, List<Long> passageGroepIds,
+      List<Long> passageGroepIds,
       List<DeduplicatieGroep> groepen, Map<Long, ToewijzingsMethode> methoden) {
     var resultaat = new HashMap<Long, ToewijzingsMethode>();
     for (int i = 0; i < groepen.size() && i < passageGroepIds.size(); i++) {

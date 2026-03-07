@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakService;
@@ -89,5 +90,59 @@ class KernbezwaarControllerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     verify(kernbezwaarService).slaAntwoordOp(42L, "<p>Weerwoord</p>");
+  }
+
+  @Test
+  void retourneert409BijKlareConsolidaties() {
+    var ref = new KernbezwaarReferentieEntiteit();
+    ref.setId(1L);
+    ref.setKernbezwaarId(42L);
+    ref.setPassageGroepId(100L);
+    when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
+        .thenReturn(List.of(ref));
+
+    var lid = new PassageGroepLidEntiteit();
+    lid.setPassageGroepId(100L);
+    lid.setBezwaarId(1L);
+    lid.setBestandsnaam("bezwaar-001.txt");
+    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+        .thenReturn(List.of(lid));
+
+    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
+        List.of("bezwaar-001.txt"))).thenReturn(List.of("bezwaar-001.txt"));
+
+    var request = new KernbezwaarController.AntwoordRequest("<p>Nieuw</p>");
+    var response = controller.slaAntwoordOp("windmolens", 42L, request, false);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    verifyNoInteractions(kernbezwaarService);
+  }
+
+  @Test
+  void verwijdertKlareConsolidatiesBijBevestiging() {
+    var ref = new KernbezwaarReferentieEntiteit();
+    ref.setId(1L);
+    ref.setKernbezwaarId(42L);
+    ref.setPassageGroepId(100L);
+    when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
+        .thenReturn(List.of(ref));
+
+    var lid = new PassageGroepLidEntiteit();
+    lid.setPassageGroepId(100L);
+    lid.setBezwaarId(1L);
+    lid.setBestandsnaam("bezwaar-001.txt");
+    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+        .thenReturn(List.of(lid));
+
+    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
+        List.of("bezwaar-001.txt"))).thenReturn(List.of("bezwaar-001.txt"));
+
+    var request = new KernbezwaarController.AntwoordRequest("<p>Nieuw</p>");
+    var response = controller.slaAntwoordOp("windmolens", 42L, request, true);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    verify(consolidatieTaakService).verwijderKlareTaken("windmolens",
+        List.of("bezwaar-001.txt"));
+    verify(kernbezwaarService).slaAntwoordOp(42L, "<p>Nieuw</p>");
   }
 }
