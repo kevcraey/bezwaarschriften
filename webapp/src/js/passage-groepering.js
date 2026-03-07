@@ -1,36 +1,23 @@
-/**
- * Bereken Sørensen-Dice coëfficiënt tussen twee strings.
- * Gebaseerd op bigrammen van de genormaliseerde tekst.
- * @param {string} a - Eerste string.
- * @param {string} b - Tweede string.
- * @return {number} Coëfficiënt tussen 0.0 en 1.0.
- */
-function diceCoefficient(a, b) {
-  const normA = a.toLowerCase().trim();
-  const normB = b.toLowerCase().trim();
-  if (normA === normB) return 1.0;
-  if (normA.length < 2 || normB.length < 2) return 0.0;
+function berekenBigramInfo(s) {
+  const norm = s.toLowerCase().trim();
+  const bigrammen = new Map();
+  for (let i = 0; i < norm.length - 1; i++) {
+    const bigram = norm.substring(i, i + 2);
+    bigrammen.set(bigram, (bigrammen.get(bigram) || 0) + 1);
+  }
+  return {norm, bigrammen, lengte: norm.length};
+}
 
-  const bigrammen = (s) => {
-    const set = new Map();
-    for (let i = 0; i < s.length - 1; i++) {
-      const bigram = s.substring(i, i + 2);
-      set.set(bigram, (set.get(bigram) || 0) + 1);
-    }
-    return set;
-  };
-
-  const bigrammenA = bigrammen(normA);
-  const bigrammenB = bigrammen(normB);
+function diceMetBigrammen(infoA, infoB) {
+  if (infoA.norm === infoB.norm) return 1.0;
+  if (infoA.lengte < 2 || infoB.lengte < 2) return 0.0;
   let overlap = 0;
-  for (const [bigram, count] of bigrammenA) {
-    if (bigrammenB.has(bigram)) {
-      overlap += Math.min(count, bigrammenB.get(bigram));
+  for (const [bigram, count] of infoA.bigrammen) {
+    if (infoB.bigrammen.has(bigram)) {
+      overlap += Math.min(count, infoB.bigrammen.get(bigram));
     }
   }
-
-  const totaal = normA.length - 1 + normB.length - 1;
-  return (2 * overlap) / totaal;
+  return (2 * overlap) / (infoA.lengte - 1 + infoB.lengte - 1);
 }
 
 const GELIJKENIS_DREMPEL = 0.9;
@@ -45,11 +32,14 @@ export function groepeerPassages(bezwaren) {
   if (!bezwaren || bezwaren.length === 0) return [];
 
   const groepen = [];
+  const groepBigramInfo = [];
 
   for (const bezwaar of bezwaren) {
+    const bezwaarInfo = berekenBigramInfo(bezwaar.passage);
     let gevonden = false;
-    for (const groep of groepen) {
-      if (diceCoefficient(bezwaar.passage, groep.passage) >= GELIJKENIS_DREMPEL) {
+    for (let i = 0; i < groepen.length; i++) {
+      if (diceMetBigrammen(bezwaarInfo, groepBigramInfo[i]) >= GELIJKENIS_DREMPEL) {
+        const groep = groepen[i];
         groep.bezwaren.push(bezwaar);
         if (bezwaar.scorePercentage != null) {
           groep.maxScore = groep.maxScore != null ?
@@ -58,6 +48,7 @@ export function groepeerPassages(bezwaren) {
         }
         if (bezwaar.passage.length > groep.passage.length) {
           groep.passage = bezwaar.passage;
+          groepBigramInfo[i] = bezwaarInfo;
         }
         gevonden = true;
         break;
@@ -69,6 +60,7 @@ export function groepeerPassages(bezwaren) {
         bezwaren: [bezwaar],
         maxScore: bezwaar.scorePercentage ?? null,
       });
+      groepBigramInfo.push(bezwaarInfo);
     }
   }
 
