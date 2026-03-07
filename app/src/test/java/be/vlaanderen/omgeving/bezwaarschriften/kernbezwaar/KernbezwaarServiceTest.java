@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -505,11 +506,9 @@ class KernbezwaarServiceTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void umapNoiseEmbeddingsGebruikenGereduceerdeDimensie() {
-    // Reproduceert bug: "Index 5 out of bounds for length 5"
-    // Bij UMAP-reductie hebben cluster-centroids een lagere dimensie (2D)
-    // dan de originele embeddings (3D). Noise-embeddings moeten ook in
-    // de gereduceerde ruimte zitten, anders crasht cosinusGelijkenis.
+  void umapNoiseEmbeddingsGebruikenOrigineleDimensie() {
+    // Reproduceert bug: centroid matching moet in originele embedding-ruimte
+    // werken, niet in UMAP-gereduceerde ruimte (UMAP vervormt cosinus-afstanden).
     clusteringConfig.setUmapEnabled(true);
     clusteringConfig.setUmapNNeighbors(2);
 
@@ -527,18 +526,19 @@ class KernbezwaarServiceTest {
     when(taakRepository.findById(10L))
         .thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
 
-    // UMAP reduceert van 3D naar 2D
+    // UMAP reduceert van 3D naar 2D (enkel voor HDBSCAN clustering)
     when(dimensieReductiePoort.reduceer(anyList())).thenReturn(List.of(
         new float[]{0.1f, 0.2f},
         new float[]{0.8f, 0.9f},
         new float[]{0.15f, 0.25f}));
 
-    // Cluster met centroid in 2D, bezwaar 2 is noise
+    // Cluster met centroid in 2D (HDBSCAN output), bezwaar 2 is noise
     var cluster = new Cluster(1, List.of(1L, 3L), new float[]{0.125f, 0.225f});
     var resultaat = new ClusteringResultaat(List.of(cluster), List.of(2L));
     when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
 
-    // Gebruik ECHTE CentroidMatchingService zodat dimensie-mismatch crasht
+    // Gebruik ECHTE CentroidMatchingService — centroid matching gebruikt
+    // originele 3D embeddings, niet de UMAP 2D embeddings
     var echteCentroidService = new CentroidMatchingService();
     service = maakService(echteCentroidService);
 
@@ -553,11 +553,11 @@ class KernbezwaarServiceTest {
       return e;
     });
 
-    // Act: dit moet NIET crashen met ArrayIndexOutOfBoundsException
+    // Act: dit moet NIET crashen — centroid matching werkt in originele ruimte
     service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: clustering is geslaagd (geen ArrayIndexOutOfBoundsException)
-    verify(kernbezwaarRepository).save(any());
+    verify(kernbezwaarRepository, atLeast(1)).save(any());
   }
 
   @Test

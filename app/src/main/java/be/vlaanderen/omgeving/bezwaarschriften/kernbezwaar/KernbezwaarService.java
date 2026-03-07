@@ -197,20 +197,28 @@ public class KernbezwaarService {
 
     var clusterResultaat = clusteringPoort.cluster(clusterInvoer);
 
-    // Centroid matching voor noise-representatieven
-    var clusterEmbeddingLookup = new HashMap<Long, float[]>();
-    for (var ci : clusterInvoer) {
-      clusterEmbeddingLookup.put(ci.bezwaarId(), ci.embedding());
-    }
+    // Centroid matching in originele embedding-ruimte (UMAP vervormt cosinus-afstanden)
+    var repById = representatieven.stream()
+        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
+
+    var origineleClusters = clusterResultaat.clusters().stream()
+        .map(cluster -> {
+          var origVecs = cluster.bezwaarIds().stream()
+              .map(id -> geefEmbedding(repById.get(id)))
+              .toList();
+          return new ClusteringPoort.Cluster(cluster.label(), cluster.bezwaarIds(), berekenCentroid(origVecs));
+        })
+        .toList();
+
     var noiseEmbeddings = new HashMap<Long, float[]>();
     for (var noiseId : clusterResultaat.noiseIds()) {
-      var embedding = clusterEmbeddingLookup.get(noiseId);
-      if (embedding != null) {
-        noiseEmbeddings.put(noiseId, embedding);
+      var rep = repById.get(noiseId);
+      if (rep != null) {
+        noiseEmbeddings.put(noiseId, geefEmbedding(rep));
       }
     }
     var centroidResultaat = centroidMatchingService.wijsNoiseToe(
-        clusterResultaat.clusters(), noiseEmbeddings,
+        origineleClusters, noiseEmbeddings,
         clusteringConfig.getCentroidMatchingThreshold());
 
     // Bouw lookup: representatief bezwaar-ID → deduplicatie-groep
@@ -314,23 +322,28 @@ public class KernbezwaarService {
 
     var clusterResultaat = clusteringPoort.cluster(clusterInvoer);
 
-    // Centroid matching: wijs noise-bezwaren toe aan clusters
+    // Centroid matching in originele embedding-ruimte (UMAP vervormt cosinus-afstanden)
     var bezwaarById = bezwaren.stream()
         .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
 
-    var clusterEmbeddingLookup = new HashMap<Long, float[]>();
-    for (var ci : clusterInvoer) {
-      clusterEmbeddingLookup.put(ci.bezwaarId(), ci.embedding());
-    }
+    var origineleClusters = clusterResultaat.clusters().stream()
+        .map(cluster -> {
+          var origVecs = cluster.bezwaarIds().stream()
+              .map(id -> geefEmbedding(bezwaarById.get(id)))
+              .toList();
+          return new ClusteringPoort.Cluster(cluster.label(), cluster.bezwaarIds(), berekenCentroid(origVecs));
+        })
+        .toList();
+
     var noiseEmbeddings = new HashMap<Long, float[]>();
     for (var noiseId : clusterResultaat.noiseIds()) {
-      var embedding = clusterEmbeddingLookup.get(noiseId);
-      if (embedding != null) {
-        noiseEmbeddings.put(noiseId, embedding);
+      var bezwaar = bezwaarById.get(noiseId);
+      if (bezwaar != null) {
+        noiseEmbeddings.put(noiseId, geefEmbedding(bezwaar));
       }
     }
     var centroidResultaat = centroidMatchingService.wijsNoiseToe(
-        clusterResultaat.clusters(), noiseEmbeddings,
+        origineleClusters, noiseEmbeddings,
         clusteringConfig.getCentroidMatchingThreshold());
 
     // Sla kernbezwaren + passage-groepen op in een transactie
