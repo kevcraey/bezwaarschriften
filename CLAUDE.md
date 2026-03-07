@@ -3,6 +3,7 @@
 AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hexagonale architectuur.
 
 ## Algemene regels
+
 - Om code te lezen gebruik je jcodemunch mcp server
 - Gebruik voor implementatie altijd de richtlijnen in `richtlijnen/`, de titels spreken voor zich, lees enkel de inhoud als het relevant is voor de taak.
 - We schrijven liever een test teveel dan eentje te weinig.
@@ -15,14 +16,17 @@ AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hex
 - Na oplevering van een feature test ik altijd: eerst worktree verwijderen, dan checkout van feature branch, dan aanbieden om te testen.
 
 ## Documentatie
+
 - C4 C1 + C2 up-to-date in `docs/`
 - domeinmodel up-to-date in `docs/`
 - diagrammen maken we in mermaid
 
 ## Code review
+
 - Gebruik altijd de code-review skill en fix de opmerkingen.
 
 ## Front-end ontwikkeling
+
 - storybook van het design system: https://flux.omgeving.vlaanderen.be
 - repo van het design system: https://github.com/milieuinfo/flux-web-components
 - We schrijven ook front-end testen, niet alleen back-end. Zie richtlijnen voor details.
@@ -35,15 +39,19 @@ AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hex
 - Documentatie: `richtlijnen/frontend.md`
 - BELANGRIJK: iedere keer als je CSS schrijft, vraag u af: is er geen standaard manier om dat te doen in de webcomponentenbibliotheek? Custom CSS zou heel uitzonderlijk moeten zijn.
 
+## Testen
+
+- als je testen moet schrijven, zo weinig mogelijk afmocken, komen teveel bugs door op die manier.
+
 ## Gotchas
 
 - Technical debt bijhouden in `specs/technical-debt.md`. Wees zeer summier in uw omschrijvingen.
 - Testcontainers integratietests vereisen een draaiende Docker daemon.
 
-
 ## Commands
 
 ### Backend
+
 ```bash
 mvn clean install -DskipTests          # build zonder tests
 mvn test -pl app                        # unit tests
@@ -52,6 +60,7 @@ mvn spring-boot:run -pl app -Pdev      # lokaal draaien (dev profiel)
 ```
 
 ### Frontend (`webapp/`)
+
 ```bash
 npm install                             # dependencies
 npm run build                           # lint + webpack
@@ -61,8 +70,6 @@ npm run format:fix                      # eslint auto-fix
 ```
 
 **Na `npm run build`:** ook `mvn process-resources -pl webapp -Denforcer.skip=true` draaien zodat `target/classes` bijwerkt (Spring Boot serveert daaruit).
-
-
 
 ## Architectuur
 
@@ -91,7 +98,7 @@ docker compose up -d    # PostgreSQL + pgvector
 ```
 
 Dev-gebruikers (via `cumuli.security.enable.mock=true`):
+
 - `gebruiker` / `gebruiker` → rol: BezwaarschriftenGebruiker
 
 Input-bestanden plaatsen in `input/` (geconfigureerd via `bezwaarschriften.input.folder`).
-

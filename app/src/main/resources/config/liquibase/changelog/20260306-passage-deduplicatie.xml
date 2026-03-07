@@ -68,6 +68,11 @@
       </column>
     </addColumn>
 
+    <!-- Verwijder bestaande kernbezwaar-data: clustering moet opnieuw na schema-wijziging -->
+    <delete tableName="kernbezwaar_referentie"/>
+    <delete tableName="kernbezwaar_antwoord"/>
+    <delete tableName="kernbezwaar"/>
+
     <!-- kernbezwaar_referentie: voeg passage_groep_id toe -->
     <addColumn tableName="kernbezwaar_referentie">
       <column name="passage_groep_id" type="bigint"/>
