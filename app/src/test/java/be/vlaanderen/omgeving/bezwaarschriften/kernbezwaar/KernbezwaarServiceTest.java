@@ -806,9 +806,6 @@ class KernbezwaarServiceTest {
 
   @Test
   void geefKernbezwarenSorteertReferentiesOpScoreAflopend() {
-    // TODO: task 8 - herschrijf sortering met passage_groep model
-    // Na task 8 zal scorePercentage via passage_groep opgehaald worden.
-    // Deze test verifieert momenteel dat referenties correct gekoppeld worden.
     var kernEntiteit = new KernbezwaarEntiteit();
     kernEntiteit.setId(20L);
     kernEntiteit.setProjectNaam("windmolens");
@@ -837,24 +834,31 @@ class KernbezwaarServiceTest {
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of(ref1, ref2, ref3));
 
+    // Passage groepen met verschillende scores
+    var groep100 = maakPassageGroep(100L, "passage A", 85);
+    var groep101 = maakPassageGroep(101L, "passage B", 92);
+    var groep102 = maakPassageGroep(102L, "passage C", 78);
+    when(passageGroepRepository.findAllById(anyList()))
+        .thenReturn(List.of(groep100, groep101, groep102));
+
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of());
 
     // Act
     var resultaat = service.geefKernbezwaren("windmolens");
 
-    // Assert: 3 referenties gekoppeld
+    // Assert: 3 referenties gekoppeld, gesorteerd op score aflopend
     assertThat(resultaat).isPresent();
     var refs = resultaat.get().get(0).individueleBezwaren();
     assertThat(refs).hasSize(3);
-    // scorePercentage is null totdat task 8 de lookup via passage_groep implementeert
-    assertThat(refs.get(0).scorePercentage()).isNull();
+    assertThat(refs.get(0).scorePercentage()).isEqualTo(92);
+    assertThat(refs.get(1).scorePercentage()).isEqualTo(85);
+    assertThat(refs.get(2).scorePercentage()).isEqualTo(78);
+    assertThat(refs.get(0).passage()).isEqualTo("passage B");
   }
 
   @Test
   void geefKernbezwarenPlaatstNullScoresAchteraan() {
-    // TODO: task 8 - herschrijf met passage_groep model
-    // Na task 8 zal scorePercentage via passage_groep opgehaald worden.
     var kernEntiteit = new KernbezwaarEntiteit();
     kernEntiteit.setId(20L);
     kernEntiteit.setProjectNaam("windmolens");
@@ -877,18 +881,23 @@ class KernbezwaarServiceTest {
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of(ref1, ref2));
 
+    // Groep 100 heeft score, groep 101 heeft null score
+    var groep100 = maakPassageGroep(100L, "passage A", 75);
+    var groep101 = maakPassageGroep(101L, "passage B", null);
+    when(passageGroepRepository.findAllById(anyList()))
+        .thenReturn(List.of(groep100, groep101));
+
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of());
 
     // Act
     var resultaat = service.geefKernbezwaren("windmolens");
 
-    // Assert: 2 referenties gekoppeld, scores zijn null tot task 8
+    // Assert: referentie met score komt eerst, null-score achteraan
     assertThat(resultaat).isPresent();
     var refs = resultaat.get().get(0).individueleBezwaren();
     assertThat(refs).hasSize(2);
-    // Alle scores zijn null totdat task 8 de lookup via passage_groep implementeert
-    assertThat(refs.get(0).scorePercentage()).isNull();
+    assertThat(refs.get(0).scorePercentage()).isEqualTo(75);
     assertThat(refs.get(1).scorePercentage()).isNull();
   }
 
@@ -1145,5 +1154,17 @@ class KernbezwaarServiceTest {
     t.setProjectNaam(projectNaam);
     t.setBestandsnaam(bestandsnaam);
     return t;
+  }
+
+  private PassageGroepEntiteit maakPassageGroep(Long id, String passage,
+      Integer scorePercentage) {
+    var g = new PassageGroepEntiteit();
+    g.setId(id);
+    g.setPassage(passage);
+    g.setSamenvatting(passage);
+    g.setCategorie("test");
+    g.setClusteringTaakId(0L);
+    g.setScorePercentage(scorePercentage);
+    return g;
   }
 }

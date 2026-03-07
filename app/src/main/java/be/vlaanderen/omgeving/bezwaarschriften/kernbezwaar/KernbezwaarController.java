@@ -21,13 +21,16 @@ public class KernbezwaarController {
   private final KernbezwaarService kernbezwaarService;
   private final KernbezwaarReferentieRepository referentieRepository;
   private final ConsolidatieTaakService consolidatieTaakService;
+  private final PassageGroepLidRepository passageGroepLidRepository;
 
   public KernbezwaarController(KernbezwaarService kernbezwaarService,
       KernbezwaarReferentieRepository referentieRepository,
-      ConsolidatieTaakService consolidatieTaakService) {
+      ConsolidatieTaakService consolidatieTaakService,
+      PassageGroepLidRepository passageGroepLidRepository) {
     this.kernbezwaarService = kernbezwaarService;
     this.referentieRepository = referentieRepository;
     this.consolidatieTaakService = consolidatieTaakService;
+    this.passageGroepLidRepository = passageGroepLidRepository;
   }
 
   /**
@@ -54,8 +57,14 @@ public class KernbezwaarController {
       @PathVariable Long id,
       @RequestBody AntwoordRequest request,
       @RequestParam(defaultValue = "false") boolean bevestigd) {
-    // TODO: task 8 - bestandsnamen ophalen via passage_groep_lid
-    var bestandsnamen = java.util.List.<String>of();
+    // Haal bestandsnamen op via passage_groep_lid
+    var refs = referentieRepository.findByKernbezwaarIdIn(List.of(id));
+    var groepIds = refs.stream()
+        .map(KernbezwaarReferentieEntiteit::getPassageGroepId).toList();
+    var leden = passageGroepLidRepository.findByPassageGroepIdIn(groepIds);
+    var bestandsnamen = leden.stream()
+        .map(PassageGroepLidEntiteit::getBestandsnaam)
+        .distinct().toList();
     var getroffen = consolidatieTaakService.vindKlareBestandsnamen(naam, bestandsnamen);
 
     if (!getroffen.isEmpty() && !bevestigd) {

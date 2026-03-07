@@ -13,7 +13,6 @@ import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepositor
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
-import com.pgvector.PGvector;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -422,14 +421,25 @@ public class KernbezwaarService {
             KernbezwaarAntwoordEntiteit::getKernbezwaarId,
             KernbezwaarAntwoordEntiteit::getInhoud));
 
+    // Haal passage-groep data op via de referenties
+    var alleGroepIds = refEntiteiten.stream()
+        .map(KernbezwaarReferentieEntiteit::getPassageGroepId)
+        .distinct().toList();
+    var groepById = passageGroepRepository.findAllById(alleGroepIds).stream()
+        .collect(Collectors.toMap(PassageGroepEntiteit::getId, g -> g));
+
     var kernen = kernEntiteiten.stream()
         .map(ke -> {
           var refs = refPerKern.getOrDefault(ke.getId(), List.of()).stream()
               .map(re -> {
-                // TODO: task 8 - haal passage/bestandsnaam/score via passageGroepId
+                var groep = groepById.get(re.getPassageGroepId());
                 return new IndividueelBezwaarReferentie(
-                    re.getId(), null, null, null,
-                    null, re.getToewijzingsmethode());
+                    re.getId(),
+                    null,
+                    null,
+                    groep != null ? groep.getPassage() : null,
+                    groep != null ? groep.getScorePercentage() : null,
+                    re.getToewijzingsmethode());
               })
               .sorted(Comparator.comparing(
                   IndividueelBezwaarReferentie::scorePercentage,
@@ -465,18 +475,35 @@ public class KernbezwaarService {
       return List.of();
     }
 
-    // TODO: task 8 - centroid berekening via passage_groep_lid
-    var centroidRows = List.<Object[]>of();
+    // Bereken centroids per kernbezwaar via passage_groep_lid → bezwaar embeddings
+    var refEntiteiten = referentieRepository.findByKernbezwaarIdIn(kernIds);
+    var refsPerKern = refEntiteiten.stream()
+        .collect(Collectors.groupingBy(KernbezwaarReferentieEntiteit::getKernbezwaarId));
+
+    var alleGroepIds = refEntiteiten.stream()
+        .map(KernbezwaarReferentieEntiteit::getPassageGroepId)
+        .distinct().toList();
+    var alleLeden = passageGroepLidRepository.findByPassageGroepIdIn(alleGroepIds);
+    var ledenPerGroep = alleLeden.stream()
+        .collect(Collectors.groupingBy(PassageGroepLidEntiteit::getPassageGroepId));
 
     var centroids = new HashMap<Long, float[]>();
-    for (var row : centroidRows) {
-      var kernId = ((Number) row[0]).longValue();
-      if (row[1] != null) {
-        try {
-          centroids.put(kernId, new PGvector((String) row[1]).toArray());
-        } catch (java.sql.SQLException e) {
-          throw new IllegalStateException("Ongeldige centroid vector", e);
-        }
+    for (var kernId : kernIds) {
+      var refs = refsPerKern.getOrDefault(kernId, List.of());
+      var bezwaarIds = refs.stream()
+          .flatMap(r -> ledenPerGroep
+              .getOrDefault(r.getPassageGroepId(), List.of()).stream())
+          .map(PassageGroepLidEntiteit::getBezwaarId)
+          .distinct().toList();
+
+      var bezwaren = bezwaarRepository.findAllById(bezwaarIds);
+      var embeddings = bezwaren.stream()
+          .map(this::geefEmbedding)
+          .filter(e -> e != null)
+          .toList();
+
+      if (!embeddings.isEmpty()) {
+        centroids.put(kernId, berekenCentroid(embeddings));
       }
     }
 

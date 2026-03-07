@@ -2,10 +2,14 @@ package be.vlaanderen.omgeving.bezwaarschriften.consolidatie;
 
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarAntwoordRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarEntiteit;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarReferentieEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarReferentieRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageGroepLidEntiteit;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageGroepLidRepository;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -18,14 +22,17 @@ public class AntwoordStatusService {
   private final KernbezwaarReferentieRepository referentieRepository;
   private final KernbezwaarAntwoordRepository antwoordRepository;
   private final KernbezwaarRepository kernbezwaarRepository;
+  private final PassageGroepLidRepository passageGroepLidRepository;
 
   public AntwoordStatusService(
       KernbezwaarReferentieRepository referentieRepository,
       KernbezwaarAntwoordRepository antwoordRepository,
-      KernbezwaarRepository kernbezwaarRepository) {
+      KernbezwaarRepository kernbezwaarRepository,
+      PassageGroepLidRepository passageGroepLidRepository) {
     this.referentieRepository = referentieRepository;
     this.antwoordRepository = antwoordRepository;
     this.kernbezwaarRepository = kernbezwaarRepository;
+    this.passageGroepLidRepository = passageGroepLidRepository;
   }
 
   public Map<String, AntwoordStatus> berekenAntwoordStatus(String projectNaam) {
@@ -34,13 +41,23 @@ public class AntwoordStatusService {
       return Map.of();
     }
 
-    // TODO: task 8 - bestandsnaam ophalen via passage_groep_lid i.p.v. referentie
+    // Haal bestandsnamen op via passage_groep_lid
+    var groepIds = referenties.stream()
+        .map(KernbezwaarReferentieEntiteit::getPassageGroepId)
+        .distinct().toList();
+    var alleLeden = passageGroepLidRepository.findByPassageGroepIdIn(groepIds);
+    var ledenPerGroep = alleLeden.stream()
+        .collect(Collectors.groupingBy(PassageGroepLidEntiteit::getPassageGroepId));
+
     // Group: bestandsnaam -> set of kernbezwaar-IDs
     Map<String, Set<Long>> kernbezwarenPerDocument = new HashMap<>();
     for (var ref : referenties) {
-      kernbezwarenPerDocument
-          .computeIfAbsent("onbekend", k -> new HashSet<>())
-          .add(ref.getKernbezwaarId());
+      var leden = ledenPerGroep.getOrDefault(ref.getPassageGroepId(), List.of());
+      for (var lid : leden) {
+        kernbezwarenPerDocument
+            .computeIfAbsent(lid.getBestandsnaam(), k -> new HashSet<>())
+            .add(ref.getKernbezwaarId());
+      }
     }
 
     // All unique kernbezwaar-IDs

@@ -26,12 +26,16 @@ class KernbezwaarControllerTest {
   @Mock
   private ConsolidatieTaakService consolidatieTaakService;
 
+  @Mock
+  private PassageGroepLidRepository passageGroepLidRepository;
+
   private KernbezwaarController controller;
 
   @BeforeEach
   void setUp() {
     controller = new KernbezwaarController(
-        kernbezwaarService, referentieRepository, consolidatieTaakService);
+        kernbezwaarService, referentieRepository, consolidatieTaakService,
+        passageGroepLidRepository);
   }
 
   @Test
@@ -59,14 +63,28 @@ class KernbezwaarControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
-  // TODO: task 8 - tests voor slaAntwoordOp herschrijven met passage_groep model
   @Test
   void slaatAntwoordOp() {
-    var request = new KernbezwaarController.AntwoordRequest("<p>Weerwoord</p>");
-    // bestandsnamen is nu altijd leeg (TODO: task 8)
-    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
-        List.of())).thenReturn(List.of());
+    // Referentie met passage groep
+    var ref = new KernbezwaarReferentieEntiteit();
+    ref.setId(1L);
+    ref.setKernbezwaarId(42L);
+    ref.setPassageGroepId(100L);
+    when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
+        .thenReturn(List.of(ref));
 
+    // Passage groep lid met bestandsnaam
+    var lid = new PassageGroepLidEntiteit();
+    lid.setPassageGroepId(100L);
+    lid.setBezwaarId(1L);
+    lid.setBestandsnaam("bezwaar.pdf");
+    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+        .thenReturn(List.of(lid));
+
+    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
+        List.of("bezwaar.pdf"))).thenReturn(List.of());
+
+    var request = new KernbezwaarController.AntwoordRequest("<p>Weerwoord</p>");
     var response = controller.slaAntwoordOp("windmolens", 42L, request, false);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
