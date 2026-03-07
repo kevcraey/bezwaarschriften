@@ -281,11 +281,10 @@ public class KernbezwaarService {
         .map(ke -> {
           var refs = refPerKern.getOrDefault(ke.getId(), List.of()).stream()
               .map(re -> {
-                Integer scorePercentage = re.getScore() != null
-                    ? (int) Math.round(re.getScore() * 100) : null;
+                // TODO: task 8 - haal passage/bestandsnaam/score via passageGroepId
                 return new IndividueelBezwaarReferentie(
-                    re.getId(), re.getBezwaarId(), re.getBestandsnaam(), re.getPassage(),
-                    scorePercentage, re.getToewijzingsmethode());
+                    re.getId(), null, null, null,
+                    null, re.getToewijzingsmethode());
               })
               .sorted(Comparator.comparing(
                   IndividueelBezwaarReferentie::scorePercentage,
@@ -321,9 +320,8 @@ public class KernbezwaarService {
       return List.of();
     }
 
-    var centroidRows = clusteringConfig.isClusterOpPassages()
-        ? referentieRepository.berekenCentroidsOpPassage(kernIds)
-        : referentieRepository.berekenCentroidsOpSamenvatting(kernIds);
+    // TODO: task 8 - centroid berekening via passage_groep_lid
+    var centroidRows = List.<Object[]>of();
 
     var centroids = new HashMap<Long, float[]>();
     for (var row : centroidRows) {
@@ -399,7 +397,7 @@ public class KernbezwaarService {
    * Verwijdert referenties voor het bestand, daarna lege kernbezwaren.
    */
   public void ruimOpNaDocumentVerwijdering(String projectNaam, String bestandsnaam) {
-    referentieRepository.deleteByBestandsnaamAndProjectNaam(bestandsnaam, projectNaam);
+    // TODO: task 9 - cascade verwijdering aanpassen voor passage_groep model
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
   }
 
@@ -411,9 +409,7 @@ public class KernbezwaarService {
    * @param bestandsnamen lijst van bestandsnamen die verwijderd worden
    */
   public void ruimOpNaBestandenVerwijdering(String projectNaam, List<String> bestandsnamen) {
-    for (String bestandsnaam : bestandsnamen) {
-      referentieRepository.deleteByBestandsnaamAndProjectNaam(bestandsnaam, projectNaam);
-    }
+    // TODO: task 9 - cascade verwijdering aanpassen voor passage_groep model
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
     // Als er geen kernbezwaren meer over zijn, ruim ook de clustering-taak op
     if (kernbezwaarRepository.countByProjectNaam(projectNaam) == 0) {
@@ -489,10 +485,8 @@ public class KernbezwaarService {
     for (var ref : referenties) {
       var refEntiteit = new KernbezwaarReferentieEntiteit();
       refEntiteit.setKernbezwaarId(kernEntiteit.getId());
-      refEntiteit.setBezwaarId(ref.bezwaarId());
-      refEntiteit.setBestandsnaam(ref.bestandsnaam());
-      refEntiteit.setPassage(ref.passage());
-      refEntiteit.setScore(ref.scorePercentage() != null ? ref.scorePercentage() / 100.0 : null);
+      // TODO: task 6/7 - koppel via passageGroepId i.p.v. directe velden
+      refEntiteit.setPassageGroepId(0L); // placeholder
       refEntiteit.setToewijzingsmethode(ref.toewijzingsmethode());
       referentieRepository.save(refEntiteit);
       opgeslagenReferenties.add(ref);

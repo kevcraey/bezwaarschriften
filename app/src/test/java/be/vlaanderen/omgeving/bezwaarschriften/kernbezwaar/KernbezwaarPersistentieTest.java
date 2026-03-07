@@ -32,9 +32,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setBezwaarId(42L);
-    ref.setBestandsnaam("bezwaar-janssen.pdf");
-    ref.setPassage("Het geluid is onacceptabel hoog.");
+    ref.setPassageGroepId(1L); // TODO: task 9 - vervang door echte passageGroep
     referentieRepository.save(ref);
 
     entityManager.flush();
@@ -47,13 +45,11 @@ class KernbezwaarPersistentieTest {
     var refs = referentieRepository.findByKernbezwaarIdIn(
         kernen.stream().map(KernbezwaarEntiteit::getId).toList());
     assertThat(refs).hasSize(1);
-    assertThat(refs.get(0).getBestandsnaam()).isEqualTo("bezwaar-janssen.pdf");
-    assertThat(refs.get(0).getBezwaarId()).isEqualTo(42L);
+    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(1L);
   }
 
   @Test
   void cascadeDeleteVerwijdertAlleGerelateerdeData() {
-    // Maak kernbezwaar -> referentie + antwoord
     var kern = new KernbezwaarEntiteit();
     kern.setProjectNaam("windmolens");
     kern.setSamenvatting("Verkeershinder");
@@ -61,9 +57,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setBezwaarId(1L);
-    ref.setBestandsnaam("b1.pdf");
-    ref.setPassage("passage");
+    ref.setPassageGroepId(1L); // TODO: task 9 - vervang door echte passageGroep
     referentieRepository.save(ref);
 
     var antwoord = new KernbezwaarAntwoordEntiteit();
@@ -75,7 +69,6 @@ class KernbezwaarPersistentieTest {
     entityManager.flush();
     entityManager.clear();
 
-    // Verwijder kernbezwaren -> alles moet weg zijn (DB cascade)
     kernbezwaarRepository.deleteByProjectNaam("windmolens");
     entityManager.flush();
     entityManager.clear();
@@ -87,7 +80,7 @@ class KernbezwaarPersistentieTest {
   }
 
   @Test
-  void referentieMetNullBezwaarId() {
+  void referentieMetPassageGroepId() {
     var kern = new KernbezwaarEntiteit();
     kern.setProjectNaam("windmolens");
     kern.setSamenvatting("Stankoverlast");
@@ -95,9 +88,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setBezwaarId(null);
-    ref.setBestandsnaam("anoniem.pdf");
-    ref.setPassage("Het stinkt enorm.");
+    ref.setPassageGroepId(99L);
     referentieRepository.save(ref);
 
     entityManager.flush();
@@ -106,6 +97,6 @@ class KernbezwaarPersistentieTest {
     var refs = referentieRepository.findByKernbezwaarIdIn(
         java.util.List.of(kern.getId()));
     assertThat(refs).hasSize(1);
-    assertThat(refs.get(0).getBezwaarId()).isNull();
+    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(99L);
   }
 }

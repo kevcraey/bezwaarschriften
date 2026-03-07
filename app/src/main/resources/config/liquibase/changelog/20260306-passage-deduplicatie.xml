@@ -89,9 +89,6 @@
     <addNotNullConstraint tableName="kernbezwaar_referentie"
         columnName="passage_groep_id" columnDataType="bigint"/>
 
-    <!-- Verwijder bestaande thema's (herclustering vereist) -->
-    <delete tableName="thema"/>
-
   </changeSet>
 
 </databaseChangeLog>

@@ -34,11 +34,12 @@ public class AntwoordStatusService {
       return Map.of();
     }
 
+    // TODO: task 8 - bestandsnaam ophalen via passage_groep_lid i.p.v. referentie
     // Group: bestandsnaam -> set of kernbezwaar-IDs
     Map<String, Set<Long>> kernbezwarenPerDocument = new HashMap<>();
     for (var ref : referenties) {
       kernbezwarenPerDocument
-          .computeIfAbsent(ref.getBestandsnaam(), k -> new HashSet<>())
+          .computeIfAbsent("onbekend", k -> new HashSet<>())
           .add(ref.getKernbezwaarId());
     }
 

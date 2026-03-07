@@ -20,17 +20,8 @@ public class KernbezwaarReferentieEntiteit {
   @Column(name = "kernbezwaar_id", nullable = false)
   private Long kernbezwaarId;
 
-  @Column(name = "bezwaar_id")
-  private Long bezwaarId;
-
-  @Column(name = "bestandsnaam", nullable = false)
-  private String bestandsnaam;
-
-  @Column(name = "passage", columnDefinition = "text", nullable = false)
-  private String passage;
-
-  @Column(name = "score")
-  private Double score;
+  @Column(name = "passage_groep_id", nullable = false)
+  private Long passageGroepId;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "toewijzingsmethode", nullable = false, length = 20)
@@ -52,36 +43,12 @@ public class KernbezwaarReferentieEntiteit {
     this.kernbezwaarId = kernbezwaarId;
   }
 
-  public Long getBezwaarId() {
-    return bezwaarId;
+  public Long getPassageGroepId() {
+    return passageGroepId;
   }
 
-  public void setBezwaarId(Long bezwaarId) {
-    this.bezwaarId = bezwaarId;
-  }
-
-  public String getBestandsnaam() {
-    return bestandsnaam;
-  }
-
-  public void setBestandsnaam(String bestandsnaam) {
-    this.bestandsnaam = bestandsnaam;
-  }
-
-  public String getPassage() {
-    return passage;
-  }
-
-  public void setPassage(String passage) {
-    this.passage = passage;
-  }
-
-  public Double getScore() {
-    return score;
-  }
-
-  public void setScore(Double score) {
-    this.score = score;
+  public void setPassageGroepId(Long passageGroepId) {
+    this.passageGroepId = passageGroepId;
   }
 
   public ToewijzingsMethode getToewijzingsmethode() {

@@ -108,11 +108,11 @@ class AntwoordStatusServiceTest {
     assertThat(resultaat.get("bezwaar-001.txt").isVolledig()).isFalse();
   }
 
+  // TODO: task 8 - bestandsnaam ophalen via passage_groep_lid
   private KernbezwaarReferentieEntiteit maakRef(String bestandsnaam, Long kernbezwaarId) {
     var ref = new KernbezwaarReferentieEntiteit();
-    ref.setBestandsnaam(bestandsnaam);
     ref.setKernbezwaarId(kernbezwaarId);
-    ref.setPassage("test");
+    ref.setPassageGroepId(0L);
     return ref;
   }
 

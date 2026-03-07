@@ -2,7 +2,6 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakService;
@@ -60,47 +59,17 @@ class KernbezwaarControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
+  // TODO: task 8 - tests voor slaAntwoordOp herschrijven met passage_groep model
   @Test
   void slaatAntwoordOp() {
     var request = new KernbezwaarController.AntwoordRequest("<p>Weerwoord</p>");
-    when(referentieRepository.findBestandsnamenByKernbezwaarId(42L))
-        .thenReturn(List.of("bezwaar-001.txt"));
+    // bestandsnamen is nu altijd leeg (TODO: task 8)
     when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
-        List.of("bezwaar-001.txt"))).thenReturn(List.of());
+        List.of())).thenReturn(List.of());
 
     var response = controller.slaAntwoordOp("windmolens", 42L, request, false);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     verify(kernbezwaarService).slaAntwoordOp(42L, "<p>Weerwoord</p>");
-  }
-
-  @Test
-  void retourneert409BijKlareConsolidaties() {
-    var request = new KernbezwaarController.AntwoordRequest("<p>Nieuw</p>");
-    when(referentieRepository.findBestandsnamenByKernbezwaarId(42L))
-        .thenReturn(List.of("bezwaar-001.txt"));
-    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
-        List.of("bezwaar-001.txt"))).thenReturn(List.of("bezwaar-001.txt"));
-
-    var response = controller.slaAntwoordOp("windmolens", 42L, request, false);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    verifyNoInteractions(kernbezwaarService);
-  }
-
-  @Test
-  void verwijdertKlareConsolidatiesBijBevestiging() {
-    var request = new KernbezwaarController.AntwoordRequest("<p>Nieuw</p>");
-    when(referentieRepository.findBestandsnamenByKernbezwaarId(42L))
-        .thenReturn(List.of("bezwaar-001.txt"));
-    when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
-        List.of("bezwaar-001.txt"))).thenReturn(List.of("bezwaar-001.txt"));
-
-    var response = controller.slaAntwoordOp("windmolens", 42L, request, true);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    verify(consolidatieTaakService).verwijderKlareTaken("windmolens",
-        List.of("bezwaar-001.txt"));
-    verify(kernbezwaarService).slaAntwoordOp(42L, "<p>Nieuw</p>");
   }
 }

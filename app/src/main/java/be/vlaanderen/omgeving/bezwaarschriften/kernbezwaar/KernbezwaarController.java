@@ -54,7 +54,8 @@ public class KernbezwaarController {
       @PathVariable Long id,
       @RequestBody AntwoordRequest request,
       @RequestParam(defaultValue = "false") boolean bevestigd) {
-    var bestandsnamen = referentieRepository.findBestandsnamenByKernbezwaarId(id);
+    // TODO: task 8 - bestandsnamen ophalen via passage_groep_lid
+    var bestandsnamen = java.util.List.<String>of();
     var getroffen = consolidatieTaakService.vindKlareBestandsnamen(naam, bestandsnamen);
 
     if (!getroffen.isEmpty() && !bevestigd) {

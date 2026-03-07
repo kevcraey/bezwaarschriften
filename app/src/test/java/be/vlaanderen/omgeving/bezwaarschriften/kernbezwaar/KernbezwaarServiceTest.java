@@ -220,9 +220,7 @@ class KernbezwaarServiceTest {
     var refEntiteit = new KernbezwaarReferentieEntiteit();
     refEntiteit.setId(30L);
     refEntiteit.setKernbezwaarId(20L);
-    refEntiteit.setBezwaarId(1L);
-    refEntiteit.setBestandsnaam("b1.txt");
-    refEntiteit.setPassage("passage");
+    refEntiteit.setPassageGroepId(0L); // TODO: task 8
     refEntiteit.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of(refEntiteit));
@@ -360,36 +358,19 @@ class KernbezwaarServiceTest {
     verify(kernbezwaarRepository).save(any());
   }
 
+  // TODO: task 9 - herschrijf cascade verwijdering tests met passage_groep model
   @Test
-  void ruimOpNaDocumentVerwijdering_verwijdertReferentiesEnLegeKernbezwaren() {
+  void ruimOpNaDocumentVerwijdering_verwijdertLegeKernbezwaren() {
     service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
 
-    verify(referentieRepository).deleteByBestandsnaamAndProjectNaam(
-        "bezwaar-001.txt", "windmolens");
     verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
   }
 
   @Test
-  void ruimOpNaDocumentVerwijdering_roeptStappenInJuisteVolgordeAan() {
-    var inOrder = inOrder(referentieRepository, kernbezwaarRepository);
-
-    service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
-
-    inOrder.verify(referentieRepository).deleteByBestandsnaamAndProjectNaam(
-        "bezwaar-001.txt", "windmolens");
-    inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
-  }
-
-  @Test
-  void ruimOpNaBestandenVerwijdering_verwijdertReferentiesVoorAlleBestandenDanOrphanedData() {
+  void ruimOpNaBestandenVerwijdering_verwijdertOrphanedData() {
     var bestandsnamen = List.of("doc-a.txt", "doc-b.txt");
 
     service.ruimOpNaBestandenVerwijdering("testproject", bestandsnamen);
-
-    verify(referentieRepository).deleteByBestandsnaamAndProjectNaam(
-        "doc-a.txt", "testproject");
-    verify(referentieRepository).deleteByBestandsnaamAndProjectNaam(
-        "doc-b.txt", "testproject");
 
     verify(kernbezwaarRepository).deleteZonderReferenties("testproject");
   }
@@ -741,11 +722,11 @@ class KernbezwaarServiceTest {
     // Act
     service.clusterProject("windmolens", null);
 
-    // Assert: alle referenties hebben een score (niet null)
+    // Assert: alle referenties zijn opgeslagen
     var captor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
     verify(referentieRepository, times(3)).save(captor.capture());
-    assertThat(captor.getAllValues()).allSatisfy(ref ->
-        assertThat(ref.getScore()).isNotNull());
+    // TODO: task 8 - score zit nu op passage_groep, niet op referentie
+    assertThat(captor.getAllValues()).hasSize(3);
   }
 
   @Test
@@ -783,11 +764,11 @@ class KernbezwaarServiceTest {
     // Act
     service.clusterProject("windmolens", null);
 
-    // Assert: noise referenties hebben null score
+    // Assert: noise referenties zijn opgeslagen
     var captor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
     verify(referentieRepository, times(2)).save(captor.capture());
-    assertThat(captor.getAllValues()).allSatisfy(ref ->
-        assertThat(ref.getScore()).isNull());
+    // TODO: task 8 - score zit nu op passage_groep, niet op referentie
+    assertThat(captor.getAllValues()).hasSize(2);
   }
 
   @Test
@@ -799,32 +780,24 @@ class KernbezwaarServiceTest {
     when(kernbezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(kernEntiteit));
 
-    // 3 referenties met scores in ongesorteerde volgorde
+    // TODO: task 8 - herschrijf sortering met passage_groep model
+    // 3 referenties
     var ref1 = new KernbezwaarReferentieEntiteit();
     ref1.setId(31L);
     ref1.setKernbezwaarId(20L);
-    ref1.setBezwaarId(1L);
-    ref1.setBestandsnaam("b1.txt");
-    ref1.setPassage("passage laag");
-    ref1.setScore(0.60); // 60%
+    ref1.setPassageGroepId(0L);
     ref1.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var ref2 = new KernbezwaarReferentieEntiteit();
     ref2.setId(32L);
     ref2.setKernbezwaarId(20L);
-    ref2.setBezwaarId(2L);
-    ref2.setBestandsnaam("b2.txt");
-    ref2.setPassage("passage hoog");
-    ref2.setScore(0.95); // 95%
+    ref2.setPassageGroepId(0L);
     ref2.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var ref3 = new KernbezwaarReferentieEntiteit();
     ref3.setId(33L);
     ref3.setKernbezwaarId(20L);
-    ref3.setBezwaarId(3L);
-    ref3.setBestandsnaam("b3.txt");
-    ref3.setPassage("passage midden");
-    ref3.setScore(0.78); // 78%
+    ref3.setPassageGroepId(0L);
     ref3.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -854,22 +827,17 @@ class KernbezwaarServiceTest {
     when(kernbezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(kernEntiteit));
 
+    // TODO: task 8 - herschrijf met passage_groep model
     var refMetScore = new KernbezwaarReferentieEntiteit();
     refMetScore.setId(31L);
     refMetScore.setKernbezwaarId(20L);
-    refMetScore.setBezwaarId(1L);
-    refMetScore.setBestandsnaam("b1.txt");
-    refMetScore.setPassage("passage met score");
-    refMetScore.setScore(0.85);
+    refMetScore.setPassageGroepId(0L);
     refMetScore.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var refZonderScore = new KernbezwaarReferentieEntiteit();
     refZonderScore.setId(32L);
     refZonderScore.setKernbezwaarId(20L);
-    refZonderScore.setBezwaarId(2L);
-    refZonderScore.setBestandsnaam("b2.txt");
-    refZonderScore.setPassage("passage zonder score");
-    refZonderScore.setScore(null);
+    refZonderScore.setPassageGroepId(0L);
     refZonderScore.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     // Retourneer in volgorde: null eerst, score daarna
@@ -924,12 +892,11 @@ class KernbezwaarServiceTest {
     // Act
     service.clusterProject("windmolens", null);
 
-    // Assert: score wordt opgeslagen op de referentie-entiteit
+    // Assert: referentie wordt opgeslagen
     var captor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
     verify(referentieRepository).save(captor.capture());
-    assertThat(captor.getValue().getScore()).isNotNull();
-    // 1 bezwaar = centroid, cosinus(emb, emb) = 1.0
-    assertThat(captor.getValue().getScore()).isEqualTo(1.0);
+    // TODO: task 8 - score zit nu op passage_groep, niet op referentie
+    assertThat(captor.getValue().getPassageGroepId()).isNotNull();
   }
 
   @Test

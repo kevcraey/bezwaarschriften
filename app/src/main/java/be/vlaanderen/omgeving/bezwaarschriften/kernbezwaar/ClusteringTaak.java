@@ -42,6 +42,9 @@ public class ClusteringTaak {
   @Column(name = "verwerking_voltooid_op")
   private Instant verwerkingVoltooidOp;
 
+  @Column(name = "deduplicatie_voor_clustering", nullable = false)
+  private boolean deduplicatieVoorClustering = false;
+
   @Version
   @Column(name = "versie", nullable = false)
   private int versie;
@@ -100,6 +103,14 @@ public class ClusteringTaak {
 
   public void setVerwerkingVoltooidOp(Instant verwerkingVoltooidOp) {
     this.verwerkingVoltooidOp = verwerkingVoltooidOp;
+  }
+
+  public boolean isDeduplicatieVoorClustering() {
+    return deduplicatieVoorClustering;
+  }
+
+  public void setDeduplicatieVoorClustering(boolean deduplicatieVoorClustering) {
+    this.deduplicatieVoorClustering = deduplicatieVoorClustering;
   }
 
   public int getVersie() {
