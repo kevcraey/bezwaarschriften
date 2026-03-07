@@ -38,11 +38,19 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
   @Autowired
   private KernbezwaarAntwoordRepository antwoordRepository;
 
+  @Autowired
+  private ClusteringTaakRepository clusteringTaakRepository;
+
+  @Autowired
+  private PassageGroepRepository passageGroepRepository;
+
   @BeforeEach
   void setUp() {
     referentieRepository.deleteAll();
     antwoordRepository.deleteAll();
     kernbezwaarRepository.deleteAll();
+    passageGroepRepository.deleteAll();
+    clusteringTaakRepository.deleteAll();
     bezwaarRepository.deleteAll();
     extractieTaakRepository.deleteAll();
   }
@@ -50,17 +58,20 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
   @Test
   @DisplayName("findByKernbezwaarIdIn retourneert referenties voor meerdere kernbezwaren")
   void findByKernbezwaarIdInRetourneertReferenties() {
+    final var clusteringTaak = maakClusteringTaak("testproject");
     var kern1 = maakKernbezwaar("testproject", "Kern 1");
     final var kern2 = maakKernbezwaar("testproject", "Kern 2");
 
+    final var groep1 = maakPassageGroep(clusteringTaak.getId(), "Passage 1");
     var ref1 = new KernbezwaarReferentieEntiteit();
     ref1.setKernbezwaarId(kern1.getId());
-    ref1.setPassageGroepId(0L); // placeholder
+    ref1.setPassageGroepId(groep1.getId());
     referentieRepository.save(ref1);
 
+    final var groep2 = maakPassageGroep(clusteringTaak.getId(), "Passage 2");
     var ref2 = new KernbezwaarReferentieEntiteit();
     ref2.setKernbezwaarId(kern2.getId());
-    ref2.setPassageGroepId(0L); // placeholder
+    ref2.setPassageGroepId(groep2.getId());
     referentieRepository.save(ref2);
 
     var refs = referentieRepository.findByKernbezwaarIdIn(
@@ -75,5 +86,22 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
     kern.setProjectNaam(projectNaam);
     kern.setSamenvatting(samenvatting);
     return kernbezwaarRepository.save(kern);
+  }
+
+  private ClusteringTaak maakClusteringTaak(String projectNaam) {
+    var taak = new ClusteringTaak();
+    taak.setProjectNaam(projectNaam);
+    taak.setStatus(ClusteringTaakStatus.KLAAR);
+    taak.setAangemaaktOp(Instant.now());
+    return clusteringTaakRepository.save(taak);
+  }
+
+  private PassageGroepEntiteit maakPassageGroep(Long clusteringTaakId, String passage) {
+    var groep = new PassageGroepEntiteit();
+    groep.setClusteringTaakId(clusteringTaakId);
+    groep.setPassage(passage);
+    groep.setSamenvatting(passage);
+    groep.setCategorie("Test");
+    return passageGroepRepository.save(groep);
   }
 }

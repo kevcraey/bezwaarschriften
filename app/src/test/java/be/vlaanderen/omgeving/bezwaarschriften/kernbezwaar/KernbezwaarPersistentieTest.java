@@ -21,10 +21,19 @@ class KernbezwaarPersistentieTest {
   private KernbezwaarAntwoordRepository antwoordRepository;
 
   @Autowired
+  private ClusteringTaakRepository clusteringTaakRepository;
+
+  @Autowired
+  private PassageGroepRepository passageGroepRepository;
+
+  @Autowired
   private TestEntityManager entityManager;
 
   @Test
   void slaatKernbezwaarMetReferentieOp() {
+    var clusteringTaak = maakClusteringTaak("windmolens");
+    final var groep = maakPassageGroep(clusteringTaak.getId());
+
     var kern = new KernbezwaarEntiteit();
     kern.setProjectNaam("windmolens");
     kern.setSamenvatting("Geluid overschrijdt normen");
@@ -32,7 +41,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setPassageGroepId(1L); // TODO: task 9 - vervang door echte passageGroep
+    ref.setPassageGroepId(groep.getId());
     referentieRepository.save(ref);
 
     entityManager.flush();
@@ -45,11 +54,14 @@ class KernbezwaarPersistentieTest {
     var refs = referentieRepository.findByKernbezwaarIdIn(
         kernen.stream().map(KernbezwaarEntiteit::getId).toList());
     assertThat(refs).hasSize(1);
-    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(1L);
+    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(groep.getId());
   }
 
   @Test
   void cascadeDeleteVerwijdertAlleGerelateerdeData() {
+    var clusteringTaak = maakClusteringTaak("windmolens");
+    final var groep = maakPassageGroep(clusteringTaak.getId());
+
     var kern = new KernbezwaarEntiteit();
     kern.setProjectNaam("windmolens");
     kern.setSamenvatting("Verkeershinder");
@@ -57,7 +69,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setPassageGroepId(1L); // TODO: task 9 - vervang door echte passageGroep
+    ref.setPassageGroepId(groep.getId());
     referentieRepository.save(ref);
 
     var antwoord = new KernbezwaarAntwoordEntiteit();
@@ -81,6 +93,9 @@ class KernbezwaarPersistentieTest {
 
   @Test
   void referentieMetPassageGroepId() {
+    var clusteringTaak = maakClusteringTaak("windmolens");
+    final var groep = maakPassageGroep(clusteringTaak.getId());
+
     var kern = new KernbezwaarEntiteit();
     kern.setProjectNaam("windmolens");
     kern.setSamenvatting("Stankoverlast");
@@ -88,7 +103,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setPassageGroepId(99L);
+    ref.setPassageGroepId(groep.getId());
     referentieRepository.save(ref);
 
     entityManager.flush();
@@ -97,6 +112,25 @@ class KernbezwaarPersistentieTest {
     var refs = referentieRepository.findByKernbezwaarIdIn(
         java.util.List.of(kern.getId()));
     assertThat(refs).hasSize(1);
-    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(99L);
+    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(groep.getId());
+  }
+
+  // --- Helper methoden ---
+
+  private ClusteringTaak maakClusteringTaak(String projectNaam) {
+    var taak = new ClusteringTaak();
+    taak.setProjectNaam(projectNaam);
+    taak.setStatus(ClusteringTaakStatus.KLAAR);
+    taak.setAangemaaktOp(Instant.now());
+    return clusteringTaakRepository.save(taak);
+  }
+
+  private PassageGroepEntiteit maakPassageGroep(Long clusteringTaakId) {
+    var groep = new PassageGroepEntiteit();
+    groep.setClusteringTaakId(clusteringTaakId);
+    groep.setPassage("test passage");
+    groep.setSamenvatting("test samenvatting");
+    groep.setCategorie("Test");
+    return passageGroepRepository.save(groep);
   }
 }
