@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <changeSet id="20260306-passage-deduplicatie" author="kenzo">
+
+    <!-- Nieuwe tabel: passage_groep -->
+    <createTable tableName="passage_groep">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="clustering_taak_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="passage" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="samenvatting" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="categorie" type="varchar(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="score_percentage" type="int"/>
+    </createTable>
+
+    <addForeignKeyConstraint
+        baseTableName="passage_groep" baseColumnNames="clustering_taak_id"
+        referencedTableName="clustering_taak" referencedColumnNames="id"
+        constraintName="fk_passage_groep_clustering_taak"
+        onDelete="CASCADE"/>
+
+    <!-- Nieuwe tabel: passage_groep_lid -->
+    <createTable tableName="passage_groep_lid">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="passage_groep_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="bezwaar_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="bestandsnaam" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint
+        baseTableName="passage_groep_lid" baseColumnNames="passage_groep_id"
+        referencedTableName="passage_groep" referencedColumnNames="id"
+        constraintName="fk_passage_groep_lid_groep"
+        onDelete="CASCADE"/>
+
+    <addForeignKeyConstraint
+        baseTableName="passage_groep_lid" baseColumnNames="bezwaar_id"
+        referencedTableName="geextraheerd_bezwaar" referencedColumnNames="id"
+        constraintName="fk_passage_groep_lid_bezwaar"
+        onDelete="CASCADE"/>
+
+    <!-- Nieuw veld op clustering_taak -->
+    <addColumn tableName="clustering_taak">
+      <column name="deduplicatie_voor_clustering" type="boolean" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+
+    <!-- kernbezwaar_referentie: voeg passage_groep_id toe -->
+    <addColumn tableName="kernbezwaar_referentie">
+      <column name="passage_groep_id" type="bigint"/>
+    </addColumn>
+
+    <addForeignKeyConstraint
+        baseTableName="kernbezwaar_referentie" baseColumnNames="passage_groep_id"
+        referencedTableName="passage_groep" referencedColumnNames="id"
+        constraintName="fk_kernbezwaar_ref_passage_groep"
+        onDelete="CASCADE"/>
+
+    <!-- Verwijder oude kolommen van kernbezwaar_referentie -->
+    <dropColumn tableName="kernbezwaar_referentie" columnName="bezwaar_id"/>
+    <dropColumn tableName="kernbezwaar_referentie" columnName="bestandsnaam"/>
+    <dropColumn tableName="kernbezwaar_referentie" columnName="passage"/>
+    <dropColumn tableName="kernbezwaar_referentie" columnName="score"/>
+
+    <!-- Maak passage_groep_id verplicht nu oude kolommen weg zijn -->
+    <addNotNullConstraint tableName="kernbezwaar_referentie"
+        columnName="passage_groep_id" columnDataType="bigint"/>
+
+    <!-- Verwijder bestaande thema's (herclustering vereist) -->
+    <delete tableName="thema"/>
+
+  </changeSet>
+
+</databaseChangeLog>
