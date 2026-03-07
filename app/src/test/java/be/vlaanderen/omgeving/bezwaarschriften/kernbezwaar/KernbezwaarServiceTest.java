@@ -456,6 +456,70 @@ class KernbezwaarServiceTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void umapNoiseEmbeddingsGebruikenGereduceerdeDimensie() {
+    // Reproduceert bug: "Index 5 out of bounds for length 5"
+    // Bij UMAP-reductie hebben cluster-centroids een lagere dimensie (2D)
+    // dan de originele embeddings (3D). Noise-embeddings moeten ook in
+    // de gereduceerde ruimte zitten, anders crasht cosinusGelijkenis.
+    clusteringConfig.setUmapEnabled(true);
+    clusteringConfig.setUmapNNeighbors(2);
+
+    // Originele embeddings zijn 3D
+    var bezwaar1 = maakBezwaarMetEmbedding(1L, 10L, 1, "cluster-bezwaar",
+        new float[]{1.0f, 0.0f, 0.0f});
+    var bezwaar2 = maakBezwaarMetEmbedding(2L, 10L, 2, "noise-bezwaar",
+        new float[]{0.0f, 1.0f, 0.0f});
+    var bezwaar3 = maakBezwaarMetEmbedding(3L, 10L, 3, "cluster-bezwaar-2",
+        new float[]{0.9f, 0.1f, 0.0f});
+
+    when(bezwaarRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
+    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+    when(taakRepository.findById(10L))
+        .thenReturn(Optional.of(maakTaak(10L, "windmolens", "b.pdf")));
+
+    // UMAP reduceert van 3D naar 2D
+    when(dimensieReductiePoort.reduceer(anyList())).thenReturn(List.of(
+        new float[]{0.1f, 0.2f},
+        new float[]{0.8f, 0.9f},
+        new float[]{0.15f, 0.25f}));
+
+    // Cluster met centroid in 2D, bezwaar 2 is noise
+    var cluster = new Cluster(1, List.of(1L, 3L), new float[]{0.125f, 0.225f});
+    var resultaat = new ClusteringResultaat(List.of(cluster), List.of(2L));
+    when(clusteringPoort.cluster(anyList())).thenReturn(resultaat);
+
+    // Gebruik ECHTE CentroidMatchingService zodat dimensie-mismatch crasht
+    var echteCentroidService = new CentroidMatchingService();
+    service = new KernbezwaarService(
+        embeddingPoort, clusteringPoort,
+        bezwaarRepository, passageRepository, taakRepository,
+        antwoordRepository,
+        kernbezwaarRepository, referentieRepository,
+        clusteringTaakService, clusteringTaakRepository,
+        transactionManager, dimensieReductiePoort, clusteringConfig,
+        echteCentroidService);
+
+    when(kernbezwaarRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarEntiteit) inv.getArgument(0);
+      e.setId(200L);
+      return e;
+    });
+    when(referentieRepository.save(any())).thenAnswer(inv -> {
+      var e = (KernbezwaarReferentieEntiteit) inv.getArgument(0);
+      e.setId(300L);
+      return e;
+    });
+
+    // Act: dit moet NIET crashen met ArrayIndexOutOfBoundsException
+    service.clusterProject("windmolens", null);
+
+    // Assert: clustering is geslaagd (geen ArrayIndexOutOfBoundsException)
+    verify(kernbezwaarRepository).save(any());
+  }
+
+  @Test
   void umapDimensieReductieWordtNietToegepastAlsUitgeschakeld() {
     // Arrange: UMAP uitgeschakeld (standaard in setUp)
     var bezwaar1 = maakBezwaarMetEmbedding(1L, 10L, 1, "bezwaar 1",

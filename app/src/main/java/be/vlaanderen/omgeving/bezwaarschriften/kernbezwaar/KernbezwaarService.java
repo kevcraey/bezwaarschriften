@@ -13,6 +13,7 @@ import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepositor
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import com.pgvector.PGvector;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -173,11 +174,18 @@ public class KernbezwaarService {
     var bezwaarById = bezwaren.stream()
         .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
 
+    // Gebruik embeddings uit clusterInvoer (UMAP-gereduceerd indien actief)
+    // zodat noise-embeddings dezelfde dimensie hebben als cluster-centroids
+    var clusterEmbeddingLookup = new HashMap<Long, float[]>();
+    for (var ci : clusterInvoer) {
+      clusterEmbeddingLookup.put(ci.bezwaarId(), ci.embedding());
+    }
+
     var noiseEmbeddings = new HashMap<Long, float[]>();
     for (var noiseId : clusterResultaat.noiseIds()) {
-      var bezwaar = bezwaarById.get(noiseId);
-      if (bezwaar != null) {
-        noiseEmbeddings.put(noiseId, geefEmbedding(bezwaar));
+      var embedding = clusterEmbeddingLookup.get(noiseId);
+      if (embedding != null) {
+        noiseEmbeddings.put(noiseId, embedding);
       }
     }
 
@@ -313,26 +321,19 @@ public class KernbezwaarService {
       return List.of();
     }
 
-    var alleRefs = referentieRepository.findByKernbezwaarIdIn(kernIds);
-    var refsPerKern = alleRefs.stream()
-        .collect(Collectors.groupingBy(KernbezwaarReferentieEntiteit::getKernbezwaarId));
-
-    var alleBezwaarIds = alleRefs.stream()
-        .map(KernbezwaarReferentieEntiteit::getBezwaarId)
-        .distinct()
-        .toList();
-    var bezwarenMap = bezwaarRepository.findAllById(alleBezwaarIds).stream()
-        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
+    var centroidRows = clusteringConfig.isClusterOpPassages()
+        ? referentieRepository.berekenCentroidsOpPassage(kernIds)
+        : referentieRepository.berekenCentroidsOpSamenvatting(kernIds);
 
     var centroids = new HashMap<Long, float[]>();
-    for (var kernId : kernIds) {
-      var embeddings = refsPerKern.getOrDefault(kernId, List.of()).stream()
-          .map(r -> bezwarenMap.get(r.getBezwaarId()))
-          .filter(b -> b != null)
-          .map(this::geefEmbedding)
-          .toList();
-      if (!embeddings.isEmpty()) {
-        centroids.put(kernId, berekenCentroid(embeddings));
+    for (var row : centroidRows) {
+      var kernId = ((Number) row[0]).longValue();
+      if (row[1] != null) {
+        try {
+          centroids.put(kernId, new PGvector((String) row[1]).toArray());
+        } catch (java.sql.SQLException e) {
+          throw new IllegalStateException("Ongeldige centroid vector", e);
+        }
       }
     }
 
