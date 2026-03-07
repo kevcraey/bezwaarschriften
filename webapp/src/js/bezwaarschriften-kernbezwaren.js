@@ -703,6 +703,13 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           if (!response.ok) throw new Error('Verwijderen clustering mislukt');
           this._kernbezwaren = [];
           this._clusteringTaak = null;
+          this._huidigKernbezwaar = null;
+          this._huidigGroepen = null;
+          const sideSheet = this.shadowRoot.querySelector('#side-sheet');
+          if (sideSheet) {
+            sideSheet.close();
+            this.classList.remove('side-sheet-open');
+          }
           this._renderInhoud();
           return null;
         })

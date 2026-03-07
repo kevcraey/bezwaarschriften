@@ -28,4 +28,18 @@ public interface KernbezwaarReferentieRepository extends JpaRepository<Kernbezwa
   void deleteByBestandsnaamAndProjectNaam(
       @Param("bestandsnaam") String bestandsnaam,
       @Param("projectNaam") String projectNaam);
+
+  @Query(value = "SELECT kr.kernbezwaar_id, CAST(AVG(gb.embedding_passage) AS text) "
+      + "FROM kernbezwaar_referentie kr "
+      + "JOIN geextraheerd_bezwaar gb ON kr.bezwaar_id = gb.id "
+      + "WHERE kr.kernbezwaar_id IN (:kernIds) "
+      + "GROUP BY kr.kernbezwaar_id", nativeQuery = true)
+  List<Object[]> berekenCentroidsOpPassage(@Param("kernIds") List<Long> kernIds);
+
+  @Query(value = "SELECT kr.kernbezwaar_id, CAST(AVG(gb.embedding_samenvatting) AS text) "
+      + "FROM kernbezwaar_referentie kr "
+      + "JOIN geextraheerd_bezwaar gb ON kr.bezwaar_id = gb.id "
+      + "WHERE kr.kernbezwaar_id IN (:kernIds) "
+      + "GROUP BY kr.kernbezwaar_id", nativeQuery = true)
+  List<Object[]> berekenCentroidsOpSamenvatting(@Param("kernIds") List<Long> kernIds);
 }
