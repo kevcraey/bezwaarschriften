@@ -46,28 +46,39 @@ const MOCK_KERNBEZWAREN = {
     {
       id: 1, samenvatting: 'Te veel geluidshinder',
       individueleBezwaren: [
-        {referentieId: 10, bezwaarId: 100, bestandsnaam: '001.txt', passage: 'Te veel geluid',
-          scorePercentage: 95, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 11, bezwaarId: 101, bestandsnaam: '002.txt', passage: 'Te veel geluid',
-          scorePercentage: 90, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 12, bezwaarId: 102, bestandsnaam: '003.txt', passage: 'Geluidsoverlast door verkeer',
-          scorePercentage: 88, toewijzingsmethode: 'CENTROID_FALLBACK'},
+        {referentieId: 10, samenvatting: 'Te veel geluid', passage: 'Te veel geluid',
+          scorePercentage: 95, toewijzingsmethode: 'HDBSCAN',
+          passageGroep: {id: 42, passage: 'Te veel geluid', documenten: [
+            {bezwaarId: 100, bestandsnaam: '001.txt'},
+            {bezwaarId: 101, bestandsnaam: '002.txt'},
+          ]}},
+        {referentieId: 12, samenvatting: 'Geluidsoverlast door verkeer', passage: 'Geluidsoverlast door verkeer',
+          scorePercentage: 88, toewijzingsmethode: 'CENTROID_FALLBACK',
+          passageGroep: {id: 43, passage: 'Geluidsoverlast door verkeer', documenten: [
+            {bezwaarId: 102, bestandsnaam: '003.txt'},
+          ]}},
       ],
       antwoord: null,
     },
     {
       id: 2, samenvatting: 'Gevaarlijk verkeer',
       individueleBezwaren: [
-        {referentieId: 20, bezwaarId: 200, bestandsnaam: '004.txt', passage: 'Verkeer is gevaarlijk',
-          scorePercentage: 92, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 20, samenvatting: 'Verkeer is gevaarlijk', passage: 'Verkeer is gevaarlijk',
+          scorePercentage: 92, toewijzingsmethode: 'HDBSCAN',
+          passageGroep: {id: 44, passage: 'Verkeer is gevaarlijk', documenten: [
+            {bezwaarId: 200, bestandsnaam: '004.txt'},
+          ]}},
       ],
       antwoord: 'Bestaand antwoord',
     },
     {
       id: 99, samenvatting: 'Niet-geclusterde bezwaren',
       individueleBezwaren: [
-        {referentieId: 30, bezwaarId: 300, bestandsnaam: '005.txt', passage: 'Ongerelateeerd punt',
-          scorePercentage: null, toewijzingsmethode: null},
+        {referentieId: 30, samenvatting: 'Ongerelateeerd punt', passage: 'Ongerelateeerd punt',
+          scorePercentage: null, toewijzingsmethode: null,
+          passageGroep: {id: 45, passage: 'Ongerelateeerd punt', documenten: [
+            {bezwaarId: 300, bestandsnaam: '005.txt'},
+          ]}},
       ],
       antwoord: null,
     },
@@ -197,7 +208,7 @@ describe('clustering acties', () => {
   });
 
   it('start clustering bij klik op cluster-knop', () => {
-    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken', {
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken*', {
       statusCode: 202,
       body: MOCK_CLUSTERING_WACHTEND,
     }).as('startClustering');
@@ -275,7 +286,7 @@ describe('clustering acties', () => {
       statusCode: 200,
     }).as('verwijderClustering');
 
-    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken', {
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken*', {
       statusCode: 202,
       body: MOCK_CLUSTERING_WACHTEND,
     }).as('startClustering');
@@ -303,7 +314,7 @@ describe('clustering acties', () => {
       }
     }).as('verwijderClustering');
 
-    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken', {
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken*', {
       statusCode: 202,
       body: MOCK_CLUSTERING_WACHTEND,
     }).as('startClustering');
@@ -468,7 +479,6 @@ describe('side panel passage-weergave', () => {
 
 describe('side panel paginering', () => {
   it('toont paginering bij meer dan 15 groepen', () => {
-    // Passages moeten voldoende verschillen om niet gegroepeerd te worden (Dice < 0.9)
     const uniekeTeksten = [
       'Windmolens zorgen voor slagschaduw op woningen',
       'Fietspaden langs de ringweg ontbreken volledig',
@@ -492,9 +502,11 @@ describe('side panel paginering', () => {
       'Bodemverontreiniging is niet volledig gesaneerd',
     ];
     const veelBezwaren = uniekeTeksten.map((tekst, i) => ({
-      referentieId: i, bezwaarId: i, bestandsnaam: `doc${i}.txt`,
-      passage: tekst,
+      referentieId: i, samenvatting: tekst, passage: tekst,
       scorePercentage: 80 + i, toewijzingsmethode: 'HDBSCAN',
+      passageGroep: {id: i, passage: tekst, documenten: [
+        {bezwaarId: i, bestandsnaam: `doc${i}.txt`},
+      ]},
     }));
     const mockMetVeel = {
       kernbezwaren: [{
@@ -546,9 +558,11 @@ describe('side panel paginering', () => {
       'Bodemverontreiniging is niet volledig gesaneerd',
     ];
     const veelBezwaren = uniekeTeksten.map((tekst, i) => ({
-      referentieId: i, bezwaarId: i, bestandsnaam: `doc${i}.txt`,
-      passage: tekst,
+      referentieId: i, samenvatting: tekst, passage: tekst,
       scorePercentage: 80, toewijzingsmethode: 'HDBSCAN',
+      passageGroep: {id: i, passage: tekst, documenten: [
+        {bezwaarId: i, bestandsnaam: `doc${i}.txt`},
+      ]},
     }));
     const mockMetVeel = {
       kernbezwaren: [{
@@ -590,22 +604,22 @@ describe('side panel passage-deduplicatie', () => {
       id: 1, samenvatting: 'Geluidshinder',
       antwoord: null,
       individueleBezwaren: [
-        {referentieId: 1, bezwaarId: 1, bestandsnaam: '001.txt', passage: 'Te veel geluid in de buurt',
-          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 2, bezwaarId: 2, bestandsnaam: '002.txt', passage: 'Te veel geluid in de buurt',
-          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 3, bezwaarId: 3, bestandsnaam: '003.txt', passage: 'Te veel geluid in de buurt',
-          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 4, bezwaarId: 4, bestandsnaam: '004.txt', passage: 'Te veel geluid in de buurt',
-          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 5, bezwaarId: 5, bestandsnaam: '005.txt', passage: 'Te veel geluid in de buurt',
-          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 6, bezwaarId: 6, bestandsnaam: '006.txt', passage: 'Te veel geluid in de buurt',
-          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 7, bezwaarId: 7, bestandsnaam: '007.txt', passage: 'Te veel geluid in de buurt',
-          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
-        {referentieId: 8, bezwaarId: 8, bestandsnaam: '008.txt', passage: 'Verkeer is gevaarlijk',
-          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 1, samenvatting: 'Te veel geluid in de buurt', passage: 'Te veel geluid in de buurt',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN',
+          passageGroep: {id: 1, passage: 'Te veel geluid in de buurt', documenten: [
+            {bezwaarId: 1, bestandsnaam: '001.txt'},
+            {bezwaarId: 2, bestandsnaam: '002.txt'},
+            {bezwaarId: 3, bestandsnaam: '003.txt'},
+            {bezwaarId: 4, bestandsnaam: '004.txt'},
+            {bezwaarId: 5, bestandsnaam: '005.txt'},
+            {bezwaarId: 6, bestandsnaam: '006.txt'},
+            {bezwaarId: 7, bestandsnaam: '007.txt'},
+          ]}},
+        {referentieId: 8, samenvatting: 'Verkeer is gevaarlijk', passage: 'Verkeer is gevaarlijk',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN',
+          passageGroep: {id: 2, passage: 'Verkeer is gevaarlijk', documenten: [
+            {bezwaarId: 8, bestandsnaam: '008.txt'},
+          ]}},
       ],
     }],
   };
@@ -689,16 +703,22 @@ describe('handmatige toewijzing voor noise bezwaren', () => {
       {
         id: 1, samenvatting: 'Geluidshinder',
         individueleBezwaren: [
-          {referentieId: 10, bezwaarId: 100, bestandsnaam: '001.txt', passage: 'Geluid',
-            scorePercentage: 95, toewijzingsmethode: 'HDBSCAN'},
+          {referentieId: 10, samenvatting: 'Geluid', passage: 'Geluid',
+            scorePercentage: 95, toewijzingsmethode: 'HDBSCAN',
+            passageGroep: {id: 50, passage: 'Geluid', documenten: [
+              {bezwaarId: 100, bestandsnaam: '001.txt'},
+            ]}},
         ],
         antwoord: null,
       },
       {
         id: 99, samenvatting: 'Niet-geclusterde bezwaren',
         individueleBezwaren: [
-          {referentieId: 30, bezwaarId: 300, bestandsnaam: '005.txt', passage: 'Los punt',
-            scorePercentage: null, toewijzingsmethode: null},
+          {referentieId: 30, samenvatting: 'Los punt', passage: 'Los punt',
+            scorePercentage: null, toewijzingsmethode: null,
+            passageGroep: {id: 51, passage: 'Los punt', documenten: [
+              {bezwaarId: 300, bestandsnaam: '005.txt'},
+            ]}},
         ],
         antwoord: null,
       },
@@ -968,5 +988,65 @@ describe('lege staat', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .find('#groepeer-knop')
         .should('contain.text', 'Cluster bezwaren');
+  });
+
+  it('toont deduplicatie-toggle die standaard aangevinkt is', () => {
+    mountEnLaad(null);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => {
+          $el[0].setExtractieKlaar(true);
+          $el[0].setAantalBezwaren(42);
+        });
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#deduplicatie-toggle')
+        .should('be.checked');
+  });
+
+  it('stuurt deduplicatieVoorClustering=true bij start met toggle aan', () => {
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken*', (req) => {
+      expect(req.url).to.include('deduplicatieVoorClustering=true');
+      req.reply({statusCode: 202, body: MOCK_CLUSTERING_WACHTEND});
+    }).as('startClustering');
+
+    mountEnLaad(null);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => {
+          $el[0].setExtractieKlaar(true);
+          $el[0].setAantalBezwaren(42);
+        });
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#groepeer-knop')
+        .click();
+
+    cy.wait('@startClustering');
+  });
+
+  it('stuurt deduplicatieVoorClustering=false bij start met toggle uit', () => {
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken*', (req) => {
+      expect(req.url).to.include('deduplicatieVoorClustering=false');
+      req.reply({statusCode: 202, body: MOCK_CLUSTERING_WACHTEND});
+    }).as('startClustering');
+
+    mountEnLaad(null);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => {
+          $el[0].setExtractieKlaar(true);
+          $el[0].setAantalBezwaren(42);
+        });
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#deduplicatie-toggle')
+        .uncheck();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#groepeer-knop')
+        .click();
+
+    cy.wait('@startClustering');
   });
 });
