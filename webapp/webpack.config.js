@@ -35,8 +35,9 @@ module.exports = {
   },
   devServer: {
     static: './build',
-    proxy: {
-      '/api': {
+    proxy: [
+      {
+        context: ['/api'],
         target: 'http://localhost:8080',
         onError: (err, req, res) => {
           if (err.code === 'ECONNREFUSED') {
@@ -50,11 +51,12 @@ module.exports = {
           }
         },
       },
-      '/ws/taken': {
+      {
+        context: ['/ws/taken'],
         target: 'http://localhost:8080',
         ws: true,
       },
-    },
+    ],
   },
   plugins: [
     new HtmlWebpackPlugin({

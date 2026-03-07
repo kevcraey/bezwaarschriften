@@ -7,6 +7,7 @@ import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.co
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {VlLinkComponent} from '@domg-wc/components/atom/link/vl-link.component.js';
 import {vlGlobalStyles, vlGridStyles, vlGroupStyles} from '@domg-wc/styles';
+import {groepeerPassages} from './passage-groepering.js';
 import '@domg-wc/components/form/textarea-rich';
 
 registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent, VlLinkComponent]);
@@ -242,13 +243,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     this._huidigKernbezwaar = null;
     this._huidigGroepen = null;
     this._huidigePagina = 1;
-    this._deduplicatieVoorClustering = true;
     this._timerInterval = null;
-  }
-
-  _telDocumenten(kern) {
-    return kern.individueleBezwaren.reduce(
-        (sum, ref) => sum + (ref.passageGroep ? ref.passageGroep.documenten.length : 1), 0);
   }
 
   connectedCallback() {
@@ -395,19 +390,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         'Voer clustering uit om kernbezwaren te identificeren.';
     legeStaat.appendChild(p);
 
-    const deduplicatieLabel = document.createElement('label');
-    deduplicatieLabel.style.cssText = 'display:flex;align-items:center;gap:0.4rem;margin-bottom:0.75rem;';
-    const deduplicatieToggle = document.createElement('input');
-    deduplicatieToggle.type = 'checkbox';
-    deduplicatieToggle.id = 'deduplicatie-toggle';
-    deduplicatieToggle.checked = this._deduplicatieVoorClustering;
-    deduplicatieToggle.addEventListener('change', () => {
-      this._deduplicatieVoorClustering = deduplicatieToggle.checked;
-    });
-    deduplicatieLabel.appendChild(deduplicatieToggle);
-    deduplicatieLabel.appendChild(document.createTextNode('Passage-deduplicatie voor clustering'));
-    legeStaat.appendChild(deduplicatieLabel);
-
     const knop = document.createElement('vl-button');
     knop.id = 'groepeer-knop';
     knop.textContent = 'Cluster bezwaren';
@@ -504,18 +486,16 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     let aantalManueel = 0;
     let nietGeclusterd = 0;
     this._kernbezwaren.forEach((k) => {
-      const docCount = this._telDocumenten(k);
       if (k.samenvatting === 'Niet-geclusterde bezwaren') {
-        nietGeclusterd += docCount;
+        nietGeclusterd += k.individueleBezwaren.length;
       } else {
         k.individueleBezwaren.forEach((b) => {
-          const bDocs = b.passageGroep ? b.passageGroep.documenten.length : 1;
-          if (b.toewijzingsmethode === 'HDBSCAN') aantalHdbscan += bDocs;
-          else if (b.toewijzingsmethode === 'CENTROID_FALLBACK') aantalCentroid += bDocs;
-          else if (b.toewijzingsmethode === 'MANUEEL') aantalManueel += bDocs;
+          if (b.toewijzingsmethode === 'HDBSCAN') aantalHdbscan++;
+          else if (b.toewijzingsmethode === 'CENTROID_FALLBACK') aantalCentroid++;
+          else if (b.toewijzingsmethode === 'MANUEEL') aantalManueel++;
         });
       }
-      totaalBezwaren += docCount;
+      totaalBezwaren += k.individueleBezwaren.length;
     });
 
     const geclusterdeBezwaren = totaalBezwaren - nietGeclusterd;
@@ -549,9 +529,9 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       inhoud.appendChild(waarschuwing);
     }
 
-    // Sorteer kernbezwaren: meeste bezwaren eerst (op basis van totaal documenten)
+    // Sorteer kernbezwaren: meeste bezwaren eerst
     const gesorteerd = [...this._kernbezwaren].sort(
-        (a, b) => this._telDocumenten(b) - this._telDocumenten(a),
+        (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
     );
 
     // Render kernbezwaar items
@@ -585,7 +565,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const knop = document.createElement('vl-button');
     knop.setAttribute('ghost', '');
     knop.setAttribute('icon', 'search');
-    knop.textContent = `(${this._telDocumenten(kern)})`;
+    knop.textContent = `(${kern.individueleBezwaren.length})`;
     knop.addEventListener('click', () => this._toonPassages(kern));
 
     actie.appendChild(knop);
@@ -663,8 +643,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _startClustering() {
     if (!this._projectNaam) return;
-    const dedup = this._deduplicatieVoorClustering ? 'true' : 'false';
-    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken?deduplicatieVoorClustering=${dedup}`, {
+    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`, {
       method: 'POST',
     })
         .then((response) => {
@@ -1094,7 +1073,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _toonPassages(kernbezwaar) {
     this._huidigKernbezwaar = kernbezwaar;
-    this._huidigGroepen = kernbezwaar.individueleBezwaren;
+    this._huidigGroepen = groepeerPassages(kernbezwaar.individueleBezwaren);
     this._huidigePagina = 1;
     this._renderPassagePagina();
   }
@@ -1112,7 +1091,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     inhoud.innerHTML = '';
     if (titelEl) titelEl.textContent = kernbezwaar.samenvatting;
 
-    const totaal = this._telDocumenten(kernbezwaar);
+    const totaal = kernbezwaar.individueleBezwaren.length;
     const totaalPaginas = Math.max(1, Math.ceil(groepen.length / PAGE_SIZE));
     if (this._huidigePagina > totaalPaginas) this._huidigePagina = totaalPaginas;
 
@@ -1134,17 +1113,18 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       passage.className = 'passage-tekst';
       passage.appendChild(document.createTextNode(`"${groep.passage}"`));
 
-      if (groep.scorePercentage != null) {
+      if (groep.maxScore != null) {
         const scoreBadge = document.createElement('span');
         scoreBadge.style.cssText = 'display:inline-block;background:#e8ebee;border-radius:3px;' +
             'padding:0.1rem 0.4rem;font-size:0.8rem;font-style:normal;color:#333;margin-left:0.5rem;';
-        scoreBadge.textContent = `${groep.scorePercentage}%`;
+        scoreBadge.textContent = `${groep.maxScore}%`;
         passage.appendChild(scoreBadge);
       }
 
-      // Toewijzingsmethode badge
-      if (groep.toewijzingsmethode) {
-        const methode = groep.toewijzingsmethode;
+      // Toewijzingsmethode badge (per groep, gebaseerd op eerste bezwaar)
+      const eersteBezwaar = groep.bezwaren[0];
+      if (eersteBezwaar && eersteBezwaar.toewijzingsmethode) {
+        const methode = eersteBezwaar.toewijzingsmethode;
         const badge = document.createElement('span');
         if (methode === 'HDBSCAN') {
           badge.className = 'toewijzing-badge toewijzing-badge--hdbscan';
@@ -1164,9 +1144,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       const docContainer = document.createElement('div');
       docContainer.className = 'passage-documenten';
 
-      const documenten = groep.passageGroep ? groep.passageGroep.documenten : [];
-      const zichtbaar = documenten.slice(0, MAX_ZICHTBAAR);
-      const verborgen = documenten.slice(MAX_ZICHTBAAR);
+      const zichtbaar = groep.bezwaren.slice(0, MAX_ZICHTBAAR);
+      const verborgen = groep.bezwaren.slice(MAX_ZICHTBAAR);
 
       zichtbaar.forEach((ref) => {
         docContainer.appendChild(this._maakDocumentLink(ref));
@@ -1176,7 +1155,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         const toonAlleLink = document.createElement('a');
         toonAlleLink.className = 'passage-toon-alle';
         toonAlleLink.href = '#';
-        toonAlleLink.textContent = `... (${documenten.length} documenten)`;
+        toonAlleLink.textContent = `... (${groep.bezwaren.length} documenten)`;
         toonAlleLink.addEventListener('click', (e) => {
           e.preventDefault();
           verborgen.forEach((ref) => {
@@ -1190,13 +1169,13 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       groepEl.appendChild(docContainer);
 
       // Toewijzen-knop voor noise passages
-      if (isNoise && groep) {
+      if (isNoise && eersteBezwaar) {
         const toewijzenKnop = document.createElement('vl-button');
         toewijzenKnop.setAttribute('ghost', '');
         toewijzenKnop.textContent = 'Toewijzen';
         toewijzenKnop.style.marginTop = '0.5rem';
         toewijzenKnop.addEventListener('click', () =>
-          this._toonSuggesties(groep, groepEl));
+          this._toonSuggesties(eersteBezwaar, groepEl));
         groepEl.appendChild(toewijzenKnop);
       }
 
@@ -1261,11 +1240,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       return;
     }
 
-    const eersteBezwaarId = bezwaar.passageGroep && bezwaar.passageGroep.documenten.length > 0 ?
-      bezwaar.passageGroep.documenten[0].bezwaarId : null;
-    if (!eersteBezwaarId) return;
     const response = await fetch(
-        `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/noise/${eersteBezwaarId}/suggesties`);
+        `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/noise/${bezwaar.bezwaarId}/suggesties`);
     if (!response.ok) return;
     const suggesties = await response.json();
 
@@ -1337,7 +1313,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
             (b) => b.referentieId !== bezwaar.referentieId);
         // Update cache en herrender enkel side panel
         this._huidigGroepen = this._huidigGroepen.filter(
-            (g) => g.referentieId !== bezwaar.referentieId);
+            (g) => !g.bezwaren.some((b) => b.referentieId === bezwaar.referentieId));
         if (noiseKernbezwaar.individueleBezwaren.length === 0) {
           const sideSheet = this.shadowRoot.querySelector('#side-sheet');
           if (sideSheet) {
