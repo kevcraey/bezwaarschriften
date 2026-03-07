@@ -305,19 +305,34 @@ public class KernbezwaarService {
             "Bezwaar niet gevonden: " + bezwaarId));
 
     var kernEntiteiten = kernbezwaarRepository.findByProjectNaam(projectNaam);
+    var kernIds = kernEntiteiten.stream()
+        .filter(k -> !"Niet-geclusterde bezwaren".equals(k.getSamenvatting()))
+        .map(KernbezwaarEntiteit::getId)
+        .toList();
+    if (kernIds.isEmpty()) {
+      return List.of();
+    }
+
+    var alleRefs = referentieRepository.findByKernbezwaarIdIn(kernIds);
+    var refsPerKern = alleRefs.stream()
+        .collect(Collectors.groupingBy(KernbezwaarReferentieEntiteit::getKernbezwaarId));
+
+    var alleBezwaarIds = alleRefs.stream()
+        .map(KernbezwaarReferentieEntiteit::getBezwaarId)
+        .distinct()
+        .toList();
+    var bezwarenMap = bezwaarRepository.findAllById(alleBezwaarIds).stream()
+        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
+
     var centroids = new HashMap<Long, float[]>();
-    for (var kern : kernEntiteiten) {
-      if ("Niet-geclusterde bezwaren".equals(kern.getSamenvatting())) {
-        continue;
-      }
-      var refs = referentieRepository.findByKernbezwaarIdIn(List.of(kern.getId()));
-      var embeddings = refs.stream()
-          .map(r -> bezwaarRepository.findById(r.getBezwaarId()))
-          .flatMap(Optional::stream)
+    for (var kernId : kernIds) {
+      var embeddings = refsPerKern.getOrDefault(kernId, List.of()).stream()
+          .map(r -> bezwarenMap.get(r.getBezwaarId()))
+          .filter(b -> b != null)
           .map(this::geefEmbedding)
           .toList();
       if (!embeddings.isEmpty()) {
-        centroids.put(kern.getId(), berekenCentroid(embeddings));
+        centroids.put(kernId, berekenCentroid(embeddings));
       }
     }
 

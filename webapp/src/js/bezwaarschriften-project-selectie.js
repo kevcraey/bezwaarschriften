@@ -97,6 +97,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this.__fout = null;
     this._ws = null;
     this._wsReconnectDelay = 1000;
+    this._wsActief = false;
     this._teVerwijderenBestanden = [];
     this._teAnnulerenTaak = null;
     this.__consolidatieDocumenten = [];
@@ -108,10 +109,12 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       this._laadBezwaren(this.__geselecteerdProject);
     }
     this._koppelEventListeners();
+    this._wsActief = true;
     this._verbindWebSocket();
   }
 
   disconnectedCallback() {
+    this._wsActief = false;
     if (this._ws) {
       this._ws.close();
       this._ws = null;
@@ -137,17 +140,23 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     };
 
     this._ws.onclose = () => {
+      clearTimeout(this._wsReconnectTimer);
+      if (!this._wsActief) return;
+      const delay = this._wsReconnectDelay;
+      this._wsReconnectDelay = Math.min(this._wsReconnectDelay * 2, 30000);
       setTimeout(() => {
-        this._wsReconnectDelay = Math.min(this._wsReconnectDelay * 2, 30000);
+        if (!this._wsActief) return;
         this._verbindWebSocket();
         if (this.__geselecteerdProject) {
           this._syncExtracties(this.__geselecteerdProject);
         }
-      }, this._wsReconnectDelay);
+      }, delay);
     };
 
     this._ws.onopen = () => {
-      this._wsReconnectDelay = 1000;
+      this._wsReconnectTimer = setTimeout(() => {
+        this._wsReconnectDelay = 1000;
+      }, 5000);
     };
   }
 
