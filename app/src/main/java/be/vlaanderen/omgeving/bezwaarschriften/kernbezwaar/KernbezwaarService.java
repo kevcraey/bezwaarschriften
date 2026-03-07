@@ -2,12 +2,12 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.CentroidMatchingService;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.CentroidMatchingService.Suggestie;
-import be.vlaanderen.omgeving.bezwaarschriften.clustering.CentroidMatchingService.Toewijzing;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringConfig;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.ClusteringInvoer;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.DimensieReductiePoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageDeduplicatieService.DeduplicatieGroep;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
@@ -50,24 +50,12 @@ public class KernbezwaarService {
   private final DimensieReductiePoort dimensieReductiePoort;
   private final ClusteringConfig clusteringConfig;
   private final CentroidMatchingService centroidMatchingService;
+  private final PassageDeduplicatieService deduplicatieService;
+  private final PassageGroepRepository passageGroepRepository;
+  private final PassageGroepLidRepository passageGroepLidRepository;
 
   /**
    * Constructor met alle benodigde afhankelijkheden.
-   *
-   * @param embeddingPoort port voor het genereren van embeddings
-   * @param clusteringPoort port voor HDBSCAN-clustering
-   * @param bezwaarRepository repository voor geextraheerde bezwaren
-   * @param passageRepository repository voor extractie-passages
-   * @param taakRepository repository voor extractie-taken
-   * @param antwoordRepository repository voor kernbezwaar-antwoorden
-   * @param kernbezwaarRepository repository voor kernbezwaren
-   * @param referentieRepository repository voor kernbezwaar-referenties
-   * @param clusteringTaakService service voor clustering-taak levenscyclus
-   * @param clusteringTaakRepository repository voor clustering-taken
-   * @param transactionManager transaction manager voor korte transactieblokken
-   * @param dimensieReductiePoort port voor optionele UMAP-dimensiereductie
-   * @param clusteringConfig configuratie voor clustering-parameters
-   * @param centroidMatchingService service voor centroid-matching van noise
    */
   public KernbezwaarService(EmbeddingPoort embeddingPoort,
       ClusteringPoort clusteringPoort,
@@ -82,7 +70,10 @@ public class KernbezwaarService {
       PlatformTransactionManager transactionManager,
       DimensieReductiePoort dimensieReductiePoort,
       ClusteringConfig clusteringConfig,
-      CentroidMatchingService centroidMatchingService) {
+      CentroidMatchingService centroidMatchingService,
+      PassageDeduplicatieService deduplicatieService,
+      PassageGroepRepository passageGroepRepository,
+      PassageGroepLidRepository passageGroepLidRepository) {
     this.embeddingPoort = embeddingPoort;
     this.clusteringPoort = clusteringPoort;
     this.bezwaarRepository = bezwaarRepository;
@@ -97,6 +88,9 @@ public class KernbezwaarService {
     this.dimensieReductiePoort = dimensieReductiePoort;
     this.clusteringConfig = clusteringConfig;
     this.centroidMatchingService = centroidMatchingService;
+    this.deduplicatieService = deduplicatieService;
+    this.passageGroepRepository = passageGroepRepository;
+    this.passageGroepLidRepository = passageGroepLidRepository;
   }
 
   /**
@@ -150,7 +144,158 @@ public class KernbezwaarService {
       throw new ClusteringGeannuleerdException();
     }
 
-    // HDBSCAN-clustering (buiten transactie)
+    // Bepaal deduplicatiemodus op basis van ClusteringTaak-instelling
+    boolean deduplicatieVoor = false;
+    if (taakId != null) {
+      deduplicatieVoor = clusteringTaakRepository.findById(taakId)
+          .map(ClusteringTaak::isDeduplicatieVoorClustering)
+          .orElse(false);
+    }
+
+    if (deduplicatieVoor) {
+      clusterMetDeduplicatieVooraf(projectNaam, taakId, bezwaren,
+          passageLookup, bestandsnaamLookup);
+    } else {
+      clusterMetDeduplicatieAchteraf(projectNaam, taakId, bezwaren,
+          passageLookup, bestandsnaamLookup);
+    }
+  }
+
+  /**
+   * Modus A: groepeer bezwaren op passage-gelijkenis VOOR HDBSCAN.
+   * Stuurt 1 representatief bezwaar per groep naar HDBSCAN.
+   */
+  private void clusterMetDeduplicatieVooraf(String projectNaam, Long taakId,
+      List<GeextraheerdBezwaarEntiteit> bezwaren,
+      Map<Long, Map<Integer, String>> passageLookup,
+      Map<Long, String> bestandsnaamLookup) {
+
+    // Groepeer bezwaren op passage-gelijkenis
+    var deduplicatieGroepen = deduplicatieService.groepeer(
+        bezwaren, passageLookup, bestandsnaamLookup);
+
+    // HDBSCAN ontvangt alleen de representatieve bezwaren (1 per groep)
+    var representatieven = deduplicatieGroepen.stream()
+        .map(DeduplicatieGroep::representatief)
+        .toList();
+
+    var origineleInvoer = representatieven.stream()
+        .map(b -> new ClusteringInvoer(b.getId(), geefEmbedding(b)))
+        .toList();
+
+    // Optionele UMAP-dimensiereductie
+    var clusterInvoer = origineleInvoer;
+    if (clusteringConfig.isUmapEnabled()
+        && origineleInvoer.size() >= clusteringConfig.getUmapNNeighbors() + 1) {
+      var vectoren = origineleInvoer.stream()
+          .map(ClusteringInvoer::embedding).toList();
+      var gereduceerd = dimensieReductiePoort.reduceer(vectoren);
+      clusterInvoer = IntStream.range(0, origineleInvoer.size())
+          .mapToObj(i -> new ClusteringInvoer(
+              origineleInvoer.get(i).bezwaarId(), gereduceerd.get(i)))
+          .toList();
+    }
+
+    var clusterResultaat = clusteringPoort.cluster(clusterInvoer);
+
+    // Centroid matching voor noise-representatieven
+    var clusterEmbeddingLookup = new HashMap<Long, float[]>();
+    for (var ci : clusterInvoer) {
+      clusterEmbeddingLookup.put(ci.bezwaarId(), ci.embedding());
+    }
+    var noiseEmbeddings = new HashMap<Long, float[]>();
+    for (var noiseId : clusterResultaat.noiseIds()) {
+      var embedding = clusterEmbeddingLookup.get(noiseId);
+      if (embedding != null) {
+        noiseEmbeddings.put(noiseId, embedding);
+      }
+    }
+    var centroidResultaat = centroidMatchingService.wijsNoiseToe(
+        clusterResultaat.clusters(), noiseEmbeddings,
+        clusteringConfig.getCentroidMatchingThreshold());
+
+    // Bouw lookup: representatief bezwaar-ID → deduplicatie-groep
+    var groepPerRepresentatief = new HashMap<Long, DeduplicatieGroep>();
+    for (var groep : deduplicatieGroepen) {
+      groepPerRepresentatief.put(groep.representatief().getId(), groep);
+    }
+
+    // Bouw lookup van bezwaar-ID naar entiteit
+    final var bezwaarById = bezwaren.stream()
+        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
+
+    // Sla passage-groepen en kernbezwaren op in een transactie
+    transactionTemplate.executeWithoutResult(status -> {
+      // Verwerk HDBSCAN-clusters
+      for (var cluster : clusterResultaat.clusters()) {
+        var clusterRepIds = new ArrayList<>(cluster.bezwaarIds());
+        var extraIds = centroidResultaat.toegewezenPerCluster()
+            .getOrDefault(cluster.label(), List.of());
+        clusterRepIds.addAll(extraIds);
+
+        // Verzamel alle bezwaren in dit cluster (via hun groepen)
+        var clusterBezwaren = new ArrayList<GeextraheerdBezwaarEntiteit>();
+        var clusterGroepen = new ArrayList<DeduplicatieGroep>();
+        for (var repId : clusterRepIds) {
+          var groep = groepPerRepresentatief.get(repId);
+          if (groep != null) {
+            clusterGroepen.add(groep);
+            clusterBezwaren.add(bezwaarById.get(repId));
+          }
+        }
+
+        // Bereken centroid in originele embedding-ruimte
+        var origineleCentroid = berekenCentroid(
+            clusterBezwaren.stream().map(this::geefEmbedding).toList());
+        var representatief = vindDichtstBijCentroid(clusterBezwaren, origineleCentroid);
+        var samenvatting = representatief.getSamenvatting();
+
+        // Bereken score per representatief bezwaar
+        var scores = new HashMap<Long, Double>();
+        for (var bezwaar : clusterBezwaren) {
+          scores.put(bezwaar.getId(),
+              cosinusGelijkenis(geefEmbedding(bezwaar), origineleCentroid));
+        }
+        for (var extraId : extraIds) {
+          var toewijzing = centroidResultaat.toewijzingen().get(extraId);
+          if (toewijzing != null) {
+            scores.put(extraId, toewijzing.score());
+          }
+        }
+
+        // Persisteer passage-groepen en maak kernbezwaar-referenties
+        var methoden = bepaalToewijzingsmethoden(centroidResultaat);
+        var passageGroepIds = persisteerPassageGroepen(
+            taakId, projectNaam, clusterGroepen, scores);
+        var groepIdMethoden = koppelMethodenAanGroepen(
+            clusterRepIds, passageGroepIds, groepPerRepresentatief, methoden);
+        slaKernbezwaarOp(projectNaam, samenvatting, passageGroepIds, groepIdMethoden);
+      }
+
+      // Verwerk resterende noise
+      if (!centroidResultaat.resterendeNoise().isEmpty()) {
+        var noiseGroepen = centroidResultaat.resterendeNoise().stream()
+            .map(groepPerRepresentatief::get)
+            .filter(g -> g != null)
+            .toList();
+        var passageGroepIds = persisteerPassageGroepen(
+            taakId, projectNaam, noiseGroepen, Map.of());
+        slaKernbezwaarOp(projectNaam, "Niet-geclusterde bezwaren",
+            passageGroepIds, Map.of());
+      }
+    });
+  }
+
+  /**
+   * Modus B: HDBSCAN clustert alle bezwaren individueel (bestaand gedrag).
+   * Daarna worden bezwaren per cluster gegroepeerd op passage-gelijkenis.
+   */
+  private void clusterMetDeduplicatieAchteraf(String projectNaam, Long taakId,
+      List<GeextraheerdBezwaarEntiteit> bezwaren,
+      Map<Long, Map<Integer, String>> passageLookup,
+      Map<Long, String> bestandsnaamLookup) {
+
+    // HDBSCAN-clustering op alle bezwaren (bestaand gedrag)
     var origineleInvoer = bezwaren.stream()
         .map(b -> new ClusteringInvoer(b.getId(), geefEmbedding(b)))
         .toList();
@@ -174,13 +319,10 @@ public class KernbezwaarService {
     var bezwaarById = bezwaren.stream()
         .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
 
-    // Gebruik embeddings uit clusterInvoer (UMAP-gereduceerd indien actief)
-    // zodat noise-embeddings dezelfde dimensie hebben als cluster-centroids
     var clusterEmbeddingLookup = new HashMap<Long, float[]>();
     for (var ci : clusterInvoer) {
       clusterEmbeddingLookup.put(ci.bezwaarId(), ci.embedding());
     }
-
     var noiseEmbeddings = new HashMap<Long, float[]>();
     for (var noiseId : clusterResultaat.noiseIds()) {
       var embedding = clusterEmbeddingLookup.get(noiseId);
@@ -188,19 +330,13 @@ public class KernbezwaarService {
         noiseEmbeddings.put(noiseId, embedding);
       }
     }
-
     var centroidResultaat = centroidMatchingService.wijsNoiseToe(
         clusterResultaat.clusters(), noiseEmbeddings,
         clusteringConfig.getCentroidMatchingThreshold());
 
-    // Sla kernbezwaren + referenties op in een transactie
+    // Sla kernbezwaren + passage-groepen op in een transactie
     transactionTemplate.executeWithoutResult(status -> {
-      // Bereken toewijzingsmethoden: HDBSCAN voor cluster-leden,
-      // CENTROID_FALLBACK voor centroid-matched noise
-      var methoden = new HashMap<Long, ToewijzingsMethode>();
-      for (var toewijzing : centroidResultaat.toewijzingen().entrySet()) {
-        methoden.put(toewijzing.getKey(), toewijzing.getValue().methode());
-      }
+      var methoden = bepaalToewijzingsmethoden(centroidResultaat);
 
       // Verwerk HDBSCAN-clusters
       for (var cluster : clusterResultaat.clusters()) {
@@ -227,8 +363,6 @@ public class KernbezwaarService {
           scores.put(bezwaar.getId(),
               cosinusGelijkenis(geefEmbedding(bezwaar), origineleCentroid));
         }
-
-        // Voeg centroid-matching scores toe
         for (var extraId : extraIds) {
           var toewijzing = centroidResultaat.toewijzingen().get(extraId);
           if (toewijzing != null) {
@@ -236,9 +370,17 @@ public class KernbezwaarService {
           }
         }
 
-        var referenties = bouwReferenties(
-            clusterBezwaren, passageLookup, bestandsnaamLookup, scores, methoden);
-        slaKernbezwaarOp(projectNaam, samenvatting, referenties);
+        // Groepeer bezwaren in dit cluster op passage-gelijkenis
+        var deduplicatieGroepen = deduplicatieService.groepeer(
+            clusterBezwaren, passageLookup, bestandsnaamLookup);
+
+        var alleBezwaarIds = clusterBezwaren.stream()
+            .map(GeextraheerdBezwaarEntiteit::getId).toList();
+        var passageGroepIds = persisteerPassageGroepen(
+            taakId, projectNaam, deduplicatieGroepen, scores);
+        var groepIdMethoden = koppelMethodenAanGroepenModus(
+            alleBezwaarIds, passageGroepIds, deduplicatieGroepen, methoden);
+        slaKernbezwaarOp(projectNaam, samenvatting, passageGroepIds, groepIdMethoden);
       }
 
       // Verwerk resterende noise: niet-geclusterde bezwaren
@@ -246,9 +388,12 @@ public class KernbezwaarService {
         var noiseBezwaren = centroidResultaat.resterendeNoise().stream()
             .map(bezwaarById::get)
             .toList();
-        var referenties = bouwReferenties(
-            noiseBezwaren, passageLookup, bestandsnaamLookup, Map.of(), Map.of());
-        slaKernbezwaarOp(projectNaam, "Niet-geclusterde bezwaren", referenties);
+        var deduplicatieGroepen = deduplicatieService.groepeer(
+            noiseBezwaren, passageLookup, bestandsnaamLookup);
+        var passageGroepIds = persisteerPassageGroepen(
+            taakId, projectNaam, deduplicatieGroepen, Map.of());
+        slaKernbezwaarOp(projectNaam, "Niet-geclusterde bezwaren",
+            passageGroepIds, Map.of());
       }
     });
   }
@@ -474,46 +619,105 @@ public class KernbezwaarService {
         : bezwaar.getEmbeddingSamenvatting();
   }
 
-  private Kernbezwaar slaKernbezwaarOp(String projectNaam, String samenvatting,
-      List<IndividueelBezwaarReferentie> referenties) {
+  private void slaKernbezwaarOp(String projectNaam, String samenvatting,
+      List<Long> passageGroepIds, Map<Long, ToewijzingsMethode> groepIdMethoden) {
     var kernEntiteit = new KernbezwaarEntiteit();
     kernEntiteit.setProjectNaam(projectNaam);
     kernEntiteit.setSamenvatting(samenvatting);
     kernEntiteit = kernbezwaarRepository.save(kernEntiteit);
 
-    var opgeslagenReferenties = new ArrayList<IndividueelBezwaarReferentie>();
-    for (var ref : referenties) {
+    for (var groepId : passageGroepIds) {
       var refEntiteit = new KernbezwaarReferentieEntiteit();
       refEntiteit.setKernbezwaarId(kernEntiteit.getId());
-      // TODO: task 6/7 - koppel via passageGroepId i.p.v. directe velden
-      refEntiteit.setPassageGroepId(0L); // placeholder
-      refEntiteit.setToewijzingsmethode(ref.toewijzingsmethode());
+      refEntiteit.setPassageGroepId(groepId);
+      refEntiteit.setToewijzingsmethode(
+          groepIdMethoden.getOrDefault(groepId, ToewijzingsMethode.HDBSCAN));
       referentieRepository.save(refEntiteit);
-      opgeslagenReferenties.add(ref);
     }
-
-    return new Kernbezwaar(kernEntiteit.getId(), samenvatting,
-        opgeslagenReferenties, null);
   }
 
-  private List<IndividueelBezwaarReferentie> bouwReferenties(
-      List<GeextraheerdBezwaarEntiteit> bezwaren,
-      Map<Long, Map<Integer, String>> passageLookup,
-      Map<Long, String> bestandsnaamLookup,
-      Map<Long, Double> scores,
+  /**
+   * Persisteert passage-groepen en hun leden naar de database.
+   * Retourneert de lijst van aangemaakte groep-IDs in dezelfde volgorde.
+   */
+  private List<Long> persisteerPassageGroepen(Long taakId, String categorie,
+      List<DeduplicatieGroep> groepen, Map<Long, Double> scores) {
+    var groepIds = new ArrayList<Long>();
+    for (var groep : groepen) {
+      var entiteit = new PassageGroepEntiteit();
+      entiteit.setClusteringTaakId(taakId != null ? taakId : 0L);
+      entiteit.setPassage(groep.passage());
+      entiteit.setSamenvatting(groep.samenvatting());
+      entiteit.setCategorie(categorie);
+
+      // Score voor het representatief bezwaar
+      var score = scores.get(groep.representatief().getId());
+      entiteit.setScorePercentage(
+          score != null ? (int) Math.round(score * 100) : null);
+
+      entiteit = passageGroepRepository.save(entiteit);
+
+      for (var lid : groep.leden()) {
+        var lidEntiteit = new PassageGroepLidEntiteit();
+        lidEntiteit.setPassageGroepId(entiteit.getId());
+        lidEntiteit.setBezwaarId(lid.bezwaarId());
+        lidEntiteit.setBestandsnaam(lid.bestandsnaam());
+        passageGroepLidRepository.save(lidEntiteit);
+      }
+      groepIds.add(entiteit.getId());
+    }
+    return groepIds;
+  }
+
+  /**
+   * Bepaalt toewijzingsmethoden uit centroid-matching resultaat.
+   */
+  private Map<Long, ToewijzingsMethode> bepaalToewijzingsmethoden(
+      CentroidMatchingService.CentroidMatchingResultaat centroidResultaat) {
+    var methoden = new HashMap<Long, ToewijzingsMethode>();
+    for (var entry : centroidResultaat.toewijzingen().entrySet()) {
+      methoden.put(entry.getKey(), entry.getValue().methode());
+    }
+    return methoden;
+  }
+
+  /**
+   * Koppelt toewijzingsmethoden aan passage-groep IDs voor modus A.
+   * De methode van een groep is de methode van het representatief bezwaar.
+   */
+  private Map<Long, ToewijzingsMethode> koppelMethodenAanGroepen(
+      List<Long> repIds, List<Long> passageGroepIds,
+      Map<Long, DeduplicatieGroep> groepPerRepresentatief,
       Map<Long, ToewijzingsMethode> methoden) {
-    return bezwaren.stream()
-        .map(b -> {
-          Double score = scores.get(b.getId());
-          Integer scorePercentage = score != null ? (int) Math.round(score * 100) : null;
-          return new IndividueelBezwaarReferentie(
-              null, b.getId(),
-              bestandsnaamLookup.getOrDefault(b.getTaakId(), "onbekend"),
-              geefPassageTekst(b, passageLookup),
-              scorePercentage,
-              methoden.getOrDefault(b.getId(), ToewijzingsMethode.HDBSCAN));
-        })
-        .toList();
+    var resultaat = new HashMap<Long, ToewijzingsMethode>();
+    for (int i = 0; i < repIds.size(); i++) {
+      var repId = repIds.get(i);
+      if (i < passageGroepIds.size() && methoden.containsKey(repId)) {
+        resultaat.put(passageGroepIds.get(i), methoden.get(repId));
+      }
+    }
+    return resultaat;
+  }
+
+  /**
+   * Koppelt toewijzingsmethoden aan passage-groep IDs voor modus B.
+   * Zoekt per groep de meest restrictieve methode van de leden.
+   */
+  private Map<Long, ToewijzingsMethode> koppelMethodenAanGroepenModus(
+      List<Long> bezwaarIds, List<Long> passageGroepIds,
+      List<DeduplicatieGroep> groepen, Map<Long, ToewijzingsMethode> methoden) {
+    var resultaat = new HashMap<Long, ToewijzingsMethode>();
+    for (int i = 0; i < groepen.size() && i < passageGroepIds.size(); i++) {
+      var groep = groepen.get(i);
+      // Als een lid centroid-fallback is, markeer de hele groep zo
+      var heeftCentroid = groep.leden().stream()
+          .anyMatch(lid -> methoden.getOrDefault(lid.bezwaarId(),
+              ToewijzingsMethode.HDBSCAN) == ToewijzingsMethode.CENTROID_FALLBACK);
+      if (heeftCentroid) {
+        resultaat.put(passageGroepIds.get(i), ToewijzingsMethode.CENTROID_FALLBACK);
+      }
+    }
+    return resultaat;
   }
 
   private String geefPassageTekst(GeextraheerdBezwaarEntiteit bezwaar,
