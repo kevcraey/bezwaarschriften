@@ -7,9 +7,8 @@ import java.time.Instant;
  *
  * @param id unieke identifier van de taak
  * @param projectNaam naam van het project
- * @param categorie naam van de categorie die geclusterd wordt
  * @param status huidige status (lowercase)
- * @param aantalBezwaren aantal individuele bezwaren in deze categorie
+ * @param aantalBezwaren aantal individuele bezwaren in het project
  * @param aantalKernbezwaren aantal gevonden kernbezwaren, kan null zijn als clustering nog niet klaar is
  * @param aangemaaktOp tijdstip van aanmaak
  * @param verwerkingGestartOp tijdstip waarop verwerking gestart is, kan null zijn
@@ -19,7 +18,6 @@ import java.time.Instant;
 public record ClusteringTaakDto(
     Long id,
     String projectNaam,
-    String categorie,
     String status,
     int aantalBezwaren,
     Integer aantalKernbezwaren,
@@ -33,7 +31,7 @@ public record ClusteringTaakDto(
    * Converteert een {@link ClusteringTaak} entiteit naar een DTO.
    *
    * @param taak de bron-entiteit
-   * @param aantalBezwaren het aantal bezwaren in deze categorie
+   * @param aantalBezwaren het aantal bezwaren in het project
    * @param aantalKernbezwaren het aantal kernbezwaren, of null als nog niet geclusterd
    * @return het bijbehorende DTO
    */
@@ -42,7 +40,6 @@ public record ClusteringTaakDto(
     return new ClusteringTaakDto(
         taak.getId(),
         taak.getProjectNaam(),
-        taak.getCategorie(),
         taak.getStatus().name().toLowerCase(),
         aantalBezwaren,
         aantalKernbezwaren,

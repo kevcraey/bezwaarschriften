@@ -2,6 +2,8 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -29,6 +31,10 @@ public class KernbezwaarReferentieEntiteit {
 
   @Column(name = "score")
   private Double score;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "toewijzingsmethode", nullable = false, length = 20)
+  private ToewijzingsMethode toewijzingsmethode = ToewijzingsMethode.HDBSCAN;
 
   public Long getId() {
     return id;
@@ -76,5 +82,13 @@ public class KernbezwaarReferentieEntiteit {
 
   public void setScore(Double score) {
     this.score = score;
+  }
+
+  public ToewijzingsMethode getToewijzingsmethode() {
+    return toewijzingsmethode;
+  }
+
+  public void setToewijzingsmethode(ToewijzingsMethode toewijzingsmethode) {
+    this.toewijzingsmethode = toewijzingsmethode;
   }
 }

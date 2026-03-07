@@ -177,7 +177,6 @@ class PassageValidatorTest {
     var bezwaar = new GeextraheerdBezwaarEntiteit();
     bezwaar.setPassageNr(passageNr);
     bezwaar.setSamenvatting("Samenvatting " + passageNr);
-    bezwaar.setCategorie("milieu");
     return bezwaar;
   }
 }

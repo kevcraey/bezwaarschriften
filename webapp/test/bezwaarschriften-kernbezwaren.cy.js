@@ -1,469 +1,328 @@
 import {html} from 'lit';
 import '../src/js/bezwaarschriften-kernbezwaren';
 
-const MOCK_CLUSTERING_TAKEN = {
-  categorieen: [
-    {
-      categorie: 'Mobiliteit', status: 'klaar', taakId: 1, aantalBezwaren: 42,
-      aantalKernbezwaren: 3, foutmelding: null,
-      aangemaaktOp: '2026-03-03T10:00:00Z',
-      verwerkingGestartOp: '2026-03-03T10:00:01Z',
-      verwerkingVoltooidOp: '2026-03-03T10:00:15Z',
-    },
-    {
-      categorie: 'Milieu', status: 'todo', taakId: null, aantalBezwaren: 18,
-      aantalKernbezwaren: null, foutmelding: null,
-    },
-    {
-      categorie: 'Geluid', status: 'bezig', taakId: 3, aantalBezwaren: 25,
-      aantalKernbezwaren: null, foutmelding: null,
-      aangemaaktOp: '2026-03-03T10:01:00Z',
-      verwerkingGestartOp: '2026-03-03T10:01:02Z',
-    },
-    {
-      categorie: 'Natuur', status: 'fout', taakId: 4, aantalBezwaren: 6,
-      aantalKernbezwaren: null, foutmelding: 'Timeout bij clustering',
-      aangemaaktOp: '2026-03-03T10:00:00Z',
-      verwerkingGestartOp: '2026-03-03T10:00:01Z',
-      verwerkingVoltooidOp: '2026-03-03T10:00:03Z',
-    },
-  ],
+// --- Mock data ---
+
+const MOCK_CLUSTERING_WACHTEND = {
+  id: 1,
+  projectNaam: 'testproject',
+  status: 'wachtend',
+  aantalBezwaren: 42,
+  aangemaaktOp: '2026-03-03T10:00:00Z',
 };
 
-// Mock zonder actieve taken: knop "Alles verwijderen" is zichtbaar
+const MOCK_CLUSTERING_BEZIG = {
+  id: 2,
+  projectNaam: 'testproject',
+  status: 'bezig',
+  aantalBezwaren: 42,
+  aangemaaktOp: '2026-03-03T10:00:00Z',
+  verwerkingGestartOp: '2026-03-03T10:00:05Z',
+};
+
 const MOCK_CLUSTERING_KLAAR = {
-  categorieen: [
+  id: 3,
+  projectNaam: 'testproject',
+  status: 'klaar',
+  aantalBezwaren: 42,
+  aantalKernbezwaren: 3,
+  aangemaaktOp: '2026-03-03T10:00:00Z',
+  verwerkingGestartOp: '2026-03-03T10:00:01Z',
+  verwerkingVoltooidOp: '2026-03-03T10:00:15Z',
+};
+
+const MOCK_CLUSTERING_FOUT = {
+  id: 4,
+  projectNaam: 'testproject',
+  status: 'fout',
+  aantalBezwaren: 42,
+  foutmelding: 'Timeout bij clustering',
+  aangemaaktOp: '2026-03-03T10:00:00Z',
+  verwerkingGestartOp: '2026-03-03T10:00:01Z',
+};
+
+const MOCK_KERNBEZWAREN = {
+  kernbezwaren: [
     {
-      categorie: 'Mobiliteit', status: 'klaar', taakId: 1, aantalBezwaren: 42,
-      aantalKernbezwaren: 3, foutmelding: null,
-      aangemaaktOp: '2026-03-03T10:00:00Z',
-      verwerkingGestartOp: '2026-03-03T10:00:01Z',
-      verwerkingVoltooidOp: '2026-03-03T10:00:15Z',
+      id: 1, samenvatting: 'Te veel geluidshinder',
+      individueleBezwaren: [
+        {referentieId: 10, bezwaarId: 100, bestandsnaam: '001.txt', passage: 'Te veel geluid',
+          scorePercentage: 95, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 11, bezwaarId: 101, bestandsnaam: '002.txt', passage: 'Te veel geluid',
+          scorePercentage: 90, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 12, bezwaarId: 102, bestandsnaam: '003.txt', passage: 'Geluidsoverlast door verkeer',
+          scorePercentage: 88, toewijzingsmethode: 'CENTROID_FALLBACK'},
+      ],
+      antwoord: null,
     },
     {
-      categorie: 'Natuur', status: 'klaar', taakId: 2, aantalBezwaren: 6,
-      aantalKernbezwaren: 2, foutmelding: null,
-      aangemaaktOp: '2026-03-03T10:00:00Z',
-      verwerkingGestartOp: '2026-03-03T10:00:01Z',
-      verwerkingVoltooidOp: '2026-03-03T10:00:05Z',
+      id: 2, samenvatting: 'Gevaarlijk verkeer',
+      individueleBezwaren: [
+        {referentieId: 20, bezwaarId: 200, bestandsnaam: '004.txt', passage: 'Verkeer is gevaarlijk',
+          scorePercentage: 92, toewijzingsmethode: 'HDBSCAN'},
+      ],
+      antwoord: 'Bestaand antwoord',
+    },
+    {
+      id: 99, samenvatting: 'Niet-geclusterde bezwaren',
+      individueleBezwaren: [
+        {referentieId: 30, bezwaarId: 300, bestandsnaam: '005.txt', passage: 'Ongerelateeerd punt',
+          scorePercentage: null, toewijzingsmethode: null},
+      ],
+      antwoord: null,
     },
   ],
 };
 
-describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
-  beforeEach(() => {
+const MOCK_CONFIG = {
+  minClusterSize: 5,
+  minSamples: 3,
+  clusterSelectionEpsilon: 0.2,
+  umapEnabled: true,
+  umapNComponents: 5,
+  umapNNeighbors: 15,
+  umapMinDist: 0.1,
+  clusterOpPassages: true,
+};
+
+// --- Helper ---
+
+function mountEnLaad(clusteringTaakBody, kernbezwarenBody) {
+  cy.intercept('GET', '/api/v1/clustering-config', {
+    statusCode: 200, body: MOCK_CONFIG,
+  }).as('getConfig');
+
+  if (clusteringTaakBody) {
+    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
+      statusCode: 200, body: clusteringTaakBody,
+    }).as('clusteringTaken');
+  } else {
+    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
+      statusCode: 204,
+    }).as('clusteringTaken');
+  }
+
+  if (kernbezwarenBody) {
+    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
+      statusCode: 200, body: kernbezwarenBody,
+    }).as('kernbezwaren');
+  } else {
     cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
       statusCode: 404,
     }).as('kernbezwaren');
+  }
 
-    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
-      statusCode: 200,
-      body: MOCK_CLUSTERING_TAKEN,
-    }).as('clusteringTaken');
+  cy.mount(html`<bezwaarschriften-kernbezwaren></bezwaarschriften-kernbezwaren>`);
 
-    cy.mount(html`<bezwaarschriften-kernbezwaren></bezwaarschriften-kernbezwaren>`);
+  cy.get('bezwaarschriften-kernbezwaren').then(($el) => {
+    $el[0].laadClusteringTaken('testproject');
+    if (kernbezwarenBody) $el[0].laadKernbezwaren('testproject');
   });
 
-  it('toont bezwaren-tekst in pill voor klare clustering', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+  cy.wait('@clusteringTaken');
+}
 
-    cy.wait('@clusteringTaken');
+// === Clustering status ===
+
+describe('clustering status weergave', () => {
+  it('toont wachtend-status met loading knop en annuleer-link', () => {
+    mountEnLaad(MOCK_CLUSTERING_WACHTEND);
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] vl-pill[slot="menu"]')
-        .should('have.attr', 'type', 'success')
-        .and('contain.text', '42');
+        .find('vl-button[loading][disabled]')
+        .should('exist')
+        .and('contain.text', 'Wachtend');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-link[button-as-link]')
+        .should('contain.text', 'Annuleer');
   });
 
-  it('toont bezwaren-aantal in pill voor todo categorie', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
+  it('toont bezig-status met loading knop', () => {
+    mountEnLaad(MOCK_CLUSTERING_BEZIG);
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-pill')
-        .should('contain.text', '18');
-
-    // Todo-pill heeft geen type="success", "error" of "warning"
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-pill')
-        .should('not.have.attr', 'type', 'success')
-        .and('not.have.attr', 'type', 'error')
-        .and('not.have.attr', 'type', 'warning');
-  });
-
-  it('toont warning-pill voor bezig categorie', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Geluid"] vl-pill')
-        .should('have.attr', 'type', 'warning')
+        .find('vl-button[loading][disabled]')
+        .should('exist')
         .and('contain.text', 'Bezig');
   });
 
-  it('toont error-pill voor fout categorie', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
+  it('toont fout-status met foutmelding en opnieuw-knop', () => {
+    mountEnLaad(MOCK_CLUSTERING_FOUT);
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Natuur"] vl-pill')
-        .should('have.attr', 'type', 'error')
-        .and('contain.text', 'Fout');
+        .find('vl-alert[type="error"]')
+        .should('exist')
+        .and('have.attr', 'message')
+        .and('contain', 'Timeout bij clustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-button')
+        .should('contain.text', 'Opnieuw clusteren');
   });
 
-  it('start clustering bij klik op play-knop', () => {
-    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken/Milieu', {
+  it('update status via werkBijMetClusteringUpdate', () => {
+    mountEnLaad(MOCK_CLUSTERING_WACHTEND);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-button[loading]')
+        .should('contain.text', 'Wachtend');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => $el[0].werkBijMetClusteringUpdate({
+          ...MOCK_CLUSTERING_BEZIG,
+        }));
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-button[loading]')
+        .should('contain.text', 'Bezig');
+  });
+});
+
+// === Clustering acties ===
+
+describe('clustering acties', () => {
+  it('toont cluster-knop als extractie klaar en geen clustering', () => {
+    mountEnLaad(null);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => {
+          $el[0].setExtractieKlaar(true);
+          $el[0].setAantalBezwaren(42);
+        });
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#groepeer-knop')
+        .should('contain.text', 'Cluster bezwaren');
+  });
+
+  it('start clustering bij klik op cluster-knop', () => {
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken', {
       statusCode: 202,
-      body: {
-        id: 5, projectNaam: 'testproject', categorie: 'Milieu',
-        status: 'wachtend', aantalBezwaren: 18,
-        aangemaaktOp: '2026-03-03T10:05:00Z',
-      },
+      body: MOCK_CLUSTERING_WACHTEND,
     }).as('startClustering');
 
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+    mountEnLaad(null);
 
-    cy.wait('@clusteringTaken');
-
-    // Zoek de play-knop bij Milieu (todo categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-pill button[title="Clustering starten"]')
+        .then(($el) => {
+          $el[0].setExtractieKlaar(true);
+          $el[0].setAantalBezwaren(42);
+        });
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#groepeer-knop')
         .click();
 
     cy.wait('@startClustering');
   });
 
-  it('cluster alle knop start alle categorieen', () => {
-    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken', {
-      statusCode: 202,
-      body: [
-        {
-          id: 5, projectNaam: 'testproject', categorie: 'Milieu',
-          status: 'wachtend', aantalBezwaren: 18,
-          aangemaaktOp: '2026-03-03T10:05:00Z',
-        },
-        {
-          id: 6, projectNaam: 'testproject', categorie: 'Natuur',
-          status: 'wachtend', aantalBezwaren: 6,
-          aangemaaktOp: '2026-03-03T10:05:00Z',
-        },
-      ],
-    }).as('clusterAlles');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('#cluster-alles-knop')
-        .click();
-
-    cy.wait('@clusterAlles');
-  });
-
-  it('annuleert clustering bij klik op annuleer-knop', () => {
-    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Geluid', {
+  it('annuleert clustering bij klik op annuleer-link', () => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
       statusCode: 200,
-      body: {},
     }).as('annuleerClustering');
 
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+    mountEnLaad(MOCK_CLUSTERING_BEZIG);
 
-    cy.wait('@clusteringTaken');
-
-    // Klik op de annuleer-knop bij Geluid (bezig categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Geluid"] vl-pill button[title="Annuleer clustering"]')
+        .find('vl-link[button-as-link]')
+        .contains('Annuleer')
         .click();
 
     cy.wait('@annuleerClustering');
   });
 
-  it('toont verwijder-bevestiging modal bij klare categorie met antwoorden', () => {
-    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
+  it('verwijdert clustering zonder antwoorden', () => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
+      statusCode: 200,
+    }).as('verwijderClustering');
+
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_KERNBEZWAREN);
+    cy.wait('@kernbezwaren');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-button[error]')
+        .contains('Clustering verwijderen')
+        .click();
+
+    cy.wait('@verwijderClustering');
+  });
+
+  it('toont bevestigingsmodal bij verwijderen als er antwoorden zijn', () => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
       statusCode: 409,
       body: {aantalAntwoorden: 3},
     }).as('verwijderClustering');
 
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_KERNBEZWAREN);
+    cy.wait('@kernbezwaren');
 
-    cy.wait('@clusteringTaken');
-
-    // Klik op de verwijder-knop bij Mobiliteit (klaar categorie)
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] button[title="Verwijder clustering"]')
+        .find('vl-button[error]')
+        .contains('Clustering verwijderen')
         .click();
 
     cy.wait('@verwijderClustering');
 
-    // Controleer dat de modal zichtbaar is met de waarschuwingstekst
     cy.get('bezwaarschriften-kernbezwaren')
         .find('#verwijder-bevestiging-inhoud')
         .should('contain.text', '3 antwoord(en)')
         .and('contain.text', 'verloren gaan');
   });
 
-  it('toont herstart-knop bij fout categorie', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    // Controleer dat de retry-knop bestaat bij Natuur (fout categorie)
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Natuur"] vl-pill button[title="Opnieuw clusteren"]')
-        .should('exist');
-  });
-
-  it('update pill status via werkBijMetClusteringUpdate', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    // Controleer initieel: Milieu is 'todo' — toont bezwaren-aantal
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-pill')
-        .should('contain.text', '18');
-
-    // Update Milieu naar 'wachtend'
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].werkBijMetClusteringUpdate({
-          categorie: 'Milieu',
-          id: 5,
-          status: 'wachtend',
-          aantalBezwaren: 18,
-          aantalKernbezwaren: null,
-          aangemaaktOp: '2026-03-03T10:05:00Z',
-        }));
-
-    // Controleer dat de pill nu warning-type is met 'Wachtend'
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-pill')
-        .should('have.attr', 'type', 'warning')
-        .and('contain.text', 'Wachtend');
-  });
-
-  it('verbergt alles-verwijderen knop als er actieve taken zijn naast klare', () => {
-    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
-      statusCode: 200,
-      body: {
-        categorieen: [
-          {
-            categorie: 'Mobiliteit', status: 'klaar', taakId: 1, aantalBezwaren: 42,
-            aantalKernbezwaren: 3,
-          },
-          {
-            categorie: 'Geluid', status: 'bezig', taakId: 2, aantalBezwaren: 25,
-            aantalKernbezwaren: null,
-          },
-        ],
-      },
-    }).as('metActieveTaak');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@metActieveTaak');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('#verwijder-alles-knop')
-        .should('not.exist');
-  });
-
-  it('toont alles-verwijderen knop naast cluster-alles knop als er klare categorien zijn', () => {
-    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
-      statusCode: 200,
-      body: MOCK_CLUSTERING_KLAAR,
-    }).as('alleenKlaar');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@alleenKlaar');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('#verwijder-alles-knop')
-        .should('exist')
-        .and('have.attr', 'error', '');
-  });
-
-  it('verwijdert alles zonder antwoorden na klik op alles-verwijderen', () => {
-    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
-      statusCode: 200,
-      body: MOCK_CLUSTERING_KLAAR,
-    }).as('alleenKlaar');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@alleenKlaar');
-
+  it('retry clustering verwijdert en herstart', () => {
     cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
-      statusCode: 200,
-      body: {},
-    }).as('verwijderAlles');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('#verwijder-alles-knop')
-        .click();
-
-    cy.wait('@verwijderAlles').its('request.url')
-        .should('include', '/clustering-taken');
-  });
-
-  it('toont bevestigingsmodal bij alles verwijderen als er antwoorden zijn', () => {
-    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
-      statusCode: 200,
-      body: MOCK_CLUSTERING_KLAAR,
-    }).as('alleenKlaar');
-
-    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken', {
-      statusCode: 409,
-      body: {aantalAntwoorden: 5},
-    }).as('verwijderAlles');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@alleenKlaar');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('#verwijder-alles-knop')
-        .click();
-
-    cy.wait('@verwijderAlles');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('#verwijder-bevestiging-inhoud')
-        .should('contain.text', '5 antwoord(en)')
-        .and('contain.text', 'verloren gaan');
-  });
-
-  it('toont globale knop bovenaan rechts', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('.clustering-header')
-        .should('exist');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('.clustering-header #cluster-alles-knop')
-        .should('exist')
-        .and('contain.text', 'Cluster alle');
-  });
-
-  it('toont verwijder en retry knop in menu-slot bij klare categorie', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] button[title="Verwijder clustering"]')
-        .should('exist');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] button[title="Opnieuw clusteren"]')
-        .should('exist');
-  });
-
-  it('retry bij klaar verwijdert en herstart clustering', () => {
-    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
       statusCode: 200,
     }).as('verwijderClustering');
 
-    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken', {
       statusCode: 202,
-      body: {
-        id: 10, projectNaam: 'testproject', categorie: 'Mobiliteit',
-        status: 'wachtend', aantalBezwaren: 42,
-        aangemaaktOp: '2026-03-04T10:00:00Z',
-      },
+      body: MOCK_CLUSTERING_WACHTEND,
     }).as('startClustering');
 
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_KERNBEZWAREN);
+    cy.wait('@kernbezwaren');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] button[title="Opnieuw clusteren"]')
+        .find('vl-button')
+        .contains('Opnieuw clusteren')
         .click();
 
     cy.wait('@verwijderClustering');
     cy.wait('@startClustering');
   });
 
-  it('retry bij klaar toont modal als er antwoorden zijn', () => {
-    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
-      statusCode: 409,
-      body: {aantalAntwoorden: 3},
-    }).as('verwijderClustering');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] button[title="Opnieuw clusteren"]')
-        .click();
-
-    cy.wait('@verwijderClustering');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('#verwijder-bevestiging-inhoud')
-        .should('contain.text', '3 antwoord(en)');
-  });
-
-  it('retry bij klaar met bevestiging verwijdert en herstart clustering', () => {
+  it('retry met antwoorden toont bevestigingsmodal en herstart na bevestiging', () => {
     let deleteCount = 0;
-    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken/Mobiliteit*', (req) => {
+    cy.intercept('DELETE', '/api/v1/projects/testproject/clustering-taken*', (req) => {
       deleteCount++;
       if (!req.url.includes('bevestigd=true')) {
-        req.reply({statusCode: 409, body: {aantalAntwoorden: 3}});
+        req.reply({statusCode: 409, body: {aantalAntwoorden: 2}});
       } else {
         req.reply({statusCode: 200});
       }
     }).as('verwijderClustering');
 
-    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken/Mobiliteit', {
+    cy.intercept('POST', '/api/v1/projects/testproject/clustering-taken', {
       statusCode: 202,
-      body: {
-        id: 10, projectNaam: 'testproject', categorie: 'Mobiliteit',
-        status: 'wachtend', aantalBezwaren: 42,
-        aangemaaktOp: '2026-03-04T10:00:00Z',
-      },
+      body: MOCK_CLUSTERING_WACHTEND,
     }).as('startClustering');
 
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_KERNBEZWAREN);
+    cy.wait('@kernbezwaren');
 
-    cy.wait('@clusteringTaken');
-
-    // Klik retry
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] [slot="menu"] button[title="Opnieuw clusteren"]')
+        .find('vl-button')
+        .contains('Opnieuw clusteren')
         .click();
 
     cy.wait('@verwijderClustering');
 
-    // Modal verschijnt, klik bevestig
+    // Modal verschijnt
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#verwijder-bevestiging-inhoud')
+        .should('contain.text', '2 antwoord(en)');
+
     cy.get('bezwaarschriften-kernbezwaren')
         .find('#verwijder-bevestiging-bevestig')
         .click();
@@ -471,188 +330,296 @@ describe('bezwaarschriften-kernbezwaren clustering per categorie', () => {
     cy.wait('@verwijderClustering');
     cy.wait('@startClustering');
   });
+});
 
-  it('toont subtitle met aantal bezwaren voor todo categorie', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+// === Kernbezwaren flat list ===
 
-    cy.wait('@clusteringTaken');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-pill[slot="menu"]')
-        .should('contain.text', '18');
+describe('kernbezwaren flat list', () => {
+  beforeEach(() => {
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_KERNBEZWAREN);
+    cy.wait('@kernbezwaren');
   });
 
-  it('toont subtitle met bezwaren en kernbezwaren voor klare categorie', () => {
-    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
-      statusCode: 200,
-      body: {
-        themas: [{
-          naam: 'Mobiliteit',
-          kernbezwaren: [
-            {id: 1, samenvatting: 'Kern 1', individueleBezwaren: [], antwoord: null},
-            {id: 2, samenvatting: 'Kern 2', individueleBezwaren: [], antwoord: null},
-            {id: 3, samenvatting: 'Kern 3', individueleBezwaren: [], antwoord: null},
-          ],
-        }],
-      },
-    }).as('kernbezwarenKlaar');
-
+  it('toont kernbezwaren als flat lijst zonder categorieen', () => {
     cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => {
-          $el[0].laadClusteringTaken('testproject');
-          $el[0].laadKernbezwaren('testproject');
-        });
+        .find('.kernbezwaar-item')
+        .should('have.length', 3);
 
-    cy.wait('@clusteringTaken');
-    cy.wait('@kernbezwarenKlaar');
-
+    // Geen accordions met data-categorie
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] vl-pill[slot="menu"]')
-        .should('contain.text', '42')
-        .and('contain.text', '3');
-  });
-
-  it('toont pill in menu-slot voor alle categorieen', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Milieu"] vl-pill[slot="menu"]')
-        .should('exist');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"] vl-pill[slot="menu"]')
-        .should('exist')
-        .and('have.attr', 'type', 'success');
-  });
-
-  it('alle accordions zijn standaard dichtgeklapt', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
-
-    cy.wait('@clusteringTaken');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[default-open]')
+        .find('vl-accordion[data-categorie]')
         .should('not.exist');
   });
 
-  it('toont teller in (totaal|groepen) formaat op search-knop', () => {
-    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
-      statusCode: 200,
-      body: {
-        themas: [{
-          naam: 'Mobiliteit',
-          kernbezwaren: [{
-            id: 1,
-            samenvatting: 'Geluidshinder',
-            antwoord: null,
-            individueleBezwaren: [
-              {bestandsnaam: '001.txt', passage: 'Te veel geluid'},
-              {bestandsnaam: '002.txt', passage: 'Te veel geluid'},
-              {bestandsnaam: '003.txt', passage: 'Te veel geluid'},
-              {bestandsnaam: '004.txt', passage: 'Verkeer is gevaarlijk'},
-              {bestandsnaam: '005.txt', passage: 'Fietspaden ontbreken'},
-            ],
-          }],
-        }],
-      },
-    }).as('kernbezwaren');
-
+  it('toont samenvatting met vinkje voor kernbezwaar met antwoord', () => {
     cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => {
-          $el[0].laadClusteringTaken('testproject');
-          $el[0].laadKernbezwaren('testproject');
-        });
-
-    cy.wait('@clusteringTaken');
-    cy.wait('@kernbezwaren');
-
-    // Search-knop toont (5|3): 5 individuele bezwaren, 3 unieke groepen
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('.kernbezwaar-actie vl-button[icon="search"]')
-        .should('contain.text', '(5|3)');
+        .find('.kernbezwaar-samenvatting')
+        .contains('\u2714 Gevaarlijk verkeer')
+        .should('exist');
   });
 
-  it('toont categorienaam als toggle-text zonder aantal', () => {
+  it('toont search-knop met (totaal) formaat', () => {
+    // Te veel geluidshinder: 3 bezwaren
     cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .first()
+        .should('contain.text', '(3)');
+  });
 
-    cy.wait('@clusteringTaken');
-
+  it('toont reductie-samenvatting alert met verdeling per methode', () => {
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"]')
-        .should('have.attr', 'toggle-text', 'Mobiliteit');
+        .find('vl-alert[type="success"]')
+        .should('have.attr', 'message')
+        .and('contain', 'kernbezwaren')
+        .and('contain', 'clustering')
+        .and('contain', 'centroid');
+  });
+
+  it('toont noise-waarschuwing als er niet-geclusterde bezwaren zijn', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-alert[type="warning"]')
+        .should('have.attr', 'message')
+        .and('contain', 'niet toegewezen');
+  });
+
+  it('kernbezwaren gesorteerd op aantal bezwaren (grootste eerst)', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-item')
+        .first()
+        .find('.kernbezwaar-samenvatting')
+        .should('contain.text', 'Te veel geluidshinder');
   });
 });
 
+// === Side panel ===
+
+describe('side panel passage-weergave', () => {
+  beforeEach(() => {
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_KERNBEZWAREN);
+    cy.wait('@kernbezwaren');
+  });
+
+  it('opent side panel bij klik op search-knop', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .first()
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#side-sheet-titel')
+        .should('contain.text', 'Te veel geluidshinder');
+  });
+
+  it('toont header met totaal en unieke passages', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .first()
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#side-sheet-inhoud')
+        .should('contain.text', '3 individuele bezwaren')
+        .and('contain.text', '2 unieke passages');
+  });
+
+  it('toont gegroepeerde passages met documenten', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .first()
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .should('have.length', 2);
+  });
+
+  it('toont score badge op passage', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .first()
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .first()
+        .find('.passage-tekst')
+        .should('contain.text', '%');
+  });
+
+  it('toont toewijzingsmethode badges voor HDBSCAN en CENTROID_FALLBACK', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .first()
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzing-badge--hdbscan')
+        .should('exist')
+        .and('contain.text', 'Clustering');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzing-badge--centroid')
+        .should('exist')
+        .and('contain.text', 'Centroid');
+  });
+});
+
+// === Side panel paginering ===
+
+describe('side panel paginering', () => {
+  it('toont paginering bij meer dan 15 groepen', () => {
+    // Passages moeten voldoende verschillen om niet gegroepeerd te worden (Dice < 0.9)
+    const uniekeTeksten = [
+      'Windmolens zorgen voor slagschaduw op woningen',
+      'Fietspaden langs de ringweg ontbreken volledig',
+      'Luchtkwaliteit is onvoldoende onderzocht in rapport',
+      'Wateroverlast door verharding van het terrein',
+      'Beschermde vleermuissoorten worden bedreigd',
+      'Parkeergelegenheid is totaal ontoereikend',
+      'Grondwaterpeil daalt door bouwactiviteiten',
+      'Erfgoedwaarde van het pand wordt aangetast',
+      'Stikstofuitstoot overschrijdt de normen',
+      'Brandveiligheid van het complex is ondermaats',
+      'Geluidshinder door nachtelijke transporten',
+      'Zonnepanelen veroorzaken reflectie op aanpalend',
+      'Verkeersintensiteit stijgt onaanvaardbaar',
+      'Archeologische vindplaats wordt niet beschermd',
+      'Riolering kan extra belasting niet verwerken',
+      'Trillingen door zwaar verkeer beschadigen fundament',
+      'Biodiversiteit in het natuurgebied vermindert',
+      'Schoolroutes worden onveilig door vrachtverkeer',
+      'Horizonvervuiling door hoogte van constructie',
+      'Bodemverontreiniging is niet volledig gesaneerd',
+    ];
+    const veelBezwaren = uniekeTeksten.map((tekst, i) => ({
+      referentieId: i, bezwaarId: i, bestandsnaam: `doc${i}.txt`,
+      passage: tekst,
+      scorePercentage: 80 + i, toewijzingsmethode: 'HDBSCAN',
+    }));
+    const mockMetVeel = {
+      kernbezwaren: [{
+        id: 1, samenvatting: 'Groot kernbezwaar',
+        individueleBezwaren: veelBezwaren, antwoord: null,
+      }],
+    };
+
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, mockMetVeel);
+    cy.wait('@kernbezwaren');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .first()
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.paginering')
+        .should('exist')
+        .and('contain.text', '1 / 2');
+
+    // Eerste pagina: 15 groepen
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .should('have.length', 15);
+  });
+
+  it('navigeert naar volgende pagina', () => {
+    const uniekeTeksten = [
+      'Windmolens zorgen voor slagschaduw op woningen',
+      'Fietspaden langs de ringweg ontbreken volledig',
+      'Luchtkwaliteit is onvoldoende onderzocht in rapport',
+      'Wateroverlast door verharding van het terrein',
+      'Beschermde vleermuissoorten worden bedreigd',
+      'Parkeergelegenheid is totaal ontoereikend',
+      'Grondwaterpeil daalt door bouwactiviteiten',
+      'Erfgoedwaarde van het pand wordt aangetast',
+      'Stikstofuitstoot overschrijdt de normen',
+      'Brandveiligheid van het complex is ondermaats',
+      'Geluidshinder door nachtelijke transporten',
+      'Zonnepanelen veroorzaken reflectie op aanpalend',
+      'Verkeersintensiteit stijgt onaanvaardbaar',
+      'Archeologische vindplaats wordt niet beschermd',
+      'Riolering kan extra belasting niet verwerken',
+      'Trillingen door zwaar verkeer beschadigen fundament',
+      'Biodiversiteit in het natuurgebied vermindert',
+      'Schoolroutes worden onveilig door vrachtverkeer',
+      'Horizonvervuiling door hoogte van constructie',
+      'Bodemverontreiniging is niet volledig gesaneerd',
+    ];
+    const veelBezwaren = uniekeTeksten.map((tekst, i) => ({
+      referentieId: i, bezwaarId: i, bestandsnaam: `doc${i}.txt`,
+      passage: tekst,
+      scorePercentage: 80, toewijzingsmethode: 'HDBSCAN',
+    }));
+    const mockMetVeel = {
+      kernbezwaren: [{
+        id: 1, samenvatting: 'Groot kernbezwaar',
+        individueleBezwaren: veelBezwaren, antwoord: null,
+      }],
+    };
+
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, mockMetVeel);
+    cy.wait('@kernbezwaren');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .first()
+        .click();
+
+    // Klik volgende
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.paginering vl-button')
+        .contains('Volgende')
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.paginering')
+        .should('contain.text', '2 / 2');
+
+    // Pagina 2: 5 groepen
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep')
+        .should('have.length', 5);
+  });
+});
+
+// === Passage deduplicatie ===
+
 describe('side panel passage-deduplicatie', () => {
   const MOCK_MET_DUPLICATEN = {
-    themas: [{
-      naam: 'Mobiliteit',
-      kernbezwaren: [{
-        id: 1,
-        samenvatting: 'Geluidshinder',
-        antwoord: null,
-        individueleBezwaren: [
-          {bestandsnaam: '001.txt', passage: 'Te veel geluid in de buurt'},
-          {bestandsnaam: '002.txt', passage: 'Te veel geluid in de buurt'},
-          {bestandsnaam: '003.txt', passage: 'Te veel geluid in de buurt'},
-          {bestandsnaam: '004.txt', passage: 'Te veel geluid in de buurt'},
-          {bestandsnaam: '005.txt', passage: 'Te veel geluid in de buurt'},
-          {bestandsnaam: '006.txt', passage: 'Te veel geluid in de buurt'},
-          {bestandsnaam: '007.txt', passage: 'Te veel geluid in de buurt'},
-          {bestandsnaam: '008.txt', passage: 'Verkeer is gevaarlijk'},
-        ],
-      }],
+    kernbezwaren: [{
+      id: 1, samenvatting: 'Geluidshinder',
+      antwoord: null,
+      individueleBezwaren: [
+        {referentieId: 1, bezwaarId: 1, bestandsnaam: '001.txt', passage: 'Te veel geluid in de buurt',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 2, bezwaarId: 2, bestandsnaam: '002.txt', passage: 'Te veel geluid in de buurt',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 3, bezwaarId: 3, bestandsnaam: '003.txt', passage: 'Te veel geluid in de buurt',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 4, bezwaarId: 4, bestandsnaam: '004.txt', passage: 'Te veel geluid in de buurt',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 5, bezwaarId: 5, bestandsnaam: '005.txt', passage: 'Te veel geluid in de buurt',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 6, bezwaarId: 6, bestandsnaam: '006.txt', passage: 'Te veel geluid in de buurt',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 7, bezwaarId: 7, bestandsnaam: '007.txt', passage: 'Te veel geluid in de buurt',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+        {referentieId: 8, bezwaarId: 8, bestandsnaam: '008.txt', passage: 'Verkeer is gevaarlijk',
+          scorePercentage: null, toewijzingsmethode: 'HDBSCAN'},
+      ],
     }],
   };
 
   beforeEach(() => {
-    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
-      statusCode: 200,
-      body: {
-        categorieen: [{
-          categorie: 'Mobiliteit', status: 'klaar', taakId: 1,
-          aantalBezwaren: 8, aantalKernbezwaren: 1,
-          aangemaaktOp: '2026-03-03T10:00:00Z',
-          verwerkingGestartOp: '2026-03-03T10:00:01Z',
-          verwerkingVoltooidOp: '2026-03-03T10:00:15Z',
-        }],
-      },
-    }).as('clusteringTaken');
-
-    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
-      statusCode: 200,
-      body: MOCK_MET_DUPLICATEN,
-    }).as('kernbezwaren');
-
-    cy.mount(html`<bezwaarschriften-kernbezwaren></bezwaarschriften-kernbezwaren>`);
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => {
-          $el[0].laadClusteringTaken('testproject');
-          $el[0].laadKernbezwaren('testproject');
-        });
-
-    cy.wait('@clusteringTaken');
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_MET_DUPLICATEN);
     cy.wait('@kernbezwaren');
 
-    // Open de accordion zodat kernbezwaren zichtbaar worden
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('vl-accordion[data-categorie="Mobiliteit"]')
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
         .click();
   });
 
   it('toont gegroepeerde passage slechts 1x met documentenlijst', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('.kernbezwaar-actie vl-button[icon="search"]')
-        .click();
-
-    // 2 groepen: geluid (7x) + verkeer (1x)
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.passage-groep .passage-tekst')
         .should('have.length', 2);
@@ -674,23 +641,17 @@ describe('side panel passage-deduplicatie', () => {
 
   it('toont alle documenten na klik op "Toon alle"', () => {
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.kernbezwaar-actie vl-button[icon="search"]')
-        .click();
-
-    cy.get('bezwaarschriften-kernbezwaren')
         .find('.passage-groep')
         .first()
         .find('.passage-toon-alle')
         .click();
 
-    // Nu alle 7 documenten zichtbaar
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.passage-groep')
         .first()
         .find('.passage-document-link')
         .should('have.length', 7);
 
-    // "Toon alle" link verdwenen
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.passage-groep')
         .first()
@@ -700,21 +661,12 @@ describe('side panel passage-deduplicatie', () => {
 
   it('toont header met totaal en groepen-aantal', () => {
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.kernbezwaar-actie vl-button[icon="search"]')
-        .click();
-
-    cy.get('bezwaarschriften-kernbezwaren')
         .find('#side-sheet-inhoud')
         .should('contain.text', '8 individuele bezwaren')
         .and('contain.text', '2 unieke passages');
   });
 
   it('toont enkel document als passage uniek is', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('.kernbezwaar-actie vl-button[icon="search"]')
-        .click();
-
-    // Tweede groep (verkeer) heeft 1 document, geen "Toon alle"
     cy.get('bezwaarschriften-kernbezwaren')
         .find('.passage-groep')
         .last()
@@ -729,49 +681,190 @@ describe('side panel passage-deduplicatie', () => {
   });
 });
 
-describe('bezwaarschriften-kernbezwaren clustering parameters', () => {
-  const MOCK_CONFIG = {
-    minClusterSize: 5,
-    minSamples: 3,
-    clusterSelectionEpsilon: 0.2,
-    umapEnabled: true,
-    umapNComponents: 5,
-    umapNNeighbors: 15,
-    umapMinDist: 0.1,
-    clusterOpPassages: true,
+// === Noise toewijzing ===
+
+describe('handmatige toewijzing voor noise bezwaren', () => {
+  const MOCK_MET_NOISE = {
+    kernbezwaren: [
+      {
+        id: 1, samenvatting: 'Geluidshinder',
+        individueleBezwaren: [
+          {referentieId: 10, bezwaarId: 100, bestandsnaam: '001.txt', passage: 'Geluid',
+            scorePercentage: 95, toewijzingsmethode: 'HDBSCAN'},
+        ],
+        antwoord: null,
+      },
+      {
+        id: 99, samenvatting: 'Niet-geclusterde bezwaren',
+        individueleBezwaren: [
+          {referentieId: 30, bezwaarId: 300, bestandsnaam: '005.txt', passage: 'Los punt',
+            scorePercentage: null, toewijzingsmethode: null},
+        ],
+        antwoord: null,
+      },
+    ],
   };
 
   beforeEach(() => {
-    cy.intercept('GET', '/api/v1/projects/*/kernbezwaren', {
-      statusCode: 404,
-    }).as('kernbezwaren');
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_MET_NOISE);
+    cy.wait('@kernbezwaren');
+  });
 
-    cy.intercept('GET', '/api/v1/projects/*/clustering-taken', {
-      statusCode: 200,
-      body: {
-        categorieen: [
-          {
-            categorie: 'Mobiliteit', status: 'klaar', taakId: 1,
-            aantalBezwaren: 10, aantalKernbezwaren: 3, foutmelding: null,
-            aangemaaktOp: '2026-03-03T10:00:00Z',
-            verwerkingGestartOp: '2026-03-03T10:00:01Z',
-            verwerkingVoltooidOp: '2026-03-03T10:00:15Z',
-          },
-        ],
-      },
-    }).as('clusteringTaken');
-
-    cy.intercept('GET', '/api/v1/clustering-config', {
-      statusCode: 200,
-      body: MOCK_CONFIG,
-    }).as('getConfig');
-
-    cy.mount(html`<bezwaarschriften-kernbezwaren></bezwaarschriften-kernbezwaren>`);
+  it('toont toewijzen-knop bij noise passages', () => {
+    // Open side panel voor noise
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-item')
+        .last()
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .then(($el) => $el[0].laadClusteringTaken('testproject'));
+        .find('.passage-groep vl-button')
+        .should('contain.text', 'Toewijzen');
+  });
 
-    cy.wait('@clusteringTaken');
+  it('geen toewijzen-knop bij reguliere kernbezwaren', () => {
+    // Open side panel voor eerste (niet-noise) kernbezwaar
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-item')
+        .first()
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep vl-button')
+        .should('not.exist');
+  });
+
+  it('toont suggesties dropdown bij klik op toewijzen', () => {
+    cy.intercept('GET', '/api/v1/projects/testproject/noise/300/suggesties', {
+      statusCode: 200,
+      body: [
+        {kernbezwaarId: 1, scorePercentage: 82, samenvatting: 'Geluidshinder'},
+        {kernbezwaarId: 2, scorePercentage: 65, samenvatting: 'Fietspaden ontbreken'},
+      ],
+    }).as('suggesties');
+
+    // Open side panel voor noise
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-item')
+        .last()
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep vl-button')
+        .contains('Toewijzen')
+        .click();
+
+    cy.wait('@suggesties');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzen-dropdown')
+        .should('exist');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.suggestie-item')
+        .should('have.length', 2);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.suggestie-item')
+        .first()
+        .should('contain.text', 'Geluidshinder')
+        .and('contain.text', '82%');
+  });
+
+  it('voegt toe knop is disabled tot selectie, voert toewijzing uit na klik', () => {
+    cy.intercept('GET', '/api/v1/projects/testproject/noise/300/suggesties', {
+      statusCode: 200,
+      body: [
+        {kernbezwaarId: 1, scorePercentage: 82, samenvatting: 'Geluidshinder'},
+      ],
+    }).as('suggesties');
+
+    cy.intercept('PUT', '/api/v1/projects/testproject/referenties/30/toewijzing', {
+      statusCode: 200,
+    }).as('toewijzing');
+
+    // Open side panel voor noise
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-item')
+        .last()
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep vl-button')
+        .contains('Toewijzen')
+        .click();
+
+    cy.wait('@suggesties');
+
+    // Voeg toe knop is disabled
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzen-dropdown vl-button')
+        .contains('Voeg toe')
+        .should('have.attr', 'disabled');
+
+    // Selecteer suggestie
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.suggestie-item')
+        .first()
+        .click();
+
+    // Suggestie is geselecteerd
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.suggestie-item.suggestie-geselecteerd')
+        .should('exist');
+
+    // Voeg toe knop is nu enabled
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzen-dropdown vl-button')
+        .contains('Voeg toe')
+        .should('not.have.attr', 'disabled');
+
+    // Klik voeg toe
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzen-dropdown vl-button')
+        .contains('Voeg toe')
+        .click();
+
+    cy.wait('@toewijzing').its('request.body')
+        .should('deep.equal', {kernbezwaarId: 1});
+  });
+
+  it('toont lege melding als geen suggesties beschikbaar', () => {
+    cy.intercept('GET', '/api/v1/projects/testproject/noise/300/suggesties', {
+      statusCode: 200,
+      body: [],
+    }).as('suggesties');
+
+    // Open side panel voor noise
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.kernbezwaar-item')
+        .last()
+        .find('.kernbezwaar-actie vl-button[icon="search"]')
+        .click();
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.passage-groep vl-button')
+        .contains('Toewijzen')
+        .click();
+
+    cy.wait('@suggesties');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.toewijzen-dropdown')
+        .should('contain.text', 'Geen suggesties beschikbaar');
+  });
+});
+
+// === Clustering parameters ===
+
+describe('clustering parameters', () => {
+  beforeEach(() => {
+    mountEnLaad(MOCK_CLUSTERING_KLAAR, MOCK_KERNBEZWAREN);
+    cy.wait('@kernbezwaren');
     cy.wait('@getConfig');
   });
 
@@ -845,5 +938,35 @@ describe('bezwaarschriften-kernbezwaren clustering parameters', () => {
         .uncheck();
 
     cy.wait('@updatePassages');
+  });
+});
+
+// === Lege staat ===
+
+describe('lege staat', () => {
+  it('toont melding als extractie niet klaar', () => {
+    mountEnLaad(null);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.lege-staat')
+        .should('contain.text', 'Nog geen bezwaren');
+  });
+
+  it('toont cluster-knop met aantal bezwaren als extractie klaar', () => {
+    mountEnLaad(null);
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .then(($el) => {
+          $el[0].setExtractieKlaar(true);
+          $el[0].setAantalBezwaren(42);
+        });
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('.lege-staat')
+        .should('contain.text', '42 individuele bezwaren');
+
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#groepeer-knop')
+        .should('contain.text', 'Cluster bezwaren');
   });
 });

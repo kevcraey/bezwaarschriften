@@ -1,6 +1,5 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller voor het beheren van clustering-taken per categorie.
+ * REST controller voor het beheren van de clustering-taak per project.
  */
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -27,51 +26,35 @@ public class ClusteringTaakController {
   }
 
   /**
-   * Geeft alle categorien met hun clustering-status.
-   * Categorien zonder een taak krijgen status "todo".
+   * Geeft de clustering-taak voor een project.
    */
   @GetMapping("/{naam}/clustering-taken")
-  public ResponseEntity<CategorieOverzichtResponse> geefOverzicht(
-      @PathVariable String naam) {
-    var items = taakService.geefCategorieOverzicht(naam);
-    return ResponseEntity.ok(new CategorieOverzichtResponse(items));
+  public ResponseEntity<ClusteringTaakDto> geefTaak(@PathVariable String naam) {
+    return taakService.geefTaak(naam)
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.noContent().build());
   }
 
   /**
-   * Start clustering voor een enkele categorie.
+   * Start clustering voor een project.
    */
-  @PostMapping("/{naam}/clustering-taken/{categorie}")
-  public ResponseEntity<ClusteringTaakDto> startCategorie(
-      @PathVariable String naam,
-      @PathVariable String categorie) {
-    var dto = taakService.indienen(naam, categorie);
+  @PostMapping("/{naam}/clustering-taken")
+  public ResponseEntity<ClusteringTaakDto> startClustering(@PathVariable String naam) {
+    var dto = taakService.indienen(naam);
     return ResponseEntity.accepted().body(dto);
   }
 
   /**
-   * Start clustering voor alle categorien die nog niet klaar, bezig of wachtend zijn.
-   */
-  @PostMapping("/{naam}/clustering-taken")
-  public ResponseEntity<List<ClusteringTaakDto>> startAlleCategorieen(
-      @PathVariable String naam) {
-    var ingediend = taakService.indienenAlleNietActieve(naam);
-    return ResponseEntity.accepted().body(ingediend);
-  }
-
-  /**
-   * Annuleert een actieve taak of verwijdert een voltooide clustering.
+   * Verwijdert clusteringresultaten voor een project.
+   * Annuleert eerst een actieve taak als die er is.
    * Bij gekoppelde antwoorden en ontbrekende bevestiging wordt 409 geretourneerd.
    */
-  @DeleteMapping("/{naam}/clustering-taken/{categorie}")
-  public ResponseEntity<?> verwijderCategorie(
+  @DeleteMapping("/{naam}/clustering-taken")
+  public ResponseEntity<?> verwijderClustering(
       @PathVariable String naam,
-      @PathVariable String categorie,
       @RequestParam(defaultValue = "false") boolean bevestigd) {
     // Probeer eerst de actieve taak te annuleren
-    var taakOpt = taakService.geefTaken(naam).stream()
-        .filter(t -> t.categorie().equals(categorie))
-        .findFirst();
-
+    var taakOpt = taakService.geefTaak(naam);
     if (taakOpt.isPresent()) {
       var taak = taakOpt.get();
       var status = taak.status();
@@ -86,7 +69,7 @@ public class ClusteringTaakController {
     }
 
     // Verwijder voltooide clustering
-    var resultaat = taakService.verwijderClustering(naam, categorie, bevestigd);
+    var resultaat = taakService.verwijderClustering(naam, bevestigd);
     if (resultaat.bevestigingNodig()) {
       return ResponseEntity.status(409).body(
           new BevestigingResponse(resultaat.aantalAntwoorden()));
@@ -94,26 +77,6 @@ public class ClusteringTaakController {
 
     return ResponseEntity.ok().build();
   }
-
-  /**
-   * Verwijdert alle clusteringresultaten voor alle categorieën van een project.
-   * Bij gekoppelde antwoorden en ontbrekende bevestiging wordt 409 geretourneerd.
-   */
-  @DeleteMapping("/{naam}/clustering-taken")
-  public ResponseEntity<?> verwijderAlleClusteringen(
-      @PathVariable String naam,
-      @RequestParam(defaultValue = "false") boolean bevestigd) {
-    var resultaat = taakService.verwijderAlleClusteringen(naam, bevestigd);
-    if (resultaat.bevestigingNodig()) {
-      return ResponseEntity.status(409).body(
-          new BevestigingResponse(resultaat.aantalAntwoorden()));
-    }
-    return ResponseEntity.ok().build();
-  }
-
-  /** Response DTO voor het categorieoverzicht. */
-  record CategorieOverzichtResponse(
-      List<ClusteringTaakService.CategorieStatus> categorieen) {}
 
   /** Response bij 409 Conflict: bevestiging vereist om antwoorden te verwijderen. */
   record BevestigingResponse(long aantalAntwoorden) {}

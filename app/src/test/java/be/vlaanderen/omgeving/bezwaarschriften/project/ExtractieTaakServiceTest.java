@@ -345,7 +345,6 @@ class ExtractieTaakServiceTest {
     bezwaar.setTaakId(1L);
     bezwaar.setPassageNr(1);
     bezwaar.setSamenvatting("Geluidshinder");
-    bezwaar.setCategorie("milieu");
     when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of(bezwaar));
 
     var result = service.geefExtractieDetails("windmolens", "bezwaar-001.txt");
@@ -489,7 +488,6 @@ class ExtractieTaakServiceTest {
     verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
     assertThat(bezwaarCaptor.getAllValues().get(0).isManueel()).isTrue();
     assertThat(bezwaarCaptor.getAllValues().get(0).getPassageNr()).isEqualTo(4);
-    assertThat(bezwaarCaptor.getAllValues().get(0).getCategorie()).isEqualTo("overig");
     assertThat(bezwaarCaptor.getAllValues().get(1).getEmbeddingPassage()).isNotNull();
 
     assertThat(taak.isHeeftManueel()).isTrue();

@@ -50,7 +50,7 @@ module.exports = {
           }
         },
       },
-      '/ws': {
+      '/ws/taken': {
         target: 'http://localhost:8080',
         ws: true,
       },

@@ -71,8 +71,8 @@ public class ClusteringWorker {
 
   private void verwerkTaak(ClusteringTaak taak) {
     try {
-      kernbezwaarService.clusterEenCategorie(
-          taak.getProjectNaam(), taak.getCategorie(), taak.getId());
+      kernbezwaarService.clusterProject(
+          taak.getProjectNaam(), taak.getId());
       try {
         taakService.markeerKlaar(taak.getId());
       } catch (IllegalArgumentException e) {

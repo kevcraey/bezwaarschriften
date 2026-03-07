@@ -5,11 +5,14 @@ import {VlAlert} from '@domg-wc/components/block/alert';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
+import {VlLinkComponent} from '@domg-wc/components/atom/link/vl-link.component.js';
 import {vlGlobalStyles, vlGridStyles, vlGroupStyles} from '@domg-wc/styles';
 import {groepeerPassages} from './passage-groepering.js';
 import '@domg-wc/components/form/textarea-rich';
 
-registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent]);
+registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent, VlLinkComponent]);
+
+const PAGE_SIZE = 15;
 
 export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   constructor() {
@@ -51,10 +54,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           font-weight: bold;
           color: #687483;
           margin-right: 0.5rem;
-        }
-        vl-accordion {
-          margin-bottom: 0.5rem;
-          display: block;
         }
         .kernbezwaar-item {
           display: flex;
@@ -162,6 +161,59 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           font-size: 0.85rem;
           color: #0e7c26;
         }
+        .toewijzing-badge {
+          display: inline-block;
+          font-size: 0.75rem;
+          padding: 0.15rem 0.5rem;
+          border-radius: 3px;
+          margin-left: 0.5rem;
+        }
+        .toewijzing-badge--hdbscan {
+          background: #e8f5e9;
+          color: #2e7d32;
+        }
+        .toewijzing-badge--centroid {
+          background: #fff3e0;
+          color: #e65100;
+        }
+        .toewijzing-badge--manueel {
+          background: #e3f2fd;
+          color: #1565c0;
+        }
+        .paginering {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem 0;
+          border-top: 1px solid #e8ebee;
+        }
+        .toewijzen-dropdown {
+          margin-top: 0.5rem;
+          padding: 0.75rem;
+          background: #f5f6f7;
+          border: 1px solid #e8ebee;
+          border-radius: 4px;
+        }
+        .suggestie-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem;
+          cursor: pointer;
+          border-radius: 3px;
+        }
+        .suggestie-item:hover {
+          background: #e8ebee;
+        }
+        .suggestie-item.suggestie-geselecteerd {
+          background: #d4e5f7;
+          outline: 2px solid #0055cc;
+        }
+        .suggestie-score {
+          font-weight: bold;
+          color: #687483;
+        }
       </style>
       <div id="inhoud"></div>
       <vl-side-sheet id="side-sheet" hide-toggle-button>
@@ -186,9 +238,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     this._projectNaam = null;
     this._aantalBezwaren = 0;
     this._extractieKlaar = false;
-    this._themas = null;
-    this._bezig = false;
-    this._clusteringTaken = [];
+    this._kernbezwaren = [];
+    this._clusteringTaak = null;
+    this._huidigKernbezwaar = null;
+    this._huidigGroepen = null;
+    this._huidigePagina = 1;
     this._timerInterval = null;
   }
 
@@ -215,7 +269,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/kernbezwaren`)
         .then((response) => {
           if (response.status === 404) {
-            this._themas = null;
+            this._kernbezwaren = [];
             this._renderInhoud();
             return null;
           }
@@ -224,12 +278,12 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         })
         .then((data) => {
           if (data) {
-            this._themas = data.themas;
+            this._kernbezwaren = data.kernbezwaren || [];
             this._renderInhoud();
           }
         })
         .catch(() => {
-          this._themas = null;
+          this._kernbezwaren = [];
           this._renderInhoud();
         });
   }
@@ -238,78 +292,49 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     this._projectNaam = projectNaam;
     fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/clustering-taken`)
         .then((response) => {
-          if (!response.ok) throw new Error('Ophalen clustering-taken mislukt');
-          return response.json();
+          if (response.ok && response.status !== 204) {
+            return response.json();
+          }
+          this._clusteringTaak = null;
+          this._renderInhoud();
+          return null;
         })
         .then((data) => {
-          if (data && data.categorieen) {
-            this._clusteringTaken = data.categorieen;
+          if (data) {
+            this._clusteringTaak = data;
             this._renderInhoud();
             this._beheerTimer();
           }
         })
         .catch(() => {
-          this._clusteringTaken = [];
+          this._clusteringTaak = null;
           this._renderInhoud();
         });
   }
 
-  werkBijMetClusteringUpdate(taak) {
-    let gevonden = false;
-    this._clusteringTaken = this._clusteringTaken.map((ct) => {
-      if (ct.categorie === taak.categorie) {
-        gevonden = true;
-        return {
-          ...ct,
-          taakId: taak.id,
-          status: taak.status,
-          aantalBezwaren: taak.aantalBezwaren,
-          aantalKernbezwaren: taak.aantalKernbezwaren,
-          aangemaaktOp: taak.aangemaaktOp,
-          verwerkingGestartOp: taak.verwerkingGestartOp,
-          verwerkingVoltooidOp: taak.verwerkingVoltooidOp,
-          foutmelding: taak.foutmelding,
-        };
-      }
-      return ct;
-    });
-
-    if (!gevonden) {
-      this._clusteringTaken.push({
-        categorie: taak.categorie,
-        status: taak.status,
-        taakId: taak.id,
-        aantalBezwaren: taak.aantalBezwaren,
-        aantalKernbezwaren: taak.aantalKernbezwaren,
-        aangemaaktOp: taak.aangemaaktOp,
-        verwerkingGestartOp: taak.verwerkingGestartOp,
-        verwerkingVoltooidOp: taak.verwerkingVoltooidOp,
-        foutmelding: taak.foutmelding,
-      });
-    }
-
-    // Als een clustering klaar is, herlaad de kernbezwaren
-    if (taak.status === 'klaar' && this._projectNaam) {
+  werkBijMetClusteringUpdate(taakDto) {
+    this._clusteringTaak = taakDto;
+    if (taakDto.status === 'klaar') {
       this.laadKernbezwaren(this._projectNaam);
+    } else {
+      this._renderInhoud();
     }
-
-    this._renderInhoud();
     this._beheerTimer();
   }
 
   setAantalBezwaren(aantal) {
     this._aantalBezwaren = aantal;
-    if (!this._themas && this._clusteringTaken.length === 0) this._renderInhoud();
+    if (this._kernbezwaren.length === 0 && !this._clusteringTaak) this._renderInhoud();
   }
 
   setExtractieKlaar(klaar) {
     this._extractieKlaar = klaar;
-    if (!this._themas && this._clusteringTaken.length === 0) this._renderInhoud();
+    if (this._kernbezwaren.length === 0 && !this._clusteringTaak) this._renderInhoud();
   }
 
   reset() {
-    this._themas = null;
-    this._clusteringTaken = [];
+    this._kernbezwaren = [];
+    this._clusteringTaak = null;
     this._stopTimer();
     this._renderInhoud();
   }
@@ -320,18 +345,32 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const inhoud = this.shadowRoot.querySelector('#inhoud');
     if (!inhoud) return;
 
-    // Als er clustering-taken zijn, toon per-categorie layout
-    if (this._clusteringTaken.length > 0) {
-      this._renderCategorieOverzicht(inhoud);
+    // Clustering actief: toon status
+    if (this._clusteringTaak &&
+        (this._clusteringTaak.status === 'wachtend' || this._clusteringTaak.status === 'bezig')) {
+      this._renderClusteringStatus(inhoud);
       return;
     }
 
-    // Legacy: als er themas zijn (van oude clustering)
-    if (this._themas) {
-      this._renderThemas(inhoud);
+    // Kernbezwaren beschikbaar: toon flat list
+    if (this._kernbezwaren.length > 0) {
+      this._renderKernbezwaren(inhoud);
       return;
     }
 
+    // Clustering klaar maar geen kernbezwaren (onverwacht): toon clustering-info
+    if (this._clusteringTaak && this._clusteringTaak.status === 'klaar') {
+      this._renderKernbezwaren(inhoud);
+      return;
+    }
+
+    // Fout bij clustering
+    if (this._clusteringTaak && this._clusteringTaak.status === 'fout') {
+      this._renderClusteringFout(inhoud);
+      return;
+    }
+
+    // Geen bezwaren of extractie niet klaar
     if (!this._extractieKlaar || this._aantalBezwaren === 0) {
       inhoud.innerHTML = `
         <div class="lege-staat">
@@ -340,124 +379,164 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       return;
     }
 
-    inhoud.innerHTML = `
-      <div class="lege-staat">
-        <p>${this._aantalBezwaren} individuele bezwaren gevonden.
-           Voer clustering tot thema's en kernbezwaren uit om verder te gaan.</p>
-        <vl-button id="groepeer-knop">Cluster bezwaren</vl-button>
-      </div>`;
-
-    const knop = inhoud.querySelector('#groepeer-knop');
-    if (knop) {
-      knop.addEventListener('click', () => this._groepeer());
-    }
-  }
-
-  _renderCategorieOverzicht(inhoud) {
+    // Bezwaren beschikbaar maar nog niet geclusterd
     inhoud.innerHTML = '';
-
-    // Parameters-balk
     this._renderClusteringParams(inhoud);
 
-    // Globale knop bovenaan rechts
+    const legeStaat = document.createElement('div');
+    legeStaat.className = 'lege-staat';
+    const p = document.createElement('p');
+    p.textContent = `${this._aantalBezwaren} individuele bezwaren gevonden. ` +
+        'Voer clustering uit om kernbezwaren te identificeren.';
+    legeStaat.appendChild(p);
+
+    const knop = document.createElement('vl-button');
+    knop.id = 'groepeer-knop';
+    knop.textContent = 'Cluster bezwaren';
+    knop.addEventListener('click', () => this._startClustering());
+    legeStaat.appendChild(knop);
+
+    inhoud.appendChild(legeStaat);
+  }
+
+  _renderClusteringStatus(inhoud) {
+    inhoud.innerHTML = '';
+    this._renderClusteringParams(inhoud);
+
+    const statusDiv = document.createElement('div');
+    statusDiv.className = 'lege-staat';
+
+    const actieRij = document.createElement('div');
+    actieRij.style.cssText = 'display:flex;align-items:center;gap:1rem;justify-content:center;';
+
+    const loadingKnop = document.createElement('vl-button');
+    loadingKnop.setAttribute('loading', '');
+    loadingKnop.setAttribute('disabled', '');
+    loadingKnop.className = 'clustering-loading-knop';
+    const loadingTekst = document.createElement('span');
+    loadingTekst.className = 'timer-tekst';
+    loadingTekst.textContent = this._formatClusteringStatus(this._clusteringTaak);
+    loadingKnop.appendChild(loadingTekst);
+    actieRij.appendChild(loadingKnop);
+
+    const annuleerLink = document.createElement('vl-link');
+    annuleerLink.setAttribute('button-as-link', '');
+    annuleerLink.setAttribute('icon', 'cross');
+    annuleerLink.setAttribute('icon-placement', 'before');
+    annuleerLink.textContent = 'Annuleer';
+    annuleerLink.style.cursor = 'pointer';
+    annuleerLink.addEventListener('click', () => this._annuleerClustering());
+    actieRij.appendChild(annuleerLink);
+
+    statusDiv.appendChild(actieRij);
+    inhoud.appendChild(statusDiv);
+  }
+
+  _renderClusteringFout(inhoud) {
+    inhoud.innerHTML = '';
+    this._renderClusteringParams(inhoud);
+
+    const foutAlert = document.createElement('vl-alert');
+    foutAlert.setAttribute('type', 'error');
+    foutAlert.setAttribute('size', 'small');
+    foutAlert.setAttribute('message',
+        `Clustering mislukt: ${this._clusteringTaak.foutmelding || 'Onbekende fout'}`);
+    inhoud.appendChild(foutAlert);
+
+    const acties = document.createElement('div');
+    acties.className = 'clustering-header vl-group vl-group--justify-end';
+    acties.style.marginTop = 'var(--vl-spacing--xsmall)';
+
+    const opnieuwKnop = document.createElement('vl-button');
+    opnieuwKnop.textContent = 'Opnieuw clusteren';
+    opnieuwKnop.addEventListener('click', () => this._retryClustering());
+    acties.appendChild(opnieuwKnop);
+
+    inhoud.appendChild(acties);
+  }
+
+  _renderKernbezwaren(inhoud) {
+    inhoud.innerHTML = '';
+    this._renderClusteringParams(inhoud);
+
+    // Actiebalk
     const header = document.createElement('div');
     header.className = 'clustering-header vl-group vl-group--justify-end';
 
-    const clusterAllesKnop = document.createElement('vl-button');
-    clusterAllesKnop.id = 'cluster-alles-knop';
-    clusterAllesKnop.textContent = 'Cluster alle categorie\u00EBn';
-    clusterAllesKnop.addEventListener('click', () => this._clusterAlles());
-    header.appendChild(clusterAllesKnop);
+    const verwijderKnop = document.createElement('vl-button');
+    verwijderKnop.setAttribute('error', '');
+    verwijderKnop.textContent = 'Clustering verwijderen';
+    verwijderKnop.addEventListener('click', () => this._verwijderClustering());
+    header.appendChild(verwijderKnop);
 
-    const heeftKlareCategorie = this._clusteringTaken.some((ct) => ct.status === 'klaar');
-    const heeftActieveTaak = this._clusteringTaken.some(
-        (ct) => ct.status === 'wachtend' || ct.status === 'bezig');
-    if (heeftKlareCategorie && !heeftActieveTaak) {
-      const verwijderAllesKnop = document.createElement('vl-button');
-      verwijderAllesKnop.id = 'verwijder-alles-knop';
-      verwijderAllesKnop.setAttribute('error', '');
-      verwijderAllesKnop.textContent = 'Alles verwijderen';
-      verwijderAllesKnop.addEventListener('click', () => this._verwijderAlles());
-      header.appendChild(verwijderAllesKnop);
-    }
+    const opnieuwKnop = document.createElement('vl-button');
+    opnieuwKnop.textContent = 'Opnieuw clusteren';
+    opnieuwKnop.addEventListener('click', () => this._retryClustering());
+    header.appendChild(opnieuwKnop);
 
     inhoud.appendChild(header);
 
-    // Globale samenvatting als er klare categorien zijn
-    if (this._themas) {
-      let totaalBezwaren = 0;
-      let totaalKernbezwaren = 0;
-      let nietGeclusterdeBezwaren = 0;
-      this._clusteringTaken.forEach((ct) => {
-        if (ct.status === 'klaar') {
-          const thema = this._themas.find((t) => t.naam === ct.categorie);
-          if (thema) {
-            totaalBezwaren += ct.aantalBezwaren;
-            thema.kernbezwaren.forEach((kb) => {
-              if (kb.samenvatting === 'Niet-geclusterde bezwaren') {
-                nietGeclusterdeBezwaren += kb.individueleBezwaren.length;
-              } else {
-                totaalKernbezwaren++;
-              }
-            });
-          }
-        }
-      });
-      if (totaalKernbezwaren > 0) {
-        const geclusterdeBezwaren = totaalBezwaren - nietGeclusterdeBezwaren;
-        const reductie = Math.round(geclusterdeBezwaren / totaalKernbezwaren);
-        const reductieTekst = reductie > 1 ? ` (${reductie}x reductie)` : '';
-        const totaalAlert = document.createElement('vl-alert');
-        totaalAlert.setAttribute('type', 'success');
-        totaalAlert.setAttribute('naked', '');
-        totaalAlert.setAttribute('size', 'small');
-        totaalAlert.setAttribute('message', `Er zijn ${geclusterdeBezwaren} individuele bezwaren ` +
-            `herleid naar ${totaalKernbezwaren} kernbezwaren${reductieTekst}.`);
-        inhoud.appendChild(totaalAlert);
-        if (nietGeclusterdeBezwaren > 0) {
-          const waarschuwing = document.createElement('vl-alert');
-          waarschuwing.setAttribute('type', 'warning');
-          waarschuwing.setAttribute('naked', '');
-          waarschuwing.setAttribute('size', 'small');
-          waarschuwing.style.marginTop = 'var(--vl-spacing--xsmall)';
-          const pctNoise = Math.round((nietGeclusterdeBezwaren / totaalBezwaren) * 100);
-          waarschuwing.setAttribute('message', `${nietGeclusterdeBezwaren} individuele bezwaren ` +
-              `(${pctNoise}%) konden niet toegewezen worden aan een cluster.`);
-          inhoud.appendChild(waarschuwing);
-        }
+    // Samenvatting
+    const echteKernbezwaren = this._kernbezwaren.filter(
+        (k) => k.samenvatting !== 'Niet-geclusterde bezwaren');
+
+    let totaalBezwaren = 0;
+    let aantalHdbscan = 0;
+    let aantalCentroid = 0;
+    let aantalManueel = 0;
+    let nietGeclusterd = 0;
+    this._kernbezwaren.forEach((k) => {
+      if (k.samenvatting === 'Niet-geclusterde bezwaren') {
+        nietGeclusterd += k.individueleBezwaren.length;
+      } else {
+        k.individueleBezwaren.forEach((b) => {
+          if (b.toewijzingsmethode === 'HDBSCAN') aantalHdbscan++;
+          else if (b.toewijzingsmethode === 'CENTROID_FALLBACK') aantalCentroid++;
+          else if (b.toewijzingsmethode === 'MANUEEL') aantalManueel++;
+        });
       }
+      totaalBezwaren += k.individueleBezwaren.length;
+    });
+
+    const geclusterdeBezwaren = totaalBezwaren - nietGeclusterd;
+    if (echteKernbezwaren.length > 0) {
+      const reductie = Math.round(geclusterdeBezwaren / echteKernbezwaren.length);
+      const reductieTekst = reductie > 1 ? ` (${reductie}x reductie)` : '';
+      const totaalAlert = document.createElement('vl-alert');
+      totaalAlert.setAttribute('type', 'success');
+      totaalAlert.setAttribute('naked', '');
+      totaalAlert.setAttribute('size', 'small');
+      const delen = [];
+      if (aantalHdbscan > 0) delen.push(`${aantalHdbscan} clustering`);
+      if (aantalCentroid > 0) delen.push(`${aantalCentroid} centroid`);
+      if (aantalManueel > 0) delen.push(`${aantalManueel} handmatig`);
+      const verdelingTekst = delen.length > 0 ? ` (${delen.join(', ')})` : '';
+      totaalAlert.setAttribute('message',
+          `${geclusterdeBezwaren} individuele bezwaren${verdelingTekst} herleid naar ` +
+          `${echteKernbezwaren.length} kernbezwaren${reductieTekst}.`);
+      inhoud.appendChild(totaalAlert);
     }
 
-    // Per categorie
-    this._clusteringTaken.forEach((ct) => {
-      const accordion = document.createElement('vl-accordion');
-      accordion.setAttribute('toggle-text', ct.categorie);
-      accordion.dataset.categorie = ct.categorie;
+    if (nietGeclusterd > 0 && totaalBezwaren > 0) {
+      const pctNoise = Math.round((nietGeclusterd / totaalBezwaren) * 100);
+      const waarschuwing = document.createElement('vl-alert');
+      waarschuwing.setAttribute('type', 'warning');
+      waarschuwing.setAttribute('naked', '');
+      waarschuwing.setAttribute('size', 'small');
+      waarschuwing.style.marginTop = 'var(--vl-spacing--xsmall)';
+      waarschuwing.setAttribute('message',
+          `${nietGeclusterd} individuele bezwaren (${pctNoise}%) niet toegewezen.`);
+      inhoud.appendChild(waarschuwing);
+    }
 
-      // Menu slot: pill met status + actieknoppen
-      const pill = this._maakStatusPill(ct);
-      pill.slot = 'menu';
-      accordion.appendChild(pill);
+    // Sorteer kernbezwaren: meeste bezwaren eerst
+    const gesorteerd = [...this._kernbezwaren].sort(
+        (a, b) => b.individueleBezwaren.length - a.individueleBezwaren.length,
+    );
 
-      // Content: kernbezwaren (alleen bij klaar)
-      if (ct.status === 'klaar' && this._themas) {
-        const thema = this._themas.find((t) => t.naam === ct.categorie);
-        if (thema && thema.kernbezwaren.length > 0) {
-          const content = document.createElement('div');
-          const uniekePassageCounts = new Map(
-              thema.kernbezwaren.map((k) => [k, groepeerPassages(k.individueleBezwaren).length]),
-          );
-          const gesorteerd = [...thema.kernbezwaren].sort(
-              (a, b) => uniekePassageCounts.get(b) - uniekePassageCounts.get(a),
-          );
-          gesorteerd.forEach((kern) => {
-            content.appendChild(this._maakKernbezwaarItem(kern));
-          });
-          accordion.appendChild(content);
-        }
-      }
-
-      inhoud.appendChild(accordion);
+    // Render kernbezwaar items
+    gesorteerd.forEach((kern) => {
+      inhoud.appendChild(this._maakKernbezwaarItem(kern));
     });
 
     this._dispatchVoortgang();
@@ -486,10 +565,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     const knop = document.createElement('vl-button');
     knop.setAttribute('ghost', '');
     knop.setAttribute('icon', 'search');
-    const totaal = kern.individueleBezwaren.length;
-    const groepen = groepeerPassages(kern.individueleBezwaren);
-    const aantalGroepen = groepen.length;
-    knop.textContent = `(${totaal}|${aantalGroepen})`;
+    knop.textContent = `(${kern.individueleBezwaren.length})`;
     knop.addEventListener('click', () => this._toonPassages(kern));
 
     actie.appendChild(knop);
@@ -499,95 +575,11 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     return item;
   }
 
-  _maakStatusPill(ct) {
-    const pill = document.createElement('vl-pill');
-    pill.dataset.categorie = ct.categorie;
-    pill.className = 'status-pill';
-
-    switch (ct.status) {
-      case 'todo':
-        pill.textContent = `${ct.aantalBezwaren}`;
-        pill.appendChild(this._maakPillKnop('\u25b6', 'Clustering starten',
-            () => this._startClustering(ct.categorie)));
-        break;
-      case 'wachtend':
-      case 'bezig': {
-        pill.setAttribute('type', 'warning');
-        const span = document.createElement('span');
-        span.className = 'timer-tekst';
-        span.textContent = this._formatClusteringStatus(ct);
-        pill.appendChild(span);
-        pill.appendChild(this._maakPillKnop('\u00d7', 'Annuleer clustering',
-            () => this._annuleerClustering(ct.categorie)));
-        break;
-      }
-      case 'klaar': {
-        pill.setAttribute('type', 'success');
-        pill.textContent = this._maakSubtitleTekst(ct);
-        pill.appendChild(this._maakPillKnop('\u00d7', 'Verwijder clustering',
-            () => this._toonVerwijderBevestiging(ct.categorie)));
-        pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw clusteren',
-            () => this._retryClustering(ct.categorie)));
-        break;
-      }
-      case 'fout':
-        pill.setAttribute('type', 'error');
-        pill.textContent = 'Fout';
-        pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw clusteren',
-            () => this._startClustering(ct.categorie)));
-        break;
-      default:
-        pill.textContent = ct.status;
-    }
-
-    return pill;
-  }
-
-  _maakSubtitleTekst(ct) {
-    if (ct.status === 'klaar' && this._themas) {
-      const thema = this._themas.find((t) => t.naam === ct.categorie);
-      if (thema) {
-        return `${ct.aantalBezwaren} \u2192 ${thema.kernbezwaren.length}`;
-      }
-    }
-    return `${ct.aantalBezwaren}`;
-  }
-
-  _maakPillKnop(symbool, titel, onClick) {
-    const btn = document.createElement('button');
-    btn.title = titel;
-    btn.textContent = symbool;
-    Object.assign(btn.style, {
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      fontSize: '14px',
-      color: 'inherit',
-      padding: '0',
-      marginLeft: '6px',
-      lineHeight: '1',
-      verticalAlign: 'middle',
-      opacity: '0.6',
-    });
-    btn.addEventListener('mouseenter', () => {
-      btn.style.opacity = '1';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.opacity = '0.6';
-    });
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onClick();
-    });
-    return btn;
-  }
-
   // --- Timer management ---
 
   _beheerTimer() {
-    const heeftActief = this._clusteringTaken.some(
-        (ct) => ct.status === 'wachtend' || ct.status === 'bezig',
-    );
+    const heeftActief = this._clusteringTaak &&
+        (this._clusteringTaak.status === 'wachtend' || this._clusteringTaak.status === 'bezig');
     if (heeftActief && !this._timerInterval) {
       this._timerInterval = setInterval(() => this._updateTimers(), 1000);
     } else if (!heeftActief && this._timerInterval) {
@@ -604,48 +596,37 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _updateTimers() {
     const inhoud = this.shadowRoot.querySelector('#inhoud');
-    if (!inhoud) return;
+    if (!inhoud || !this._clusteringTaak) return;
 
-    this._clusteringTaken.forEach((ct) => {
-      if (ct.status !== 'wachtend' && ct.status !== 'bezig') return;
-      const pill = inhoud.querySelector(`vl-pill[data-categorie="${CSS.escape(ct.categorie)}"]`);
-      if (!pill) return;
-      const timerTekst = pill.querySelector('.timer-tekst');
-      if (timerTekst) {
-        timerTekst.textContent = this._formatClusteringStatus(ct);
-      }
-    });
+    if (this._clusteringTaak.status !== 'wachtend' && this._clusteringTaak.status !== 'bezig') {
+      return;
+    }
+    const timerTekst = inhoud.querySelector('.timer-tekst');
+    if (timerTekst) {
+      timerTekst.textContent = this._formatClusteringStatus(this._clusteringTaak);
+    }
   }
 
   _formatClusteringStatus(ct, nu) {
     nu = nu || Date.now();
 
-    if (ct.status === 'wachtend' && ct.aangemaaktOp) {
-      const wachtMs = nu - new Date(ct.aangemaaktOp).getTime();
-      return `Wachtend (${this._formatTijd(wachtMs)})`;
+    if (ct.status === 'wachtend') {
+      return 'Wachtend...';
     }
 
     if (ct.status === 'bezig') {
-      const wachtMs = ct.verwerkingGestartOp && ct.aangemaaktOp ?
-        new Date(ct.verwerkingGestartOp).getTime() -
-            new Date(ct.aangemaaktOp).getTime() :
-        0;
       const verwerkMs = ct.verwerkingGestartOp ?
         nu - new Date(ct.verwerkingGestartOp).getTime() :
         0;
-      return `Bezig (${this._formatTijd(wachtMs)}+${this._formatTijd(verwerkMs)})`;
+      return `Bezig (${this._formatTijd(verwerkMs)})`;
     }
 
     if (ct.status === 'klaar') {
-      const wachtMs = ct.verwerkingGestartOp && ct.aangemaaktOp ?
-        new Date(ct.verwerkingGestartOp).getTime() -
-            new Date(ct.aangemaaktOp).getTime() :
-        0;
       const verwerkMs = ct.verwerkingVoltooidOp && ct.verwerkingGestartOp ?
         new Date(ct.verwerkingVoltooidOp).getTime() -
             new Date(ct.verwerkingGestartOp).getTime() :
         0;
-      return `Klaar (${this._formatTijd(wachtMs)}+${this._formatTijd(verwerkMs)})`;
+      return `Klaar (${this._formatTijd(verwerkMs)})`;
     }
 
     return ct.status;
@@ -660,17 +641,19 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   // --- API methods ---
 
-  _startClustering(categorie) {
+  _startClustering() {
     if (!this._projectNaam) return;
-    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}`, {
+    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`, {
       method: 'POST',
     })
         .then((response) => {
           if (!response.ok) throw new Error('Starten clustering mislukt');
           return response.json();
         })
-        .then((taak) => {
-          this.werkBijMetClusteringUpdate(taak);
+        .then((taakDto) => {
+          this._clusteringTaak = taakDto;
+          this._renderInhoud();
+          this._beheerTimer();
         })
         .catch(() => {
           this.dispatchEvent(new CustomEvent('toon-foutmelding', {
@@ -680,15 +663,17 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
   }
 
-  _annuleerClustering(categorie) {
+  _annuleerClustering() {
     if (!this._projectNaam) return;
-    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}`, {
+    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`, {
       method: 'DELETE',
     })
         .then((response) => {
           if (!response.ok) throw new Error('Annuleren clustering mislukt');
-          // Herlaad clustering-taken
-          this.laadClusteringTaken(this._projectNaam);
+          this._clusteringTaak = null;
+          this._kernbezwaren = [];
+          this._renderInhoud();
+          this._beheerTimer();
         })
         .catch(() => {
           this.dispatchEvent(new CustomEvent('toon-foutmelding', {
@@ -698,28 +683,34 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
   }
 
-  _verwijderClustering(categorie, bevestigd = false) {
+  _verwijderClustering(bevestigd = false) {
     if (!this._projectNaam) return;
     const url = bevestigd ?
-      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}?bevestigd=true` :
-      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}`;
+      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken?bevestigd=true` :
+      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`;
 
     fetch(url, {method: 'DELETE'})
         .then((response) => {
           if (response.status === 409) {
             return response.json().then((data) => {
               this._toonVerwijderBevestigingModal(
-                  categorie,
                   data.aantalAntwoorden || 0,
-                  () => this._verwijderClustering(categorie, true),
+                  () => this._verwijderClustering(true),
               );
               return null;
             });
           }
           if (!response.ok) throw new Error('Verwijderen clustering mislukt');
-          // Herlaad alles
-          this.laadClusteringTaken(this._projectNaam);
-          this.laadKernbezwaren(this._projectNaam);
+          this._kernbezwaren = [];
+          this._clusteringTaak = null;
+          this._huidigKernbezwaar = null;
+          this._huidigGroepen = null;
+          const sideSheet = this.shadowRoot.querySelector('#side-sheet');
+          if (sideSheet) {
+            sideSheet.close();
+            this.classList.remove('side-sheet-open');
+          }
+          this._renderInhoud();
           return null;
         })
         .catch(() => {
@@ -730,26 +721,21 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
   }
 
-  _toonVerwijderBevestiging(categorie) {
-    this._verwijderClustering(categorie);
-  }
-
-  _retryClustering(categorie) {
+  _retryClustering() {
     if (!this._projectNaam) return;
-    const url = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken/${encodeURIComponent(categorie)}`;
+    const url = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`;
 
     fetch(url, {method: 'DELETE'})
         .then((response) => {
           if (response.status === 409) {
             return response.json().then((data) => {
               this._toonVerwijderBevestigingModal(
-                  categorie,
                   data.aantalAntwoorden || 0,
                   () => {
                     fetch(`${url}?bevestigd=true`, {method: 'DELETE'})
                         .then((resp) => {
                           if (!resp.ok) throw new Error('Verwijderen mislukt');
-                          this._startClustering(categorie);
+                          this._startClustering();
                         })
                         .catch(() => {
                           this.dispatchEvent(new CustomEvent('toon-foutmelding', {
@@ -763,7 +749,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
             });
           }
           if (!response.ok) throw new Error('Opnieuw clusteren mislukt');
-          this._startClustering(categorie);
+          this._startClustering();
           return null;
         })
         .catch(() => {
@@ -774,7 +760,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         });
   }
 
-  _toonVerwijderBevestigingModal(categorie, aantalAntwoorden, onBevestig) {
+  _toonVerwijderBevestigingModal(aantalAntwoorden, onBevestig) {
     const modal = this.shadowRoot.querySelector('#verwijder-bevestiging');
     const inhoud = this.shadowRoot.querySelector('#verwijder-bevestiging-inhoud');
     const bevestigKnop = this.shadowRoot.querySelector('#verwijder-bevestiging-bevestig');
@@ -782,8 +768,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
     inhoud.innerHTML = '';
     const p = document.createElement('p');
-    const context = categorie ? `voor "${categorie}"` : 'voor alle categorie\u00EBn';
-    p.textContent = `De clustering ${context} bevat ${aantalAntwoorden} antwoord(en) ` +
+    p.textContent = `De clustering bevat ${aantalAntwoorden} antwoord(en) ` +
         'die verloren gaan als u doorgaat.';
     inhoud.appendChild(p);
 
@@ -909,123 +894,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
             body: JSON.stringify(nieuw),
           });
         });
-  }
-
-  _clusterAlles() {
-    if (!this._projectNaam) return;
-    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`, {
-      method: 'POST',
-    })
-        .then((response) => {
-          if (!response.ok) throw new Error('Cluster alles mislukt');
-          return response.json();
-        })
-        .then((taken) => {
-          if (Array.isArray(taken)) {
-            taken.forEach((taak) => this.werkBijMetClusteringUpdate(taak));
-          }
-        })
-        .catch(() => {
-          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
-            bubbles: true, composed: true,
-            detail: {bericht: 'Starten clustering voor alle categorie\u00EBn mislukt'},
-          }));
-        });
-  }
-
-  _verwijderAlles(bevestigd = false) {
-    if (!this._projectNaam) return;
-    const url = bevestigd ?
-      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken?bevestigd=true` :
-      `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/clustering-taken`;
-
-    fetch(url, {method: 'DELETE'})
-        .then((response) => {
-          if (response.status === 409) {
-            return response.json().then((data) => {
-              this._toonVerwijderBevestigingModal(
-                  null,
-                  data.aantalAntwoorden || 0,
-                  () => this._verwijderAlles(true),
-              );
-              return null;
-            });
-          }
-          if (!response.ok) throw new Error('Alles verwijderen mislukt');
-          this.laadClusteringTaken(this._projectNaam);
-          this.laadKernbezwaren(this._projectNaam);
-          return null;
-        })
-        .catch(() => {
-          this.dispatchEvent(new CustomEvent('toon-foutmelding', {
-            bubbles: true, composed: true,
-            detail: {bericht: 'Verwijderen van alle clusteringen mislukt'},
-          }));
-        });
-  }
-
-  // --- Legacy clustering (voor oude flow zonder categorien) ---
-
-  _groepeer() {
-    if (this._bezig || !this._projectNaam) return;
-    this._bezig = true;
-
-    const knop = this.shadowRoot.querySelector('#groepeer-knop');
-    if (knop) {
-      knop.setAttribute('disabled', '');
-      knop.textContent = 'Bezig met clustering...';
-    }
-
-    fetch(`/api/v1/projects/${encodeURIComponent(this._projectNaam)}/kernbezwaren/groepeer`, {
-      method: 'POST',
-    })
-        .then((response) => {
-          if (!response.ok) throw new Error('Clustering mislukt');
-          return response.json();
-        })
-        .then((data) => {
-          this._themas = data.themas;
-          this._renderInhoud();
-        })
-        .catch(() => {
-          if (knop) {
-            knop.removeAttribute('disabled');
-            knop.textContent = 'Cluster bezwaren';
-          }
-        })
-        .finally(() => {
-          this._bezig = false;
-        });
-  }
-
-  // --- Legacy rendering (zonder categorien) ---
-
-  _renderThemas(inhoud) {
-    inhoud.innerHTML = '';
-
-    this._themas.forEach((thema) => {
-      const accordion = document.createElement('vl-accordion');
-      const aantalKern = thema.kernbezwaren.length;
-      const label = aantalKern === 1 ? '1 kernbezwaar' : `${aantalKern} kernbezwaren`;
-      accordion.setAttribute('toggle-text', `${thema.naam} (${label})`);
-      accordion.setAttribute('default-open', '');
-
-      const wrapper = document.createElement('div');
-      const uniekePassageCounts = new Map(
-          thema.kernbezwaren.map((k) => [k, groepeerPassages(k.individueleBezwaren).length]),
-      );
-      const gesorteerd = [...thema.kernbezwaren].sort(
-          (a, b) => uniekePassageCounts.get(b) - uniekePassageCounts.get(a),
-      );
-      gesorteerd.forEach((kern) => {
-        wrapper.appendChild(this._maakKernbezwaarItem(kern));
-      });
-
-      accordion.appendChild(wrapper);
-      inhoud.appendChild(accordion);
-    });
-
-    this._dispatchVoortgang();
   }
 
   // --- Kernbezwaar item interactions ---
@@ -1188,14 +1056,12 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   }
 
   _dispatchVoortgang() {
-    if (!this._themas) return;
+    if (!this._kernbezwaren || this._kernbezwaren.length === 0) return;
     let totaal = 0;
     let aantalMetAntwoord = 0;
-    this._themas.forEach((thema) => {
-      thema.kernbezwaren.forEach((kern) => {
-        totaal++;
-        if (kern.antwoord) aantalMetAntwoord++;
-      });
+    this._kernbezwaren.forEach((kern) => {
+      totaal++;
+      if (kern.antwoord) aantalMetAntwoord++;
     });
     this.dispatchEvent(new CustomEvent('antwoord-voortgang', {
       bubbles: true,
@@ -1203,25 +1069,43 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     }));
   }
 
+  // --- Side panel met paginering ---
+
   _toonPassages(kernbezwaar) {
+    this._huidigKernbezwaar = kernbezwaar;
+    this._huidigGroepen = groepeerPassages(kernbezwaar.individueleBezwaren);
+    this._huidigePagina = 1;
+    this._renderPassagePagina();
+  }
+
+  _renderPassagePagina() {
     const sideSheet = this.shadowRoot.querySelector('#side-sheet');
     const inhoud = this.shadowRoot.querySelector('#side-sheet-inhoud');
     const titelEl = this.shadowRoot.querySelector('#side-sheet-titel');
     if (!sideSheet || !inhoud) return;
 
+    const kernbezwaar = this._huidigKernbezwaar;
+    const groepen = this._huidigGroepen;
+    if (!kernbezwaar || !groepen) return;
+
     inhoud.innerHTML = '';
     if (titelEl) titelEl.textContent = kernbezwaar.samenvatting;
 
-    const groepen = groepeerPassages(kernbezwaar.individueleBezwaren);
     const totaal = kernbezwaar.individueleBezwaren.length;
+    const totaalPaginas = Math.max(1, Math.ceil(groepen.length / PAGE_SIZE));
+    if (this._huidigePagina > totaalPaginas) this._huidigePagina = totaalPaginas;
 
     const aantalLabel = document.createElement('p');
-    aantalLabel.textContent = `${totaal} individuele bezwar${totaal === 1 ? '' : 'en'}, ${groepen.length} unieke passage${groepen.length === 1 ? '' : 's'}:`;
+    aantalLabel.textContent = `${totaal} individuele bezwar${totaal === 1 ? '' : 'en'}, ` +
+        `${groepen.length} unieke passage${groepen.length === 1 ? '' : 's'}:`;
     inhoud.appendChild(aantalLabel);
 
+    const isNoise = kernbezwaar.samenvatting === 'Niet-geclusterde bezwaren';
     const MAX_ZICHTBAAR = 5;
+    const startIdx = (this._huidigePagina - 1) * PAGE_SIZE;
+    const paginaGroepen = groepen.slice(startIdx, startIdx + PAGE_SIZE);
 
-    groepen.forEach((groep) => {
+    paginaGroepen.forEach((groep) => {
       const groepEl = document.createElement('div');
       groepEl.className = 'passage-groep';
 
@@ -1231,10 +1115,30 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
       if (groep.maxScore != null) {
         const scoreBadge = document.createElement('span');
-        scoreBadge.style.cssText = 'display:inline-block;background:#e8ebee;border-radius:3px;padding:0.1rem 0.4rem;font-size:0.8rem;font-style:normal;color:#333;margin-left:0.5rem;';
+        scoreBadge.style.cssText = 'display:inline-block;background:#e8ebee;border-radius:3px;' +
+            'padding:0.1rem 0.4rem;font-size:0.8rem;font-style:normal;color:#333;margin-left:0.5rem;';
         scoreBadge.textContent = `${groep.maxScore}%`;
         passage.appendChild(scoreBadge);
       }
+
+      // Toewijzingsmethode badge (per groep, gebaseerd op eerste bezwaar)
+      const eersteBezwaar = groep.bezwaren[0];
+      if (eersteBezwaar && eersteBezwaar.toewijzingsmethode) {
+        const methode = eersteBezwaar.toewijzingsmethode;
+        const badge = document.createElement('span');
+        if (methode === 'HDBSCAN') {
+          badge.className = 'toewijzing-badge toewijzing-badge--hdbscan';
+          badge.textContent = 'Clustering';
+        } else if (methode === 'CENTROID_FALLBACK') {
+          badge.className = 'toewijzing-badge toewijzing-badge--centroid';
+          badge.textContent = 'Centroid';
+        } else if (methode === 'MANUEEL') {
+          badge.className = 'toewijzing-badge toewijzing-badge--manueel';
+          badge.textContent = 'Handmatig';
+        }
+        if (badge.className) passage.appendChild(badge);
+      }
+
       groepEl.appendChild(passage);
 
       const docContainer = document.createElement('div');
@@ -1263,8 +1167,56 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
       }
 
       groepEl.appendChild(docContainer);
+
+      // Toewijzen-knop voor noise passages
+      if (isNoise && eersteBezwaar) {
+        const toewijzenKnop = document.createElement('vl-button');
+        toewijzenKnop.setAttribute('ghost', '');
+        toewijzenKnop.textContent = 'Toewijzen';
+        toewijzenKnop.style.marginTop = '0.5rem';
+        toewijzenKnop.addEventListener('click', () =>
+          this._toonSuggesties(eersteBezwaar, groepEl));
+        groepEl.appendChild(toewijzenKnop);
+      }
+
       inhoud.appendChild(groepEl);
     });
+
+    // Paginering
+    if (totaalPaginas > 1) {
+      const paginering = document.createElement('div');
+      paginering.className = 'paginering';
+
+      const vorigeKnop = document.createElement('vl-button');
+      vorigeKnop.setAttribute('ghost', '');
+      vorigeKnop.textContent = 'Vorige';
+      if (this._huidigePagina <= 1) vorigeKnop.setAttribute('disabled', '');
+      vorigeKnop.addEventListener('click', () => {
+        if (this._huidigePagina > 1) {
+          this._huidigePagina--;
+          this._renderPassagePagina();
+        }
+      });
+
+      const indicator = document.createElement('span');
+      indicator.textContent = `${this._huidigePagina} / ${totaalPaginas}`;
+
+      const volgendeKnop = document.createElement('vl-button');
+      volgendeKnop.setAttribute('ghost', '');
+      volgendeKnop.textContent = 'Volgende';
+      if (this._huidigePagina >= totaalPaginas) volgendeKnop.setAttribute('disabled', '');
+      volgendeKnop.addEventListener('click', () => {
+        if (this._huidigePagina < totaalPaginas) {
+          this._huidigePagina++;
+          this._renderPassagePagina();
+        }
+      });
+
+      paginering.appendChild(vorigeKnop);
+      paginering.appendChild(indicator);
+      paginering.appendChild(volgendeKnop);
+      inhoud.appendChild(paginering);
+    }
 
     sideSheet.open();
     this.classList.add('side-sheet-open');
@@ -1277,6 +1229,104 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     link.href = `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/bezwaren/${encodeURIComponent(ref.bestandsnaam)}/download`;
     link.download = ref.bestandsnaam;
     return link;
+  }
+
+  // --- Handmatige toewijzing ---
+
+  async _toonSuggesties(bezwaar, groepEl) {
+    const bestaand = groepEl.querySelector('.toewijzen-dropdown');
+    if (bestaand) {
+      bestaand.remove();
+      return;
+    }
+
+    const response = await fetch(
+        `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/noise/${bezwaar.bezwaarId}/suggesties`);
+    if (!response.ok) return;
+    const suggesties = await response.json();
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'toewijzen-dropdown';
+
+    if (suggesties.length === 0) {
+      const leeg = document.createElement('p');
+      leeg.textContent = 'Geen suggesties beschikbaar.';
+      leeg.style.color = '#687483';
+      dropdown.appendChild(leeg);
+    } else {
+      let geselecteerdId = null;
+
+      suggesties.forEach((s) => {
+        const item = document.createElement('div');
+        item.className = 'suggestie-item';
+
+        const tekst = document.createElement('span');
+        tekst.textContent = s.samenvatting;
+        tekst.style.flex = '1';
+        tekst.style.marginRight = '1rem';
+
+        const score = document.createElement('span');
+        score.className = 'suggestie-score';
+        score.textContent = `${s.scorePercentage}%`;
+
+        item.appendChild(tekst);
+        item.appendChild(score);
+        item.addEventListener('click', () => {
+          dropdown.querySelectorAll('.suggestie-item').forEach(
+              (el) => el.classList.remove('suggestie-geselecteerd'));
+          item.classList.add('suggestie-geselecteerd');
+          geselecteerdId = s.kernbezwaarId;
+          voegToeKnop.removeAttribute('disabled');
+        });
+        dropdown.appendChild(item);
+      });
+
+      const voegToeKnop = document.createElement('vl-button');
+      voegToeKnop.textContent = 'Voeg toe';
+      voegToeKnop.setAttribute('disabled', '');
+      voegToeKnop.style.marginTop = '0.5rem';
+      voegToeKnop.addEventListener('click', () => {
+        if (geselecteerdId) {
+          this._voerToewijzingUit(bezwaar, geselecteerdId);
+        }
+      });
+      dropdown.appendChild(voegToeKnop);
+    }
+
+    groepEl.appendChild(dropdown);
+  }
+
+  async _voerToewijzingUit(bezwaar, kernbezwaarId) {
+    const response = await fetch(
+        `/api/v1/projects/${encodeURIComponent(this._projectNaam)}/referenties/${bezwaar.referentieId}/toewijzing`,
+        {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({kernbezwaarId}),
+        });
+    if (response.ok) {
+      // Verwijder het bezwaar lokaal uit de noise lijst
+      const noiseKernbezwaar = this._kernbezwaren.find(
+          (k) => k.samenvatting === 'Niet-geclusterde bezwaren');
+      if (noiseKernbezwaar) {
+        noiseKernbezwaar.individueleBezwaren = noiseKernbezwaar.individueleBezwaren.filter(
+            (b) => b.referentieId !== bezwaar.referentieId);
+        // Update cache en herrender enkel side panel
+        this._huidigGroepen = this._huidigGroepen.filter(
+            (g) => !g.bezwaren.some((b) => b.referentieId === bezwaar.referentieId));
+        if (noiseKernbezwaar.individueleBezwaren.length === 0) {
+          const sideSheet = this.shadowRoot.querySelector('#side-sheet');
+          if (sideSheet) {
+            sideSheet.close();
+            this.classList.remove('side-sheet-open');
+          }
+        } else {
+          this._renderPassagePagina();
+        }
+      }
+      // Achtergrond: herlaad alles voor consistente state (buiten kritisch pad)
+      this.laadKernbezwaren(this._projectNaam);
+    }
   }
 }
 

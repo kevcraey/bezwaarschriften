@@ -3,7 +3,6 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -49,22 +48,22 @@ class ClusteringWorkerTest {
 
   @Test
   void paktTakenOpEnMarkeertKlaar() {
-    var taak = maakTaak(1L, "windmolens", "Geluid");
+    var taak = maakTaak(1L, "windmolens");
     when(taakService.pakOpVoorVerwerking()).thenReturn(List.of(taak));
 
     worker.verwerkTaken();
 
     verify(kernbezwaarService, timeout(2000))
-        .clusterEenCategorie("windmolens", "Geluid", 1L);
+        .clusterProject("windmolens", 1L);
     verify(taakService, timeout(2000)).markeerKlaar(1L);
   }
 
   @Test
   void markeertFoutBijException() {
-    var taak = maakTaak(2L, "snelweg", "Verkeer");
+    var taak = maakTaak(2L, "snelweg");
     when(taakService.pakOpVoorVerwerking()).thenReturn(List.of(taak));
     doThrow(new RuntimeException("AI-service onbereikbaar"))
-        .when(kernbezwaarService).clusterEenCategorie("snelweg", "Verkeer", 2L);
+        .when(kernbezwaarService).clusterProject("snelweg", 2L);
 
     worker.verwerkTaken();
 
@@ -74,16 +73,16 @@ class ClusteringWorkerTest {
 
   @Test
   void vangtClusteringGeannuleerdExceptionZonderMarkeerFout() {
-    var taak = maakTaak(3L, "windmolens", "Natuur");
+    var taak = maakTaak(3L, "windmolens");
     when(taakService.pakOpVoorVerwerking()).thenReturn(List.of(taak));
     doThrow(new ClusteringGeannuleerdException())
-        .when(kernbezwaarService).clusterEenCategorie("windmolens", "Natuur", 3L);
+        .when(kernbezwaarService).clusterProject("windmolens", 3L);
 
     worker.verwerkTaken();
 
     // Wacht tot de taak verwerkt is
     verify(kernbezwaarService, timeout(2000))
-        .clusterEenCategorie("windmolens", "Natuur", 3L);
+        .clusterProject("windmolens", 3L);
     // Bij annulering: geen markeerKlaar en geen markeerFout
     verify(taakService, never()).markeerKlaar(anyLong());
     verify(taakService, never()).markeerFout(anyLong(), anyString());
@@ -96,17 +95,17 @@ class ClusteringWorkerTest {
     worker.verwerkTaken();
 
     verify(kernbezwaarService, never())
-        .clusterEenCategorie(anyString(), anyString(), anyLong());
+        .clusterProject(anyString(), anyLong());
     verify(taakService, never()).markeerKlaar(anyLong());
     verify(taakService, never()).markeerFout(anyLong(), anyString());
   }
 
   @Test
   void annuleerTaakCanceltLopendeFuture() throws Exception {
-    var taak = maakTaak(5L, "windmolens", "Geluid");
+    var taak = maakTaak(5L, "windmolens");
     when(taakService.pakOpVoorVerwerking()).thenReturn(List.of(taak));
     doThrow(new ClusteringGeannuleerdException())
-        .when(kernbezwaarService).clusterEenCategorie("windmolens", "Geluid", 5L);
+        .when(kernbezwaarService).clusterProject("windmolens", 5L);
 
     worker.verwerkTaken();
     Thread.sleep(200);
@@ -115,7 +114,7 @@ class ClusteringWorkerTest {
 
     // De taak is al verwerkt (exception), maar annuleerTaak probeert de Future te cancellen
     // Het resultaat hangt af van timing; de Future kan al klaar zijn
-    // We verifiëren dat de methode niet crasht
+    // We verifieren dat de methode niet crasht
     assertThat(geannuleerd).isIn(true, false);
   }
 
@@ -126,11 +125,10 @@ class ClusteringWorkerTest {
     assertThat(geannuleerd).isFalse();
   }
 
-  private ClusteringTaak maakTaak(Long id, String projectNaam, String categorie) {
+  private ClusteringTaak maakTaak(Long id, String projectNaam) {
     var taak = new ClusteringTaak();
     taak.setId(id);
     taak.setProjectNaam(projectNaam);
-    taak.setCategorie(categorie);
     taak.setStatus(ClusteringTaakStatus.BEZIG);
     taak.setAangemaaktOp(Instant.now());
     return taak;

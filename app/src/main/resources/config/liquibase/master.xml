@@ -19,5 +19,6 @@
   <include file="config/liquibase/changelog/20260304-verwijder-geannuleerd.xml"/>
   <include file="config/liquibase/changelog/20260306-dual-embedding.xml"/>
   <include file="config/liquibase/changelog/20260306-referentie-score.xml"/>
+  <include file="config/liquibase/changelog/20260306-centroid-matching.xml"/>
 
 </databaseChangeLog>
