@@ -382,7 +382,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _renderClusteringStatus(inhoud) {
     inhoud.innerHTML = '';
-    this._renderClusteringParams(inhoud);
+    this._renderClusteringParams(inhoud, true);
 
     const statusDiv = document.createElement('div');
     statusDiv.className = 'lege-staat';
@@ -415,7 +415,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _renderClusteringFout(inhoud) {
     inhoud.innerHTML = '';
-    this._renderClusteringParams(inhoud);
+    this._renderClusteringParams(inhoud, true);
 
     const foutAlert = document.createElement('vl-alert');
     foutAlert.setAttribute('type', 'error');
@@ -438,7 +438,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
   _renderKernbezwaren(inhoud) {
     inhoud.innerHTML = '';
-    this._renderClusteringParams(inhoud);
+    this._renderClusteringParams(inhoud, true);
 
     // Actiebalk
     const header = document.createElement('div');
@@ -772,7 +772,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     modal.open();
   }
 
-  _renderClusteringParams(inhoud) {
+  _renderClusteringParams(inhoud, disabled = false) {
     const accordion = document.createElement('vl-accordion');
     accordion.className = 'clustering-params-accordion';
     accordion.setAttribute('close-toggle-text', 'Clustering parameters');
@@ -800,6 +800,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           umapToggle.setAttribute('switch', '');
           umapToggle.id = 'umap-toggle';
           umapToggle.checked = config.umapEnabled;
+          if (disabled) umapToggle.setAttribute('disabled', '');
           umapToggle.textContent = 'UMAP dimensiereductie';
           umapCol.appendChild(umapToggle);
           optiesGrid.appendChild(umapCol);
@@ -811,6 +812,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           passageToggle.setAttribute('switch', '');
           passageToggle.id = 'passage-toggle';
           passageToggle.checked = config.clusterOpPassages;
+          if (disabled) passageToggle.setAttribute('disabled', '');
           passageToggle.textContent = 'Cluster op passages';
           passageCol.appendChild(passageToggle);
           optiesGrid.appendChild(passageCol);
@@ -822,6 +824,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           deduplicatieToggle.setAttribute('switch', '');
           deduplicatieToggle.id = 'deduplicatie-toggle';
           deduplicatieToggle.checked = this._deduplicatieVoorClustering;
+          if (disabled) deduplicatieToggle.setAttribute('disabled', '');
           deduplicatieToggle.textContent = 'Passage-deduplicatie';
           deduplicatieCol.appendChild(deduplicatieToggle);
           optiesGrid.appendChild(deduplicatieCol);
@@ -866,6 +869,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
             input.setAttribute('type', 'number');
             input.setAttribute('min', min);
             input.setAttribute('block', '');
+            if (disabled) input.setAttribute('disabled', '');
             input.value = decimals === 0 ?
                 String(config[key]) : Number(config[key]).toFixed(decimals);
             input.addEventListener('vl-input', (e) => {
@@ -904,6 +908,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
             input.setAttribute('type', 'number');
             input.setAttribute('min', min);
             input.setAttribute('block', '');
+            if (disabled) input.setAttribute('disabled', '');
             input.value = decimals === 0 ?
                 String(config[key]) : Number(config[key]).toFixed(decimals);
             input.addEventListener('vl-input', (e) => {
