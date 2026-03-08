@@ -775,7 +775,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   _renderClusteringParams(inhoud) {
     const accordion = document.createElement('vl-accordion');
     accordion.className = 'clustering-params-accordion';
-    accordion.setAttribute('toggle-text', 'Clustering parameters');
+    accordion.setAttribute('close-toggle-text', 'Clustering parameters');
     accordion.setAttribute('open-toggle-text', 'Clustering parameters');
 
     const wrapper = document.createElement('div');
@@ -785,7 +785,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .then((r) => r.json())
         .then((config) => {
           // --- Opties sectie ---
-          const optiesTitel = document.createElement('h6');
+          const optiesTitel = document.createElement('h2');
           optiesTitel.textContent = 'Opties';
           wrapper.appendChild(optiesTitel);
 
@@ -842,7 +842,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           const umapSectie = document.createElement('div');
           umapSectie.style.display = config.umapEnabled ? '' : 'none';
 
-          const umapTitel = document.createElement('h6');
+          const umapTitel = document.createElement('h2');
           umapTitel.textContent = 'UMAP parameters';
           umapSectie.appendChild(umapTitel);
 
@@ -880,7 +880,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           wrapper.appendChild(umapSectie);
 
           // --- HDBSCAN parameters sectie ---
-          const hdbscanTitel = document.createElement('h6');
+          const hdbscanTitel = document.createElement('h2');
           hdbscanTitel.textContent = 'HDBSCAN parameters';
           wrapper.appendChild(hdbscanTitel);
 
