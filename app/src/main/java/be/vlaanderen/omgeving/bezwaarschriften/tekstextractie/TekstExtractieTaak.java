@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 
+import java.time.Instant;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -9,7 +10,6 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.persistence.Version;
-import java.time.Instant;
 
 /** JPA-entiteit voor een tekst-extractie taak in de verwerkingsqueue. */
 @Entity

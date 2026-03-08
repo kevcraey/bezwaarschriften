@@ -46,4 +46,15 @@ public class ExtractieConfig {
     executor.initialize();
     return executor;
   }
+
+  @Bean
+  public ThreadPoolTaskExecutor tekstExtractieExecutor(
+      @Value("${bezwaarschriften.tekst-extractie.max-concurrent:2}") int maxConcurrent) {
+    var executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(maxConcurrent);
+    executor.setMaxPoolSize(maxConcurrent);
+    executor.setThreadNamePrefix("tekst-extractie-");
+    executor.initialize();
+    return executor;
+  }
 }
