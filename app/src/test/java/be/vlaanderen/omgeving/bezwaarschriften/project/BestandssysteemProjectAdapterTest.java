@@ -59,7 +59,7 @@ class BestandssysteemProjectAdapterTest {
 
   @Test
   void geeftBestandsnamenVanProject() throws Exception {
-    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren-orig");
     Files.createDirectories(bezwarenMap);
     Files.writeString(bezwarenMap.resolve("bezwaar-001.txt"), "inhoud");
     Files.writeString(bezwarenMap.resolve("bijlage.pdf"), "pdf inhoud");
@@ -80,7 +80,7 @@ class BestandssysteemProjectAdapterTest {
 
   @Test
   void geeftLegeBestandsnamenAlsBezwarenMapLeegIs() throws Exception {
-    Files.createDirectories(inputFolder.resolve("windmolens").resolve("bezwaren"));
+    Files.createDirectories(inputFolder.resolve("windmolens").resolve("bezwaren-orig"));
 
     var bestandsnamen = adapter.geefBestandsnamen("windmolens");
 
@@ -89,7 +89,7 @@ class BestandssysteemProjectAdapterTest {
 
   @Test
   void negeertVerborgenBestandenInBezwarenMap() throws Exception {
-    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren-orig");
     Files.createDirectories(bezwarenMap);
     Files.writeString(bezwarenMap.resolve("bezwaar-001.txt"), "inhoud");
     Files.writeString(bezwarenMap.resolve(".DS_Store"), "verborgen");
@@ -120,7 +120,7 @@ class BestandssysteemProjectAdapterTest {
 
   @Test
   void geefBestandsPad_geeftPadVoorBestaandBestand() throws Exception {
-    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren-orig");
     Files.createDirectories(bezwarenMap);
     Files.writeString(bezwarenMap.resolve("bezwaar1.txt"), "inhoud");
 
@@ -131,7 +131,7 @@ class BestandssysteemProjectAdapterTest {
 
   @Test
   void geefBestandsPad_gooitExceptieBijPathTraversal() throws Exception {
-    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren-orig");
     Files.createDirectories(bezwarenMap);
 
     assertThrows(
@@ -142,7 +142,7 @@ class BestandssysteemProjectAdapterTest {
 
   @Test
   void geefBestandsPad_gooitExceptieBijOnbekendBestand() throws Exception {
-    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren");
+    var bezwarenMap = inputFolder.resolve("windmolens").resolve("bezwaren-orig");
     Files.createDirectories(bezwarenMap);
 
     assertThrows(
@@ -160,11 +160,12 @@ class BestandssysteemProjectAdapterTest {
   }
 
   @Test
-  void maaktProjectMapAanMetBezwarenSubmap() throws Exception {
+  void maaktProjectMapAanMetBezwarenSubmappen() throws Exception {
     adapter.maakProjectAan("nieuw-project");
 
     assertThat(Files.isDirectory(inputFolder.resolve("nieuw-project"))).isTrue();
-    assertThat(Files.isDirectory(inputFolder.resolve("nieuw-project").resolve("bezwaren"))).isTrue();
+    assertThat(Files.isDirectory(inputFolder.resolve("nieuw-project").resolve("bezwaren-orig"))).isTrue();
+    assertThat(Files.isDirectory(inputFolder.resolve("nieuw-project").resolve("bezwaren-text"))).isTrue();
   }
 
   @Test
@@ -187,7 +188,7 @@ class BestandssysteemProjectAdapterTest {
 
   @Test
   void verwijdertProjectMapRecursief() throws Exception {
-    var bezwarenMap = inputFolder.resolve("oud-project").resolve("bezwaren");
+    var bezwarenMap = inputFolder.resolve("oud-project").resolve("bezwaren-orig");
     Files.createDirectories(bezwarenMap);
     Files.writeString(bezwarenMap.resolve("bestand.txt"), "inhoud");
 
@@ -209,6 +210,71 @@ class BestandssysteemProjectAdapterTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> adapter.verwijderProject("../kwaadaardig")
+    );
+  }
+
+  @Test
+  void slaTekstOp_schrijftTekstNaarBezwarenTextMap() throws Exception {
+    Files.createDirectories(inputFolder.resolve("windmolens").resolve("bezwaren-text"));
+
+    adapter.slaTekstOp("windmolens", "bezwaar-001.pdf", "Geëxtraheerde tekst");
+
+    var tekstPad = inputFolder.resolve("windmolens").resolve("bezwaren-text").resolve("bezwaar-001.txt");
+    assertThat(Files.exists(tekstPad)).isTrue();
+    assertThat(Files.readString(tekstPad)).isEqualTo("Geëxtraheerde tekst");
+  }
+
+  @Test
+  void slaTekstOp_vervangExtensie() throws Exception {
+    Files.createDirectories(inputFolder.resolve("windmolens").resolve("bezwaren-text"));
+
+    adapter.slaTekstOp("windmolens", "document.pdf", "tekst inhoud");
+
+    assertThat(Files.exists(
+        inputFolder.resolve("windmolens").resolve("bezwaren-text").resolve("document.txt")
+    )).isTrue();
+  }
+
+  @Test
+  void slaTekstOp_txtBestandBehoudtExtensie() throws Exception {
+    Files.createDirectories(inputFolder.resolve("windmolens").resolve("bezwaren-text"));
+
+    adapter.slaTekstOp("windmolens", "bezwaar.txt", "tekst inhoud");
+
+    assertThat(Files.exists(
+        inputFolder.resolve("windmolens").resolve("bezwaren-text").resolve("bezwaar.txt")
+    )).isTrue();
+  }
+
+  @Test
+  void geefTekstBestandsPad_geeftPadVoorBestaandTekstBestand() throws Exception {
+    var tekstMap = inputFolder.resolve("windmolens").resolve("bezwaren-text");
+    Files.createDirectories(tekstMap);
+    Files.writeString(tekstMap.resolve("bezwaar1.txt"), "tekst");
+
+    var result = adapter.geefTekstBestandsPad("windmolens", "bezwaar1.txt");
+
+    assertThat(result).isEqualTo(tekstMap.resolve("bezwaar1.txt"));
+  }
+
+  @Test
+  void geefTekstBestandsPad_gooitExceptieBijOnbekendBestand() throws Exception {
+    var tekstMap = inputFolder.resolve("windmolens").resolve("bezwaren-text");
+    Files.createDirectories(tekstMap);
+
+    assertThrows(
+        BestandNietGevondenException.class,
+        () -> adapter.geefTekstBestandsPad("windmolens", "bestaat-niet.txt")
+    );
+  }
+
+  @Test
+  void geefTekstBestandsPad_gooitExceptieBijPathTraversal() throws Exception {
+    Files.createDirectories(inputFolder.resolve("windmolens").resolve("bezwaren-text"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> adapter.geefTekstBestandsPad("windmolens", "../etc/passwd")
     );
   }
 }

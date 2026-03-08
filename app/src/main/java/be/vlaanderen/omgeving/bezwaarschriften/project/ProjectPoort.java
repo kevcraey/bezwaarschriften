@@ -71,4 +71,25 @@ public interface ProjectPoort {
    * @throws IllegalArgumentException Als de naam ongeldig is (path traversal)
    */
   boolean verwijderProject(String naam);
+
+  /**
+   * Slaat geëxtraheerde tekst op in de bezwaren-text map van een project.
+   *
+   * @param projectNaam Naam van het project
+   * @param bestandsnaam Naam van het bestand (extensie wordt vervangen door .txt)
+   * @param tekst De geëxtraheerde tekst
+   * @throws ProjectNietGevondenException Als het project niet bestaat
+   */
+  void slaTekstOp(String projectNaam, String bestandsnaam, String tekst);
+
+  /**
+   * Geeft het pad naar een tekstbestand in de bezwaren-text map van een project.
+   *
+   * @param projectNaam Naam van het project
+   * @param bestandsnaam Naam van het bestand
+   * @return Het pad naar het tekstbestand
+   * @throws ProjectNietGevondenException Als het project niet bestaat
+   * @throws BestandNietGevondenException Als het tekstbestand niet bestaat
+   */
+  Path geefTekstBestandsPad(String projectNaam, String bestandsnaam);
 }

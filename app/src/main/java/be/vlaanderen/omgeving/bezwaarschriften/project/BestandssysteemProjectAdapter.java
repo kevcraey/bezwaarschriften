@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -130,7 +131,8 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
       throw new IllegalArgumentException("Project bestaat al: " + naam);
     }
     try {
-      Files.createDirectories(projectPad.resolve("bezwaren"));
+      Files.createDirectories(projectPad.resolve("bezwaren-orig"));
+      Files.createDirectories(projectPad.resolve("bezwaren-text"));
       LOGGER.info("Project '{}' aangemaakt", naam);
     } catch (IOException e) {
       throw new RuntimeException("Kon project niet aanmaken: " + naam, e);
@@ -176,6 +178,70 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
     if (!Files.isDirectory(projectPad)) {
       throw new ProjectNietGevondenException(projectNaam);
     }
-    return projectPad.resolve("bezwaren");
+    return projectPad.resolve("bezwaren-orig");
+  }
+
+  /**
+   * Valideert de projectnaam en geeft het pad naar de bezwaren-text map terug.
+   *
+   * @param projectNaam Naam van het project
+   * @return Pad naar de bezwaren-text map van het project
+   * @throws ProjectNietGevondenException Als het project niet bestaat of de naam ongeldig is
+   */
+  private Path resolveEnValideerTekstPad(final String projectNaam) {
+    var projectPad = inputFolder.resolve(projectNaam).normalize();
+    if (!projectPad.startsWith(inputFolder.normalize())) {
+      throw new ProjectNietGevondenException(projectNaam);
+    }
+    if (!Files.isDirectory(projectPad)) {
+      throw new ProjectNietGevondenException(projectNaam);
+    }
+    return projectPad.resolve("bezwaren-text");
+  }
+
+  @Override
+  public void slaTekstOp(final String projectNaam, final String bestandsnaam,
+      final String tekst) {
+    var tekstPad = resolveEnValideerTekstPad(projectNaam);
+    var txtNaam = vervangExtensieDoorTxt(bestandsnaam);
+    var doelPad = tekstPad.resolve(txtNaam).normalize();
+    if (!doelPad.startsWith(tekstPad)) {
+      throw new IllegalArgumentException("Ongeldige bestandsnaam: " + bestandsnaam);
+    }
+    try {
+      Files.createDirectories(tekstPad);
+      Files.writeString(doelPad, tekst, StandardCharsets.UTF_8);
+      LOGGER.info("Tekst '{}' opgeslagen voor project '{}'", txtNaam, projectNaam);
+    } catch (IOException e) {
+      throw new RuntimeException("Kon tekst niet opslaan: " + txtNaam, e);
+    }
+  }
+
+  @Override
+  public Path geefTekstBestandsPad(final String projectNaam, final String bestandsnaam) {
+    if (bestandsnaam.contains("..") || bestandsnaam.contains("/")
+        || bestandsnaam.contains("\\")) {
+      throw new IllegalArgumentException("Ongeldige bestandsnaam: " + bestandsnaam);
+    }
+    var tekstPad = resolveEnValideerTekstPad(projectNaam);
+    var bestandsPad = tekstPad.resolve(bestandsnaam).normalize();
+    if (!bestandsPad.startsWith(tekstPad) || !Files.exists(bestandsPad)) {
+      throw new BestandNietGevondenException(bestandsnaam);
+    }
+    return bestandsPad;
+  }
+
+  /**
+   * Vervangt de extensie van een bestandsnaam door .txt.
+   *
+   * @param bestandsnaam Originele bestandsnaam
+   * @return Bestandsnaam met .txt extensie
+   */
+  private static String vervangExtensieDoorTxt(final String bestandsnaam) {
+    var dotIndex = bestandsnaam.lastIndexOf('.');
+    if (dotIndex > 0) {
+      return bestandsnaam.substring(0, dotIndex) + ".txt";
+    }
+    return bestandsnaam + ".txt";
   }
 }

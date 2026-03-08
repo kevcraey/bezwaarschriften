@@ -25,14 +25,7 @@ public class BestandssysteemIngestieAdapter implements IngestiePoort {
       throw new FileIngestionException("Bestandspad mag niet null zijn");
     }
 
-    // Valideer extensie
     var bestandsnaam = pad.getFileName().toString();
-    if (!bestandsnaam.toLowerCase().endsWith(".txt")) {
-      throw new FileIngestionException(
-          String.format("Bestand '%s' heeft geen .txt extensie. "
-              + "Alleen .txt bestanden worden ondersteund.", bestandsnaam)
-      );
-    }
 
     // Valideer dat het een bestand is en geen directory
     if (Files.isDirectory(pad)) {

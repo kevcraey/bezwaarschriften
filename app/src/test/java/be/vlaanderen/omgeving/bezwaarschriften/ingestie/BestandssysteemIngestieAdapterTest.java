@@ -56,16 +56,18 @@ class BestandssysteemIngestieAdapterTest {
   }
 
   @Test
-  void gooitExceptionBijVerkeerdExtensie() throws Exception {
-    // Given: een bestand met verkeerde extensie
-    var pdfBestand = tempDir.resolve("document.pdf");
-    Files.writeString(pdfBestand, "fake pdf content");
+  void leestBestandMetWillekeurigeExtensieSuccesvol() throws Exception {
+    // Given: een bestand met niet-.txt extensie maar tekstinhoud
+    var bestand = tempDir.resolve("document.pdf");
+    Files.writeString(bestand, "tekst inhoud van het bestand");
 
-    // When/Then: FileIngestionException wordt gegooid
-    assertThatThrownBy(() -> adapter.leesBestand(pdfBestand))
-        .isInstanceOf(FileIngestionException.class)
-        .hasMessageContaining(".txt")
-        .hasMessageContaining("document.pdf");
+    // When: de service wordt aangeroepen
+    var resultaat = adapter.leesBestand(bestand);
+
+    // Then: retourneert een Brondocument met de inhoud
+    assertThat(resultaat).isNotNull();
+    assertThat(resultaat.tekst()).isEqualTo("tekst inhoud van het bestand");
+    assertThat(resultaat.bestandsnaam()).isEqualTo("document.pdf");
   }
 
   @Test
@@ -108,14 +110,14 @@ class BestandssysteemIngestieAdapterTest {
 
   @Test
   void gooitExceptionBijDirectory() throws Exception {
-    // Given: een directory met .txt naam
-    var directory = tempDir.resolve("test-dir.txt");
+    // Given: een directory
+    var directory = tempDir.resolve("test-dir");
     Files.createDirectory(directory);
 
     // When/Then: FileIngestionException wordt gegooid
     assertThatThrownBy(() -> adapter.leesBestand(directory))
         .isInstanceOf(FileIngestionException.class)
         .hasMessageContaining("directory")
-        .hasMessageContaining("test-dir.txt");
+        .hasMessageContaining("test-dir");
   }
 }

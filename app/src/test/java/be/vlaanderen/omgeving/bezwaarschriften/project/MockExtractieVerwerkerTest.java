@@ -99,15 +99,15 @@ class MockExtractieVerwerkerTest {
         + "\"categorie\":\"mobiliteit\"}],"
         + "\"metadata\":{\"aantalWoorden\":5,\"documentSamenvatting\":\"test samenvatting\"}}";
 
-    var bezwarenDir = tempDir.resolve(projectNaam).resolve("bezwaren");
+    var bezwarenDir = tempDir.resolve(projectNaam).resolve("bezwaren-orig");
     Files.createDirectories(bezwarenDir);
     Files.writeString(bezwarenDir.resolve("Bezwaar_01.json"), fixtureJson);
 
     var verwerkerMetFixture = new MockExtractieVerwerker(
         ingestiePoort, "input", tempDir.toString());
-    when(ingestiePoort.leesBestand(Path.of("input", projectNaam, "bezwaren", bestandsnaam)))
+    when(ingestiePoort.leesBestand(Path.of("input", projectNaam, "bezwaren-orig", bestandsnaam)))
         .thenReturn(new Brondocument("dit is een test tekst", bestandsnaam,
-            "input/" + projectNaam + "/bezwaren/" + bestandsnaam, Instant.now()));
+            "input/" + projectNaam + "/bezwaren-orig/" + bestandsnaam, Instant.now()));
 
     var resultaat = verwerkerMetFixture.verwerk(projectNaam, bestandsnaam, 0);
 
@@ -118,8 +118,8 @@ class MockExtractieVerwerkerTest {
 
   private void mockBestand(String bestandsnaam, String tekst) {
     when(ingestiePoort.leesBestand(
-        Path.of("input", PROJECT, "bezwaren", bestandsnaam)))
+        Path.of("input", PROJECT, "bezwaren-orig", bestandsnaam)))
         .thenReturn(new Brondocument(tekst, bestandsnaam,
-            "input/" + PROJECT + "/bezwaren/" + bestandsnaam, Instant.now()));
+            "input/" + PROJECT + "/bezwaren-orig/" + bestandsnaam, Instant.now()));
   }
 }

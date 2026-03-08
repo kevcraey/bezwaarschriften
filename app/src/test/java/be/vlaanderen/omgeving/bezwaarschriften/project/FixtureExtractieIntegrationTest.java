@@ -81,7 +81,7 @@ class FixtureExtractieIntegrationTest {
       return stream
           .filter(Files::isDirectory)
           .filter(dir -> Files.isDirectory(dir.resolve("documenten"))
-              && Files.isDirectory(dir.resolve("bezwaren")))
+              && Files.isDirectory(dir.resolve("bezwaren-orig")))
           .toList();
     }
   }

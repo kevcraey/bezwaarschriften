@@ -79,7 +79,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
 
   @Override
   public ExtractieResultaat verwerk(String projectNaam, String bestandsnaam, int poging) {
-    var pad = inputFolder.resolve(projectNaam).resolve("bezwaren").resolve(bestandsnaam);
+    var pad = inputFolder.resolve(projectNaam).resolve("bezwaren-orig").resolve(bestandsnaam);
     var brondocument = ingestiePoort.leesBestand(pad);
     var aantalWoorden = telWoorden(brondocument.tekst());
 
@@ -120,7 +120,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
   private Path zoekFixturePad(String projectNaam, String naamZonderExtensie) {
     var jsonNaam = naamZonderExtensie + ".json";
     // Probeer eerst exact projectpad
-    var kandidaat = testdataBaseDir.resolve(projectNaam).resolve("bezwaren").resolve(jsonNaam);
+    var kandidaat = testdataBaseDir.resolve(projectNaam).resolve("bezwaren-orig").resolve(jsonNaam);
     if (Files.exists(kandidaat)) {
       return kandidaat;
     }
@@ -128,7 +128,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     try (var stream = Files.list(testdataBaseDir)) {
       return stream
           .filter(Files::isDirectory)
-          .map(dir -> dir.resolve("bezwaren").resolve(jsonNaam))
+          .map(dir -> dir.resolve("bezwaren-orig").resolve(jsonNaam))
           .filter(Files::exists)
           .findFirst()
           .orElse(null);
