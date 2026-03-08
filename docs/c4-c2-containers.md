@@ -2,8 +2,8 @@
 
 ## Bezwaarschriften Verwerkingssysteem - Container View
 
-**Versie:** 1.2
-**Laatst bijgewerkt:** 2026-03-06
+**Versie:** 1.3
+**Laatst bijgewerkt:** 2026-03-08
 **Status:** In ontwikkeling (MS1 - Minimal Viable Pipeline)
 
 ---
@@ -29,6 +29,7 @@ C4Container
 
         Container(project, "Project Component", "Java NIO", "Beheert projectmappen en coördineert batchverwerking van bezwarenbestanden")
         Container(ingestie, "File Ingestie Component", "Java NIO", "Leest TXT bestanden in en creëert Brondocument objecten")
+        Container(tekstextractie, "Tekst Extractie Component", "PDFBox + Tesseract", "Extraheert platte tekst uit PDF/TXT met kwaliteitscontrole en OCR-fallback")
         Container(extractie, "Bezwaar Extractie Component", "Spring AI", "Extraheert individuele bezwaren uit brondocument via LLM")
         Container(clustering, "Clustering Component", "Tribuo HDBSCAN + pgvector", "Groepeert bezwaren via HDBSCAN clustering met centroid matching post-processing")
         Container(generatie, "Antwoord Generatie Component", "Spring AI", "Genereert gepersonaliseerde antwoorden via LLM")
@@ -49,6 +50,10 @@ C4Container
     Rel(project, ingestie, "Verwerkt .txt bestanden", "IngestiePoort")
     Rel(api, ingestie, "Leest bestand in", "IngestiePoort")
     Rel(ingestie, filesysteem, "Leest .txt bestand", "java.nio.file.Files")
+
+    Rel(project, tekstextractie, "Verwerkt geüploade bestanden", "TekstExtractiePoort")
+    Rel(tekstextractie, filesysteem, "Leest originelen, schrijft tekst", "java.nio.file.Files")
+    Rel(tekstextractie, database, "Beheert extractietaken", "JPA")
 
     Rel(api, extractie, "Extraheert bezwaren", "BezwaarExtractiePoort")
     Rel(extractie, openai, "LLM request", "Spring AI (openai profile)")
@@ -176,7 +181,50 @@ IngestiePoort <-- BestandssysteemIngestieAdapter --> File System
 
 ---
 
-### 3. Bezwaar Extractie Component
+### 3. Tekst Extractie Component
+
+**Verantwoordelijkheid:** Extraheert platte tekst uit PDF- en TXT-bestanden met kwaliteitscontrole en OCR-fallback.
+
+**Technologie:**
+- Apache PDFBox (PDFTextStripper) voor digitale PDF-extractie
+- Tesseract OCR (optioneel) voor gescande documenten (nld + eng, 300 DPI)
+- Java 21 NIO voor bestandsoperaties
+- Spring `@Async` voor asynchrone verwerking
+
+**Verwerkingsflow:**
+1. Upload → bestand opgeslagen in `bezwaren-orig/`
+2. `TekstExtractieTaak` aangemaakt met status `WACHTEND`
+3. Async verwerking:
+   - PDF: digitale extractie → kwaliteitscontrole → OCR-fallback indien nodig
+   - TXT: directe kwaliteitscontrole
+4. Resultaat: platte tekst opgeslagen in `bezwaren-text/`
+
+**Kwaliteitscriteria:**
+| Criterium | Drempelwaarde |
+|---|---|
+| Minimaal aantal woorden | 100 |
+| Alfanumerieke ratio (excl. spaties) | >= 70% |
+| Klinker/letter ratio | 20% - 60% |
+
+**Statussen:** `WACHTEND` → `BEZIG` → `KLAAR` / `MISLUKT` / `OCR_NIET_BESCHIKBAAR`
+
+**Gate-mechanisme:** AI-bezwaarextractie kan pas starten na succesvolle tekst-extractie (status `KLAAR`).
+
+**Traceability:** Extractiemethode (DIGITAAL / OCR) wordt per document bijgehouden en getoond in de documententabel.
+
+**Hexagonale Architectuur:**
+```
+[Port]                    [Service]                       [Adapter]
+TekstExtractiePoort <-- TekstExtractieService           --> PdfTextExtractor (PDFBox)
+                                                        --> OcrTextExtractor (Tesseract)
+                                                        --> TekstKwaliteitsAnalyse
+```
+
+Zie ook: `docs/text-extractie.md` voor de volledige functionele beschrijving.
+
+---
+
+### 4. Bezwaar Extractie Component
 
 **Verantwoordelijkheid:** Analyseert brondocument en extraheert individuele atomaire bezwaren via LLM.
 
@@ -232,7 +280,7 @@ BezwaarExtractiePoort <-- BezwaarExtractieService --> OpenAI Adapter (Spring AI)
 
 ---
 
-### 4. Clustering Component
+### 5. Clustering Component
 
 **Verantwoordelijkheid:** Groepeert gelijkaardige bezwaren tot kernbezwaren via HDBSCAN density-based clustering, met centroid matching post-processing voor noise-bezwaren.
 
@@ -308,7 +356,7 @@ KernbezwaarController    → KernbezwaarService            → KernbezwaarReposi
 
 ---
 
-### 5. Antwoord Generatie Component
+### 6. Antwoord Generatie Component
 
 **Verantwoordelijkheid:** Genereert gepersonaliseerde antwoorden op individuele bezwaren op basis van kernantwoord.
 
@@ -332,7 +380,7 @@ KernbezwaarController    → KernbezwaarService            → KernbezwaarReposi
 
 ---
 
-### 6. Database (PostgreSQL + pgvector)
+### 7. Database (PostgreSQL + pgvector)
 
 **Verantwoordelijkheid:** Persistente opslag van alle domeinobjecten en vector embeddings.
 
@@ -400,7 +448,7 @@ WITH (lists = 100);
 
 ---
 
-### 7. REST API
+### 8. REST API
 
 **Verantwoordelijkheid:** Exposeert HTTP endpoints voor frontend en externe integraties.
 
@@ -467,7 +515,7 @@ POST /api/v1/kernen/{kernId}/genereer
 
 ---
 
-### 8. Web Application
+### 9. Web Application
 
 **Verantwoordelijkheid:** User interface voor ambtenaren.
 
@@ -518,6 +566,24 @@ Web Application (bezwaarschriften-project-selectie)
             └─> statusRegister.put(bestand, EXTRACTIE_KLAAR | FOUT)
 ```
 
+### Tekst Extractie Flow
+```
+Web Application
+  └─> Upload bestand (PDF/TXT)
+       └─> ProjectController → ProjectService
+            └─> Opslag in bezwaren-orig/
+            └─> TekstExtractieTaak aanmaken (WACHTEND)
+            └─> TekstExtractieWorker (async)
+                 ├─> PDF: PdfTextExtractor (PDFBox PDFTextStripper)
+                 │    └─> TekstKwaliteitsAnalyse
+                 │         ├─> OK → KLAAR
+                 │         └─> Niet OK → OcrTextExtractor (Tesseract nld+eng 300DPI)
+                 │              └─> TekstKwaliteitsAnalyse → KLAAR / MISLUKT
+                 ├─> TXT: TekstKwaliteitsAnalyse → KLAAR / MISLUKT
+                 └─> Resultaat opslaan in bezwaren-text/
+  └─> WebSocket update naar frontend
+```
+
 ### Ingestie Flow
 ```
 API Container
@@ -566,6 +632,7 @@ Web Application
 ### Ports (Interfaces)
 Alle domeinlogica wordt aangestuurd via port interfaces:
 - `IngestiePoort` - Document inlezen
+- `TekstExtractiePoort` - Tekst extractie uit PDF/TXT met kwaliteitscontrole
 - `BezwaarExtractiePoort` - Bezwaar extractie
 - `ClusteringPoort` - Groepering
 - `AntwoordGeneratiePoort` - Antwoord generatie
