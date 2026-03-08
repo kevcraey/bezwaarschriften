@@ -189,6 +189,11 @@ public class ProjectController {
   private static String statusNaarString(BezwaarBestandStatus status) {
     return switch (status) {
       case TODO -> "todo";
+      case TEKST_EXTRACTIE_WACHTEND -> "tekst-extractie-wachtend";
+      case TEKST_EXTRACTIE_BEZIG -> "tekst-extractie-bezig";
+      case TEKST_EXTRACTIE_KLAAR -> "tekst-extractie-klaar";
+      case TEKST_EXTRACTIE_MISLUKT -> "tekst-extractie-mislukt";
+      case TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR -> "tekst-extractie-ocr-niet-beschikbaar";
       case WACHTEND -> "wachtend";
       case BEZIG -> "bezig";
       case EXTRACTIE_KLAAR -> "extractie-klaar";
@@ -212,14 +217,16 @@ public class ProjectController {
     static BezwarenResponse van(List<BezwaarBestand> bezwaren) {
       return new BezwarenResponse(bezwaren.stream()
           .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b.status()),
-              b.aantalWoorden(), b.aantalBezwaren(), b.heeftPassagesDieNietInTekstVoorkomen()))
+              b.aantalWoorden(), b.aantalBezwaren(), b.heeftPassagesDieNietInTekstVoorkomen(),
+              b.extractieMethode()))
           .toList());
     }
   }
 
   /** DTO voor een enkel bezwaarbestand in de response. */
   record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden,
-      Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen) {}
+      Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen,
+      String extractieMethode) {}
 
   /** Response DTO voor upload-resultaat. */
   record UploadResponse(List<String> geupload, List<UploadFoutDto> fouten) {}
