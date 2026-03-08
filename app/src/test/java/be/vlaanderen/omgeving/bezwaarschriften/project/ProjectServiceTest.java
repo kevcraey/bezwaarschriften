@@ -11,8 +11,14 @@ import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarService;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.ExtractieMethode;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieTaak;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieTaakRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieTaakStatus;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,12 +42,19 @@ class ProjectServiceTest {
   @Mock
   private ConsolidatieTaakRepository consolidatieTaakRepository;
 
+  @Mock
+  private TekstExtractieService tekstExtractieService;
+
+  @Mock
+  private TekstExtractieTaakRepository tekstExtractieTaakRepository;
+
   private ProjectService service;
 
   @BeforeEach
   void setUp() {
     service = new ProjectService(projectPoort, extractieTaakRepository,
-        kernbezwaarService, consolidatieTaakRepository);
+        kernbezwaarService, consolidatieTaakRepository,
+        tekstExtractieService, tekstExtractieTaakRepository);
   }
 
   @Test
@@ -56,8 +69,8 @@ class ProjectServiceTest {
   @Test
   void geeftBezwarenMetInitieleStatussen() {
     when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.txt", "bijlage.pdf"));
-    when(extractieTaakRepository
+        .thenReturn(List.of("bezwaar-001.txt", "bijlage.jpg"));
+    when(tekstExtractieTaakRepository
         .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
         .thenReturn(Optional.empty());
 
@@ -69,15 +82,81 @@ class ProjectServiceTest {
       assertThat(b.status()).isEqualTo(BezwaarBestandStatus.TODO);
     });
     assertThat(bezwaren).anySatisfy(b -> {
-      assertThat(b.bestandsnaam()).isEqualTo("bijlage.pdf");
+      assertThat(b.bestandsnaam()).isEqualTo("bijlage.jpg");
       assertThat(b.status()).isEqualTo(BezwaarBestandStatus.NIET_ONDERSTEUND);
     });
   }
 
   @Test
-  void leidtStatusAfUitExtractieTaak() {
+  void geeftBezwarenMetTekstExtractieWachtendStatus() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.WACHTEND, null);
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.of(tekstTaak));
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND);
+  }
+
+  @Test
+  void geeftBezwarenMetTekstExtractieBezigStatus() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.BEZIG, null);
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.of(tekstTaak));
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG);
+  }
+
+  @Test
+  void geeftBezwarenMetTekstExtractieMisluktStatus() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.MISLUKT, null);
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.of(tekstTaak));
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT);
+  }
+
+  @Test
+  void geeftBezwarenMetOcrNietBeschikbaarStatus() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.OCR_NIET_BESCHIKBAAR, null);
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.of(tekstTaak));
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status())
+        .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR);
+  }
+
+  @Test
+  void leidtStatusAfUitExtractieTaakNaTekstExtractie() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.txt"));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.KLAAR,
+        ExtractieMethode.DIGITAAL);
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(tekstTaak));
     var taak = maakTaak(ExtractieTaakStatus.KLAAR, 150, 3);
     when(extractieTaakRepository
         .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
@@ -89,23 +168,40 @@ class ProjectServiceTest {
     assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
     assertThat(bezwaren.get(0).aantalWoorden()).isEqualTo(150);
     assertThat(bezwaren.get(0).aantalBezwaren()).isEqualTo(3);
+    assertThat(bezwaren.get(0).extractieMethode()).isEqualTo("DIGITAAL");
   }
 
   @Test
-  void leidtWachtendStatusAfUitExtractieTaak() {
+  void tekstExtractieKlaarMaarGeenExtractieTaakGeeftTodoMetMethode() {
     when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.txt"));
-    var taak = maakTaak(ExtractieTaakStatus.WACHTEND, null, null);
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.KLAAR, ExtractieMethode.OCR);
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.of(tekstTaak));
     when(extractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
-        .thenReturn(Optional.of(taak));
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.empty());
 
     var bezwaren = service.geefBezwaren("windmolens");
 
     assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.WACHTEND);
-    assertThat(bezwaren.get(0).aantalWoorden()).isNull();
-    assertThat(bezwaren.get(0).aantalBezwaren()).isNull();
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TODO);
+    assertThat(bezwaren.get(0).extractieMethode()).isEqualTo("OCR");
+  }
+
+  @Test
+  void pdfBestandIsOndersteundFormaat() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.empty());
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TODO);
   }
 
   @Test
@@ -130,6 +226,36 @@ class ProjectServiceTest {
     verify(projectPoort).geefBestandsPad("windmolens", "bezwaar1.txt");
   }
 
+  @Test
+  void uploadStartAutomatischTekstExtractie() {
+    when(projectPoort.geefBestandsnamen("windmolens")).thenReturn(List.of());
+
+    var bestanden = new LinkedHashMap<String, byte[]>();
+    bestanden.put("bezwaar.txt", "inhoud".getBytes());
+    bestanden.put("bezwaar.pdf", "pdf-inhoud".getBytes());
+
+    service.uploadBezwaren("windmolens", bestanden);
+
+    verify(tekstExtractieService).indienen("windmolens", "bezwaar.txt");
+    verify(tekstExtractieService).indienen("windmolens", "bezwaar.pdf");
+  }
+
+  @Test
+  void uploadWeigertNietOndersteundFormaatMaarAccepteertPdfEnTxt() {
+    when(projectPoort.geefBestandsnamen("windmolens")).thenReturn(List.of());
+
+    var bestanden = new LinkedHashMap<String, byte[]>();
+    bestanden.put("bezwaar.txt", "inhoud".getBytes());
+    bestanden.put("bezwaar.pdf", "pdf-inhoud".getBytes());
+    bestanden.put("foto.jpg", "jpg-inhoud".getBytes());
+
+    var resultaat = service.uploadBezwaren("windmolens", bestanden);
+
+    assertThat(resultaat.geupload()).containsExactly("bezwaar.txt", "bezwaar.pdf");
+    assertThat(resultaat.fouten()).hasSize(1);
+    assertThat(resultaat.fouten().get(0).bestandsnaam()).isEqualTo("foto.jpg");
+  }
+
   private ExtractieTaak maakTaak(ExtractieTaakStatus status, Integer aantalWoorden,
       Integer aantalBezwaren) {
     var taak = new ExtractieTaak();
@@ -144,6 +270,17 @@ class ProjectServiceTest {
     return taak;
   }
 
+  private TekstExtractieTaak maakTekstExtractieTaak(TekstExtractieTaakStatus status,
+      ExtractieMethode methode) {
+    var taak = new TekstExtractieTaak();
+    taak.setProjectNaam("windmolens");
+    taak.setBestandsnaam("bezwaar-001.txt");
+    taak.setStatus(status);
+    taak.setExtractieMethode(methode);
+    taak.setAangemaaktOp(Instant.now());
+    return taak;
+  }
+
   @Test
   void maakProjectAan_delegeertNaarPoort() {
     service.maakProjectAan("nieuw-project");
@@ -152,29 +289,32 @@ class ProjectServiceTest {
   }
 
   @Test
-  void verwijderBezwaar_ruimtKernbezwaarDataOpVoorVerwijdering() {
+  void verwijderBezwaar_ruimtKernbezwaarDataEnTekstExtractieOpVoorVerwijdering() {
     when(projectPoort.verwijderBestand("windmolens", "bezwaar-001.txt")).thenReturn(true);
 
     service.verwijderBezwaar("windmolens", "bezwaar-001.txt");
 
-    var inOrder = inOrder(kernbezwaarService, extractieTaakRepository, projectPoort);
+    var inOrder = inOrder(kernbezwaarService, extractieTaakRepository,
+        tekstExtractieTaakRepository, projectPoort);
     inOrder.verify(kernbezwaarService).ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
     inOrder.verify(extractieTaakRepository).deleteByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt");
+    inOrder.verify(tekstExtractieTaakRepository).deleteByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt");
     inOrder.verify(projectPoort).verwijderBestand("windmolens", "bezwaar-001.txt");
   }
 
   @Test
-  void verwijderProject_verwijdertAlleDataEnDelegeerNaarPoort() {
+  void verwijderProject_verwijdertAlleDataInclusiefTekstExtractieTaken() {
     when(projectPoort.verwijderProject("oud-project")).thenReturn(true);
 
     boolean result = service.verwijderProject("oud-project");
 
     assertThat(result).isTrue();
     var inOrder = inOrder(kernbezwaarService, consolidatieTaakRepository,
-        extractieTaakRepository, projectPoort);
+        extractieTaakRepository, tekstExtractieTaakRepository, projectPoort);
     inOrder.verify(kernbezwaarService).ruimAllesOpVoorProject("oud-project");
     inOrder.verify(consolidatieTaakRepository).deleteByProjectNaam("oud-project");
     inOrder.verify(extractieTaakRepository).deleteByProjectNaam("oud-project");
+    inOrder.verify(tekstExtractieTaakRepository).deleteByProjectNaam("oud-project");
     inOrder.verify(projectPoort).verwijderProject("oud-project");
   }
 
@@ -188,6 +328,7 @@ class ProjectServiceTest {
     verify(kernbezwaarService).ruimAllesOpVoorProject("bestaat-niet");
     verify(consolidatieTaakRepository).deleteByProjectNaam("bestaat-niet");
     verify(extractieTaakRepository).deleteByProjectNaam("bestaat-niet");
+    verify(tekstExtractieTaakRepository).deleteByProjectNaam("bestaat-niet");
   }
 
   @Test

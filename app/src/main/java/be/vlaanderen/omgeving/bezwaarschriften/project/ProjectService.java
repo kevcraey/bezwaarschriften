@@ -2,6 +2,8 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarService;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieTaakRepository;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -27,6 +29,8 @@ public class ProjectService {
   private final ExtractieTaakRepository extractieTaakRepository;
   private final KernbezwaarService kernbezwaarService;
   private final ConsolidatieTaakRepository consolidatieTaakRepository;
+  private final TekstExtractieService tekstExtractieService;
+  private final TekstExtractieTaakRepository tekstExtractieTaakRepository;
 
   /**
    * Maakt een nieuwe ProjectService aan.
@@ -35,15 +39,21 @@ public class ProjectService {
    * @param extractieTaakRepository Repository voor extractie-taken
    * @param kernbezwaarService Service voor kernbezwaar-opruiming
    * @param consolidatieTaakRepository Repository voor consolidatie-taken
+   * @param tekstExtractieService Service voor tekst-extractie
+   * @param tekstExtractieTaakRepository Repository voor tekst-extractie taken
    */
   public ProjectService(ProjectPoort projectPoort,
       ExtractieTaakRepository extractieTaakRepository,
       KernbezwaarService kernbezwaarService,
-      ConsolidatieTaakRepository consolidatieTaakRepository) {
+      ConsolidatieTaakRepository consolidatieTaakRepository,
+      TekstExtractieService tekstExtractieService,
+      TekstExtractieTaakRepository tekstExtractieTaakRepository) {
     this.projectPoort = projectPoort;
     this.extractieTaakRepository = extractieTaakRepository;
     this.kernbezwaarService = kernbezwaarService;
     this.consolidatieTaakRepository = consolidatieTaakRepository;
+    this.tekstExtractieService = tekstExtractieService;
+    this.tekstExtractieTaakRepository = tekstExtractieTaakRepository;
   }
 
   /**
@@ -70,21 +80,52 @@ public class ProjectService {
     var bestandsnamen = projectPoort.geefBestandsnamen(projectNaam);
     return bestandsnamen.stream()
         .map(naam -> {
-          if (!isTxtBestand(naam)) {
+          if (!isOndersteundFormaat(naam)) {
             return new BezwaarBestand(naam, BezwaarBestandStatus.NIET_ONDERSTEUND);
           }
-          var laatsteTaak = extractieTaakRepository
+
+          // Controleer tekst-extractie status
+          var tekstExtractieTaak = tekstExtractieTaakRepository
               .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
               .orElse(null);
-          if (laatsteTaak == null) {
+          if (tekstExtractieTaak == null) {
             return new BezwaarBestand(naam, BezwaarBestandStatus.TODO);
           }
-          return new BezwaarBestand(naam,
-              vanExtractieTaakStatus(laatsteTaak.getStatus()),
-              laatsteTaak.getAantalWoorden(),
-              laatsteTaak.getAantalBezwaren(),
-              laatsteTaak.isHeeftPassagesDieNietInTekstVoorkomen(),
-              laatsteTaak.isHeeftManueel());
+
+          var extractieMethode = tekstExtractieTaak.getExtractieMethode() != null
+              ? tekstExtractieTaak.getExtractieMethode().name() : null;
+
+          return switch (tekstExtractieTaak.getStatus()) {
+            case WACHTEND -> new BezwaarBestand(naam,
+                BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND,
+                null, null, false, false, extractieMethode);
+            case BEZIG -> new BezwaarBestand(naam,
+                BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG,
+                null, null, false, false, extractieMethode);
+            case MISLUKT -> new BezwaarBestand(naam,
+                BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT,
+                null, null, false, false, extractieMethode);
+            case OCR_NIET_BESCHIKBAAR -> new BezwaarBestand(naam,
+                BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR,
+                null, null, false, false, extractieMethode);
+            case KLAAR -> {
+              // Tekst-extractie klaar: controleer AI-extractie status
+              var laatsteTaak = extractieTaakRepository
+                  .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
+                  .orElse(null);
+              if (laatsteTaak == null) {
+                yield new BezwaarBestand(naam, BezwaarBestandStatus.TODO,
+                    null, null, false, false, extractieMethode);
+              }
+              yield new BezwaarBestand(naam,
+                  vanExtractieTaakStatus(laatsteTaak.getStatus()),
+                  laatsteTaak.getAantalWoorden(),
+                  laatsteTaak.getAantalBezwaren(),
+                  laatsteTaak.isHeeftPassagesDieNietInTekstVoorkomen(),
+                  laatsteTaak.isHeeftManueel(),
+                  extractieMethode);
+            }
+          };
         })
         .toList();
   }
@@ -107,7 +148,7 @@ public class ProjectService {
       var bestandsnaam = entry.getKey();
       var inhoud = entry.getValue();
 
-      if (!isTxtBestand(bestandsnaam)) {
+      if (!isOndersteundFormaat(bestandsnaam)) {
         fouten.add(new UploadFout(bestandsnaam, "Niet-ondersteund formaat"));
         continue;
       }
@@ -119,6 +160,11 @@ public class ProjectService {
 
       projectPoort.slaBestandOp(projectNaam, bestandsnaam, inhoud);
       geupload.add(bestandsnaam);
+    }
+
+    // Start automatisch tekst-extractie voor geüploade bestanden
+    for (var bestandsnaam : geupload) {
+      tekstExtractieService.indienen(projectNaam, bestandsnaam);
     }
 
     return new UploadResultaat(geupload, fouten);
@@ -135,6 +181,7 @@ public class ProjectService {
   public boolean verwijderBezwaar(String projectNaam, String bestandsnaam) {
     kernbezwaarService.ruimOpNaDocumentVerwijdering(projectNaam, bestandsnaam);
     extractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
+    tekstExtractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
     return projectPoort.verwijderBestand(projectNaam, bestandsnaam);
   }
 
@@ -172,8 +219,9 @@ public class ProjectService {
     return projectPoort.geefBestandsPad(projectNaam, bestandsnaam);
   }
 
-  private boolean isTxtBestand(String bestandsnaam) {
-    return bestandsnaam.toLowerCase().endsWith(".txt");
+  private boolean isOndersteundFormaat(String bestandsnaam) {
+    var lower = bestandsnaam.toLowerCase();
+    return lower.endsWith(".txt") || lower.endsWith(".pdf");
   }
 
   private BezwaarBestandStatus vanExtractieTaakStatus(ExtractieTaakStatus status) {
@@ -206,6 +254,7 @@ public class ProjectService {
     kernbezwaarService.ruimAllesOpVoorProject(naam);
     consolidatieTaakRepository.deleteByProjectNaam(naam);
     extractieTaakRepository.deleteByProjectNaam(naam);
+    tekstExtractieTaakRepository.deleteByProjectNaam(naam);
     return projectPoort.verwijderProject(naam);
   }
 
