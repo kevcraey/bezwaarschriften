@@ -6,10 +6,12 @@ import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.compone
 import {VlSideSheet} from '@domg-wc/components/block/side-sheet/vl-side-sheet.component.js';
 import {VlPillComponent} from '@domg-wc/components/block/pill/vl-pill.component.js';
 import {VlLinkComponent} from '@domg-wc/components/atom/link/vl-link.component.js';
+import {VlCheckboxComponent} from '@domg-wc/components/form/checkbox/vl-checkbox.component.js';
+import {VlInputFieldComponent} from '@domg-wc/components/form/input-field/vl-input-field.component.js';
 import {vlGlobalStyles, vlGridStyles, vlGroupStyles} from '@domg-wc/styles';
 import '@domg-wc/components/form/textarea-rich';
 
-registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent, VlLinkComponent]);
+registerWebComponents([VlButtonComponent, VlAccordionComponent, VlAlert, VlModalComponent, VlSideSheet, VlPillComponent, VlLinkComponent, VlCheckboxComponent, VlInputFieldComponent]);
 
 const PAGE_SIZE = 15;
 
@@ -25,34 +27,8 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
         .clustering-header {
           margin-bottom: 1.5rem;
         }
-        .clustering-params {
-          display: flex;
-          align-items: center;
-          gap: 1.5rem;
-          margin-bottom: 1rem;
-          padding: 0.75rem 1rem;
-          background: #f5f6f7;
-          border: 1px solid #e8ebee;
-          border-radius: 4px;
-          font-size: 0.875rem;
-        }
-        .clustering-params label {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          color: #333;
-        }
-        .clustering-params input[type="number"] {
-          width: 5rem;
-          padding: 0.25rem 0.4rem;
-          border: 1px solid #ccc;
-          border-radius: 3px;
-          font-size: 0.875rem;
-        }
-        .clustering-params-titel {
-          font-weight: bold;
-          color: #687483;
-          margin-right: 0.5rem;
+        .clustering-params-accordion {
+          margin-bottom: var(--vl-spacing--xsmall);
         }
         .kernbezwaar-item {
           display: flex;
@@ -394,19 +370,6 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
     p.textContent = `${this._aantalBezwaren} individuele bezwaren gevonden. ` +
         'Voer clustering uit om kernbezwaren te identificeren.';
     legeStaat.appendChild(p);
-
-    const deduplicatieLabel = document.createElement('label');
-    deduplicatieLabel.style.cssText = 'display:flex;align-items:center;gap:0.4rem;margin-bottom:0.75rem;';
-    const deduplicatieToggle = document.createElement('input');
-    deduplicatieToggle.type = 'checkbox';
-    deduplicatieToggle.id = 'deduplicatie-toggle';
-    deduplicatieToggle.checked = this._deduplicatieVoorClustering;
-    deduplicatieToggle.addEventListener('change', () => {
-      this._deduplicatieVoorClustering = deduplicatieToggle.checked;
-    });
-    deduplicatieLabel.appendChild(deduplicatieToggle);
-    deduplicatieLabel.appendChild(document.createTextNode('Passage-deduplicatie voor clustering'));
-    legeStaat.appendChild(deduplicatieLabel);
 
     const knop = document.createElement('vl-button');
     knop.id = 'groepeer-knop';
@@ -810,30 +773,82 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
   }
 
   _renderClusteringParams(inhoud) {
-    const balk = document.createElement('div');
-    balk.className = 'clustering-params';
+    const accordion = document.createElement('vl-accordion');
+    accordion.className = 'clustering-params-accordion';
+    accordion.setAttribute('toggle-text', 'Clustering parameters');
+    accordion.setAttribute('open-toggle-text', 'Clustering parameters');
 
-    const titel = document.createElement('span');
-    titel.className = 'clustering-params-titel';
-    titel.textContent = 'Clustering parameters:';
-    balk.appendChild(titel);
+    const wrapper = document.createElement('div');
+    accordion.appendChild(wrapper);
 
     fetch('/api/v1/clustering-config')
         .then((r) => r.json())
         .then((config) => {
-          // UMAP toggle
-          const toggleWrapper = document.createElement('label');
-          toggleWrapper.textContent = 'UMAP: ';
-          const toggle = document.createElement('input');
-          toggle.type = 'checkbox';
-          toggle.checked = config.umapEnabled;
-          toggleWrapper.appendChild(toggle);
-          balk.appendChild(toggleWrapper);
+          // --- Opties sectie ---
+          const optiesTitel = document.createElement('h6');
+          optiesTitel.textContent = 'Opties';
+          wrapper.appendChild(optiesTitel);
 
-          // UMAP parameters container
-          const umapContainer = document.createElement('span');
-          umapContainer.className = 'umap-params';
-          umapContainer.style.display = config.umapEnabled ? '' : 'none';
+          const optiesGrid = document.createElement('div');
+          optiesGrid.className = 'vl-grid';
+          wrapper.appendChild(optiesGrid);
+
+          // UMAP toggle
+          const umapCol = document.createElement('div');
+          umapCol.className = 'vl-col--4-12';
+          const umapToggle = document.createElement('vl-checkbox');
+          umapToggle.setAttribute('switch', '');
+          umapToggle.id = 'umap-toggle';
+          umapToggle.checked = config.umapEnabled;
+          umapToggle.textContent = 'UMAP dimensiereductie';
+          umapCol.appendChild(umapToggle);
+          optiesGrid.appendChild(umapCol);
+
+          // Cluster op passages toggle
+          const passageCol = document.createElement('div');
+          passageCol.className = 'vl-col--4-12';
+          const passageToggle = document.createElement('vl-checkbox');
+          passageToggle.setAttribute('switch', '');
+          passageToggle.id = 'passage-toggle';
+          passageToggle.checked = config.clusterOpPassages;
+          passageToggle.textContent = 'Cluster op passages';
+          passageCol.appendChild(passageToggle);
+          optiesGrid.appendChild(passageCol);
+
+          // Passage-deduplicatie toggle
+          const deduplicatieCol = document.createElement('div');
+          deduplicatieCol.className = 'vl-col--4-12';
+          const deduplicatieToggle = document.createElement('vl-checkbox');
+          deduplicatieToggle.setAttribute('switch', '');
+          deduplicatieToggle.id = 'deduplicatie-toggle';
+          deduplicatieToggle.checked = this._deduplicatieVoorClustering;
+          deduplicatieToggle.textContent = 'Passage-deduplicatie';
+          deduplicatieCol.appendChild(deduplicatieToggle);
+          optiesGrid.appendChild(deduplicatieCol);
+
+          // Event listeners voor toggles (vl-input vuurt alleen bij user interactie)
+          umapToggle.addEventListener('vl-input', (e) => {
+            umapSectie.style.display = e.detail.checked ? '' : 'none';
+            this._updateClusteringConfig('umapEnabled', e.detail.checked);
+          });
+          passageToggle.addEventListener('vl-input', (e) => {
+            this._updateClusteringConfig('clusterOpPassages', e.detail.checked);
+          });
+          deduplicatieToggle.addEventListener('vl-input', (e) => {
+            this._deduplicatieVoorClustering = e.detail.checked;
+          });
+
+          // --- UMAP parameters sectie ---
+          const umapSectie = document.createElement('div');
+          umapSectie.style.display = config.umapEnabled ? '' : 'none';
+
+          const umapTitel = document.createElement('h6');
+          umapTitel.textContent = 'UMAP parameters';
+          umapSectie.appendChild(umapTitel);
+
+          const umapGrid = document.createElement('div');
+          umapGrid.className = 'vl-grid';
+          umapSectie.appendChild(umapGrid);
 
           const umapParams = [
             {key: 'umapNComponents', label: 'Dimensies', min: 2, step: 1, decimals: 0},
@@ -842,41 +857,37 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           ];
 
           umapParams.forEach(({key, label, min, step, decimals}) => {
-            const wrapper = document.createElement('label');
-            wrapper.textContent = label + ': ';
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.min = min;
-            input.step = step;
-            input.value = decimals === 0 ? config[key] : Number(config[key]).toFixed(decimals);
-            input.addEventListener('change', () => {
-              this._updateClusteringConfig(key,
-                  decimals === 0 ? parseInt(input.value, 10) : parseFloat(input.value));
+            const col = document.createElement('div');
+            col.className = 'vl-col--4-12';
+            const formLabel = document.createElement('label');
+            formLabel.textContent = label;
+            col.appendChild(formLabel);
+            const input = document.createElement('vl-input-field');
+            input.setAttribute('type', 'number');
+            input.setAttribute('min', min);
+            input.setAttribute('block', '');
+            input.value = decimals === 0 ?
+                String(config[key]) : Number(config[key]).toFixed(decimals);
+            input.addEventListener('vl-input', (e) => {
+              const val = decimals === 0 ?
+                  parseInt(e.detail.value, 10) : parseFloat(e.detail.value);
+              if (!isNaN(val)) this._updateClusteringConfig(key, val);
             });
-            wrapper.appendChild(input);
-            umapContainer.appendChild(wrapper);
+            col.appendChild(input);
+            umapGrid.appendChild(col);
           });
 
-          balk.appendChild(umapContainer);
+          wrapper.appendChild(umapSectie);
 
-          toggle.addEventListener('change', () => {
-            umapContainer.style.display = toggle.checked ? '' : 'none';
-            this._updateClusteringConfig('umapEnabled', toggle.checked);
-          });
+          // --- HDBSCAN parameters sectie ---
+          const hdbscanTitel = document.createElement('h6');
+          hdbscanTitel.textContent = 'HDBSCAN parameters';
+          wrapper.appendChild(hdbscanTitel);
 
-          // Cluster op passages toggle
-          const passageToggleWrapper = document.createElement('label');
-          passageToggleWrapper.textContent = 'Cluster op passages: ';
-          const passageToggle = document.createElement('input');
-          passageToggle.type = 'checkbox';
-          passageToggle.checked = config.clusterOpPassages;
-          passageToggle.addEventListener('change', () => {
-            this._updateClusteringConfig('clusterOpPassages', passageToggle.checked);
-          });
-          passageToggleWrapper.appendChild(passageToggle);
-          balk.appendChild(passageToggleWrapper);
+          const hdbscanGrid = document.createElement('div');
+          hdbscanGrid.className = 'vl-grid';
+          wrapper.appendChild(hdbscanGrid);
 
-          // HDBSCAN parameters
           const hdbscanParams = [
             {key: 'minClusterSize', label: 'Min. clustergrootte', min: 2, step: 1, decimals: 0},
             {key: 'minSamples', label: 'Min. samples', min: 1, step: 1, decimals: 0},
@@ -884,24 +895,29 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
           ];
 
           hdbscanParams.forEach(({key, label, min, step, decimals}) => {
-            const wrapper = document.createElement('label');
-            wrapper.textContent = label + ': ';
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.min = min;
-            input.step = step;
-            input.value = decimals === 0 ? config[key] : Number(config[key]).toFixed(decimals);
-            input.addEventListener('change', () => {
-              this._updateClusteringConfig(key,
-                  decimals === 0 ? parseInt(input.value, 10) : parseFloat(input.value));
+            const col = document.createElement('div');
+            col.className = 'vl-col--4-12';
+            const formLabel = document.createElement('label');
+            formLabel.textContent = label;
+            col.appendChild(formLabel);
+            const input = document.createElement('vl-input-field');
+            input.setAttribute('type', 'number');
+            input.setAttribute('min', min);
+            input.setAttribute('block', '');
+            input.value = decimals === 0 ?
+                String(config[key]) : Number(config[key]).toFixed(decimals);
+            input.addEventListener('vl-input', (e) => {
+              const val = decimals === 0 ?
+                  parseInt(e.detail.value, 10) : parseFloat(e.detail.value);
+              if (!isNaN(val)) this._updateClusteringConfig(key, val);
             });
-            wrapper.appendChild(input);
-            balk.appendChild(wrapper);
+            col.appendChild(input);
+            hdbscanGrid.appendChild(col);
           });
         })
         .catch(() => {/* stil falen als config niet beschikbaar is */});
 
-    inhoud.appendChild(balk);
+    inhoud.appendChild(accordion);
   }
 
   _updateClusteringConfig(key, waarde) {

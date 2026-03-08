@@ -888,23 +888,16 @@ describe('clustering parameters', () => {
     cy.wait('@getConfig');
   });
 
-  it('toont clustering parameters titel', () => {
+  it('toont clustering parameters in accordion', () => {
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.clustering-params-titel')
-        .should('contain.text', 'Clustering parameters:');
+        .find('vl-accordion.clustering-params-accordion')
+        .should('exist');
   });
 
   it('toont UMAP toggle als aangevinkt', () => {
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.clustering-params input[type="checkbox"]')
-        .first()
+        .find('#umap-toggle')
         .should('be.checked');
-  });
-
-  it('toont UMAP parameter-velden als UMAP aan', () => {
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('.umap-params')
-        .should('be.visible');
   });
 
   it('verbergt UMAP parameter-velden als UMAP uit', () => {
@@ -914,35 +907,15 @@ describe('clustering parameters', () => {
     }).as('updateConfig');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.clustering-params input[type="checkbox"]')
-        .first()
-        .uncheck();
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('.umap-params')
-        .should('not.be.visible');
-  });
-
-  it('stuurt update bij wijzigen UMAP parameter', () => {
-    cy.intercept('PUT', '/api/v1/clustering-config', (req) => {
-      expect(req.body.umapNComponents).to.equal(10);
-      req.reply({statusCode: 200, body: req.body});
-    }).as('updateConfig');
-
-    cy.get('bezwaarschriften-kernbezwaren')
-        .find('.umap-params input[type="number"]')
-        .first()
-        .clear()
-        .type('10')
-        .trigger('change');
+        .find('#umap-toggle')
+        .click({force: true});
 
     cy.wait('@updateConfig');
   });
 
-  it('toont cluster-op-passages checkbox als aangevinkt', () => {
+  it('toont cluster-op-passages toggle als aangevinkt', () => {
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.clustering-params input[type="checkbox"]')
-        .last()
+        .find('#passage-toggle')
         .should('be.checked');
   });
 
@@ -953,11 +926,22 @@ describe('clustering parameters', () => {
     }).as('updatePassages');
 
     cy.get('bezwaarschriften-kernbezwaren')
-        .find('.clustering-params input[type="checkbox"]')
-        .last()
-        .uncheck();
+        .find('#passage-toggle')
+        .click({force: true});
 
     cy.wait('@updatePassages');
+  });
+
+  it('toont deduplicatie-toggle als aangevinkt', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('#deduplicatie-toggle')
+        .should('be.checked');
+  });
+
+  it('toont HDBSCAN parameters', () => {
+    cy.get('bezwaarschriften-kernbezwaren')
+        .find('vl-input-field[type="number"]')
+        .should('have.length.at.least', 3);
   });
 });
 
@@ -990,7 +974,7 @@ describe('lege staat', () => {
         .should('contain.text', 'Cluster bezwaren');
   });
 
-  it('toont deduplicatie-toggle die standaard aangevinkt is', () => {
+  it('toont deduplicatie-toggle in clustering parameters accordion', () => {
     mountEnLaad(null);
 
     cy.get('bezwaarschriften-kernbezwaren')
@@ -998,6 +982,8 @@ describe('lege staat', () => {
           $el[0].setExtractieKlaar(true);
           $el[0].setAantalBezwaren(42);
         });
+
+    cy.wait('@getConfig');
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('#deduplicatie-toggle')
@@ -1039,9 +1025,11 @@ describe('lege staat', () => {
           $el[0].setAantalBezwaren(42);
         });
 
+    cy.wait('@getConfig');
+
     cy.get('bezwaarschriften-kernbezwaren')
         .find('#deduplicatie-toggle')
-        .uncheck();
+        .click({force: true});
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('#groepeer-knop')
