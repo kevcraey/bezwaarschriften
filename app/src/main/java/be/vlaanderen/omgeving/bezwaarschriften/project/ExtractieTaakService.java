@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public class ExtractieTaakService {
   private final IngestiePoort ingestiePoort;
   private final PassageValidator passageValidator;
   private final EmbeddingPoort embeddingPoort;
+  private final TekstExtractieService tekstExtractieService;
   private final int maxConcurrent;
   private final int maxPogingen;
 
@@ -49,6 +51,7 @@ public class ExtractieTaakService {
    * @param ingestiePoort poort voor het inlezen van brondocumenten
    * @param passageValidator validator voor passage-verificatie
    * @param embeddingPoort poort voor het genereren van embeddings
+   * @param tekstExtractieService service voor tekst-extractie
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
    * @param maxPogingen maximum aantal pogingen per taak
    */
@@ -62,6 +65,7 @@ public class ExtractieTaakService {
       IngestiePoort ingestiePoort,
       PassageValidator passageValidator,
       EmbeddingPoort embeddingPoort,
+      TekstExtractieService tekstExtractieService,
       @Value("${bezwaarschriften.extractie.max-concurrent:3}") int maxConcurrent,
       @Value("${bezwaarschriften.extractie.max-pogingen:3}") int maxPogingen) {
     this.repository = repository;
@@ -73,6 +77,7 @@ public class ExtractieTaakService {
     this.ingestiePoort = ingestiePoort;
     this.passageValidator = passageValidator;
     this.embeddingPoort = embeddingPoort;
+    this.tekstExtractieService = tekstExtractieService;
     this.maxConcurrent = maxConcurrent;
     this.maxPogingen = maxPogingen;
   }
@@ -88,6 +93,10 @@ public class ExtractieTaakService {
   public List<ExtractieTaakDto> indienen(String projectNaam, List<String> bestandsnamen) {
     return bestandsnamen.stream()
         .map(bestandsnaam -> {
+          if (!tekstExtractieService.isTekstExtractieKlaar(projectNaam, bestandsnaam)) {
+            throw new IllegalStateException(
+                "Tekst-extractie niet voltooid voor bestand: " + bestandsnaam);
+          }
           var taak = new ExtractieTaak();
           taak.setProjectNaam(projectNaam);
           taak.setBestandsnaam(bestandsnaam);
@@ -199,9 +208,9 @@ public class ExtractieTaakService {
       bezwaarEntiteiten.add(entiteit);
     }
 
-    // Passage-validatie
+    // Passage-validatie: gebruik tekst-bestand i.p.v. origineel
     try {
-      var pad = projectPoort.geefBestandsPad(taak.getProjectNaam(), taak.getBestandsnaam());
+      var pad = projectPoort.geefTekstBestandsPad(taak.getProjectNaam(), taak.getBestandsnaam());
       var brondocument = ingestiePoort.leesBestand(pad);
       var validatie = passageValidator.valideer(bezwaarEntiteiten, passageMap,
           brondocument.tekst());
@@ -313,9 +322,10 @@ public class ExtractieTaakService {
       notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
     }
 
-    // Maak taken aan voor TODO-documenten
+    // Maak taken aan voor TODO-documenten met voltooide tekst-extractie
     var todoDocumenten = projectService.geefBezwaren(projectNaam).stream()
         .filter(b -> b.status() == BezwaarBestandStatus.TODO)
+        .filter(b -> tekstExtractieService.isTekstExtractieKlaar(projectNaam, b.bestandsnaam()))
         .toList();
     for (var doc : todoDocumenten) {
       var taak = new ExtractieTaak();
@@ -425,8 +435,8 @@ public class ExtractieTaakService {
       throw new IllegalArgumentException("Taak is niet afgerond: " + taak.getStatus());
     }
 
-    // Passage-validatie: exacte match na normalisatie
-    var pad = projectPoort.geefBestandsPad(projectNaam, bestandsnaam);
+    // Passage-validatie: exacte match na normalisatie (gebruik tekst-bestand)
+    var pad = projectPoort.geefTekstBestandsPad(projectNaam, bestandsnaam);
     var brondocument = ingestiePoort.leesBestand(pad);
     var genormaliseerdeDocument = passageValidator.normaliseer(brondocument.tekst());
     var genormaliseerdePassage = passageValidator.normaliseer(passageTekst);

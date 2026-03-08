@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.Brondocument;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -51,13 +52,16 @@ class ExtractieTaakServiceTest {
   @Mock
   private EmbeddingPoort embeddingPoort;
 
+  @Mock
+  private TekstExtractieService tekstExtractieService;
+
   private ExtractieTaakService service;
 
   @BeforeEach
   void setUp() {
     service = new ExtractieTaakService(repository, notificatie, projectService,
         passageRepository, bezwaarRepository, projectPoort, ingestiePoort,
-        passageValidator, embeddingPoort, 3, 3);
+        passageValidator, embeddingPoort, tekstExtractieService, 3, 3);
     lenient().when(embeddingPoort.genereerEmbeddings(any())).thenAnswer(inv -> {
       List<String> teksten = inv.getArgument(0);
       return teksten.stream().map(t -> new float[]{0.1f}).toList();
@@ -66,6 +70,10 @@ class ExtractieTaakServiceTest {
 
   @Test
   void dienTakenInMetStatusWachtend() {
+    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "bezwaar-001.txt"))
+        .thenReturn(true);
+    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "bezwaar-002.txt"))
+        .thenReturn(true);
     when(repository.save(any())).thenAnswer(i -> {
       var t = i.getArgument(0, ExtractieTaak.class);
       t.setId(1L);
@@ -83,6 +91,17 @@ class ExtractieTaakServiceTest {
       assertThat(taak.getAantalPogingen()).isZero();
     });
     verify(notificatie, times(2)).taakGewijzigd(any(ExtractieTaakDto.class));
+  }
+
+  @Test
+  void indienenGooitExceptieAlsTekstExtractieNietKlaar() {
+    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(false);
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        service.indienen("windmolens", List.of("bezwaar-001.pdf")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Tekst-extractie niet voltooid");
   }
 
   @Test
@@ -230,7 +249,7 @@ class ExtractieTaakServiceTest {
   }
 
   @Test
-  void verwerkOnafgerondeCreertTakenVoorTodoDocumenten() {
+  void verwerkOnafgerondeCreertTakenVoorTodoDocumentenMetKlareTekstExtractie() {
     when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
         .thenReturn(List.of());
     when(projectService.geefBezwaren("windmolens"))
@@ -239,6 +258,8 @@ class ExtractieTaakServiceTest {
             new BezwaarBestand("klaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR),
             new BezwaarBestand("foto.jpg", BezwaarBestandStatus.NIET_ONDERSTEUND)
         ));
+    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "nieuw-001.txt"))
+        .thenReturn(true);
     when(repository.save(any())).thenAnswer(i -> {
       var t = i.getArgument(0, ExtractieTaak.class);
       t.setId(10L);
@@ -258,6 +279,22 @@ class ExtractieTaakServiceTest {
   }
 
   @Test
+  void verwerkOnafgerondeSluitTodoDocumentenUitZonderKlareTekstExtractie() {
+    when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
+        .thenReturn(List.of());
+    when(projectService.geefBezwaren("windmolens"))
+        .thenReturn(List.of(
+            new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TODO)
+        ));
+    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "nieuw-001.txt"))
+        .thenReturn(false);
+
+    int aantal = service.verwerkOnafgeronde("windmolens");
+
+    assertThat(aantal).isZero();
+  }
+
+  @Test
   void verwerkOnafgerondeCombinatieVanFoutEnTodo() {
     var foutTaak = maakTaak(1L, "windmolens", "fout-001.txt", ExtractieTaakStatus.FOUT);
     foutTaak.setAantalPogingen(3);
@@ -272,6 +309,8 @@ class ExtractieTaakServiceTest {
             new BezwaarBestand("fout-001.txt", BezwaarBestandStatus.FOUT),
             new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TODO)
         ));
+    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "nieuw-001.txt"))
+        .thenReturn(true);
     when(repository.save(any())).thenAnswer(i -> {
       var t = i.getArgument(0, ExtractieTaak.class);
       if (t.getId() == null) {
@@ -383,7 +422,7 @@ class ExtractieTaakServiceTest {
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
-    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(projectPoort.geefTekstBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
     when(ingestiePoort.leesBestand(pad)).thenReturn(
         new Brondocument("Volledige documenttekst.", "bezwaar-001.txt", pad.toString(),
             Instant.now()));
@@ -408,7 +447,7 @@ class ExtractieTaakServiceTest {
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
-    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(projectPoort.geefTekstBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
     when(ingestiePoort.leesBestand(pad)).thenReturn(
         new Brondocument("Documenttekst.", "bezwaar-001.txt", pad.toString(), Instant.now()));
     when(passageValidator.valideer(any(), any(), any()))
@@ -432,7 +471,7 @@ class ExtractieTaakServiceTest {
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt"))
+    when(projectPoort.geefTekstBestandsPad("windmolens", "bezwaar-001.txt"))
         .thenThrow(new RuntimeException("Bestand niet gevonden"));
 
     var resultaat = new ExtractieResultaat(100, 1,
@@ -454,7 +493,7 @@ class ExtractieTaakServiceTest {
         "windmolens", "bezwaar-001.txt")).thenReturn(Optional.of(taak));
 
     var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
-    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(projectPoort.geefTekstBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
     when(ingestiePoort.leesBestand(pad)).thenReturn(
         new Brondocument("Dit is de volledige documenttekst met relevante inhoud.",
             "bezwaar-001.txt", pad.toString(), Instant.now()));
@@ -503,7 +542,7 @@ class ExtractieTaakServiceTest {
         "windmolens", "bezwaar-001.txt")).thenReturn(Optional.of(taak));
 
     var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
-    when(projectPoort.geefBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(projectPoort.geefTekstBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
     when(ingestiePoort.leesBestand(pad)).thenReturn(
         new Brondocument("Dit is de volledige documenttekst.",
             "bezwaar-001.txt", pad.toString(), Instant.now()));
