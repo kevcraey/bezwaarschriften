@@ -795,7 +795,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
           // UMAP toggle
           const umapCol = document.createElement('div');
-          umapCol.className = 'vl-col--4-12';
+          umapCol.className = 'vl-column vl-column--4';
           const umapToggle = document.createElement('vl-checkbox');
           umapToggle.setAttribute('switch', '');
           umapToggle.id = 'umap-toggle';
@@ -806,7 +806,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
           // Cluster op passages toggle
           const passageCol = document.createElement('div');
-          passageCol.className = 'vl-col--4-12';
+          passageCol.className = 'vl-column vl-column--4';
           const passageToggle = document.createElement('vl-checkbox');
           passageToggle.setAttribute('switch', '');
           passageToggle.id = 'passage-toggle';
@@ -817,7 +817,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
           // Passage-deduplicatie toggle
           const deduplicatieCol = document.createElement('div');
-          deduplicatieCol.className = 'vl-col--4-12';
+          deduplicatieCol.className = 'vl-column vl-column--4';
           const deduplicatieToggle = document.createElement('vl-checkbox');
           deduplicatieToggle.setAttribute('switch', '');
           deduplicatieToggle.id = 'deduplicatie-toggle';
@@ -858,7 +858,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
           umapParams.forEach(({key, label, min, step, decimals}) => {
             const col = document.createElement('div');
-            col.className = 'vl-col--4-12';
+            col.className = 'vl-column vl-column--4';
             const formLabel = document.createElement('label');
             formLabel.textContent = label;
             col.appendChild(formLabel);
@@ -896,7 +896,7 @@ export class BezwaarschriftenKernbezwaren extends BaseHTMLElement {
 
           hdbscanParams.forEach(({key, label, min, step, decimals}) => {
             const col = document.createElement('div');
-            col.className = 'vl-col--4-12';
+            col.className = 'vl-column vl-column--4';
             const formLabel = document.createElement('label');
             formLabel.textContent = label;
             col.appendChild(formLabel);
