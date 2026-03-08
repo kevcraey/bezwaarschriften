@@ -537,7 +537,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       verwerkenKnop.textContent = `Verwerken (${geselecteerd.length})`;
     } else {
       const aantalTeVerwerken = this.__bezwaren.filter(
-          (b) => b.status === 'fout' || b.status === 'todo').length;
+          (b) => b.status === 'fout' || b.status === 'todo' || b.status === 'tekst-extractie-klaar').length;
       verwerkenKnop.hidden = aantalTeVerwerken === 0;
       if (aantalTeVerwerken > 0) {
         verwerkenKnop.textContent = `Verwerken (${aantalTeVerwerken})`;

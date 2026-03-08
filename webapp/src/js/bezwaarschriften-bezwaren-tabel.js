@@ -30,6 +30,11 @@ const STATUS_LABELS = {
   'extractie-klaar': 'Extractie klaar',
   'fout': 'Fout',
   'niet ondersteund': 'Niet ondersteund',
+  'tekst-extractie-wachtend': 'Tekst extractie wachtend',
+  'tekst-extractie-bezig': 'Tekst extractie bezig',
+  'tekst-extractie-klaar': 'Tekst geëxtraheerd',
+  'tekst-extractie-mislukt': 'Tekst extractie mislukt',
+  'tekst-extractie-ocr-niet-beschikbaar': 'OCR niet beschikbaar',
 };
 
 const STATUS_PILL_TYPES = {
@@ -39,6 +44,11 @@ const STATUS_PILL_TYPES = {
   'extractie-klaar': 'success',
   'fout': 'error',
   'niet ondersteund': '',
+  'tekst-extractie-wachtend': 'warning',
+  'tekst-extractie-bezig': 'warning',
+  'tekst-extractie-klaar': '',
+  'tekst-extractie-mislukt': 'error',
+  'tekst-extractie-ocr-niet-beschikbaar': 'error',
 };
 
 const STATUS_OPTIES = [
@@ -48,6 +58,11 @@ const STATUS_OPTIES = [
   {value: 'extractie-klaar', label: 'Extractie klaar'},
   {value: 'fout', label: 'Fout'},
   {value: 'niet ondersteund', label: 'Niet ondersteund'},
+  {value: 'tekst-extractie-wachtend', label: 'Tekst extractie wachtend'},
+  {value: 'tekst-extractie-bezig', label: 'Tekst extractie bezig'},
+  {value: 'tekst-extractie-klaar', label: 'Tekst geëxtraheerd'},
+  {value: 'tekst-extractie-mislukt', label: 'Tekst extractie mislukt'},
+  {value: 'tekst-extractie-ocr-niet-beschikbaar', label: 'OCR niet beschikbaar'},
 ];
 
 const ITEMS_PER_PAGINA = 300;
@@ -167,6 +182,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         <vl-rich-data-field name="selectie" label=" "></vl-rich-data-field>
         <vl-rich-data-field name="bestandsnaam" label="Bestandsnaam" sortable></vl-rich-data-field>
         <vl-rich-data-field name="aantalBezwaren" label="Bezwaren" sortable></vl-rich-data-field>
+        <vl-rich-data-field name="extractieMethode" label="Methode" sortable></vl-rich-data-field>
         <vl-rich-data-field name="status" label="Status" sortable></vl-rich-data-field>
         <vl-rich-data-field name="acties" label="Acties"></vl-rich-data-field>
         <vl-pager slot="pager" total-items="0" items-per-page="${ITEMS_PER_PAGINA}" current-page="1"></vl-pager>
@@ -365,6 +381,21 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             td.textContent = rij.aantalBezwaren != null ? rij.aantalBezwaren : '';
           };
           break;
+        case 'extractieMethode':
+          veld.renderer = (td, rij) => {
+            td.style.verticalAlign = 'middle';
+            td.style.textAlign = 'center';
+            const wrapper = document.createElement('span');
+            if (rij.extractieMethode === 'DIGITAAL') {
+              wrapper.textContent = 'Digitaal';
+            } else if (rij.extractieMethode === 'OCR') {
+              wrapper.textContent = 'OCR';
+            } else {
+              wrapper.textContent = '-';
+            }
+            td.appendChild(wrapper);
+          };
+          break;
         case 'status':
           veld.renderer = (td, rij) => {
             td.className = 'status-cel';
@@ -403,7 +434,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
                   bubbles: true, composed: true,
                 }));
               }));
-            } else if (rij.status === 'todo') {
+            } else if (rij.status === 'todo' || rij.status === 'tekst-extractie-klaar') {
               pill.textContent = this._formatStatusLabel(rij);
               pill.appendChild(this._maakPillKnop('\u25b6', 'Verwerking starten', () => {
                 this.dispatchEvent(new CustomEvent('herstart-taak', {
@@ -790,8 +821,11 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     if (!sorting || sorting.length === 0) return bezwaren;
 
     const statusVolgorde = {
-      'todo': 0, 'wachtend': 1, 'bezig': 2,
-      'extractie-klaar': 3, 'fout': 4, 'niet ondersteund': 5,
+      'tekst-extractie-wachtend': 0, 'tekst-extractie-bezig': 1,
+      'tekst-extractie-klaar': 2, 'tekst-extractie-mislukt': 3,
+      'tekst-extractie-ocr-niet-beschikbaar': 4,
+      'todo': 5, 'wachtend': 6, 'bezig': 7,
+      'extractie-klaar': 8, 'fout': 9, 'niet ondersteund': 10,
     };
 
     return [...bezwaren].sort((a, b) => {
@@ -813,7 +847,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   }
 
   _isDisabled(status) {
-    return status === 'niet ondersteund' || status === 'wachtend' || status === 'bezig';
+    return status === 'niet ondersteund' || status === 'wachtend' || status === 'bezig' ||
+        status.startsWith('tekst-extractie-');
   }
 
   _beheerTimer() {
@@ -944,8 +979,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const innerTable = this._geefInnerTable();
     if (!innerTable) return;
     const headers = innerTable.querySelectorAll('thead th');
-    // kolommen: selectie(0), bestandsnaam(1), bezwaren(2), status(3), acties(4)
-    [2, 3].forEach((i) => {
+    // kolommen: selectie(0), bestandsnaam(1), bezwaren(2), methode(3), status(4), acties(5)
+    [2, 3, 4].forEach((i) => {
       if (headers[i]) headers[i].style.textAlign = 'center';
     });
   }
