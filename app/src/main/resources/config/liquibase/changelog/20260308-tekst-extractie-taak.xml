@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <changeSet id="20260308-1" author="bezwaarschriften">
+    <createTable tableName="tekst_extractie_taak">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="project_naam" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="bestandsnaam" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="status" type="varchar(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="extractie_methode" type="varchar(50)"/>
+      <column name="foutmelding" type="text"/>
+      <column name="aangemaakt_op" type="timestamp with time zone">
+        <constraints nullable="false"/>
+      </column>
+      <column name="verwerking_gestart_op" type="timestamp with time zone"/>
+      <column name="afgerond_op" type="timestamp with time zone"/>
+      <column name="versie" type="int" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+  </changeSet>
+
+</databaseChangeLog>

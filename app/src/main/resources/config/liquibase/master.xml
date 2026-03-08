@@ -21,5 +21,6 @@
   <include file="config/liquibase/changelog/20260306-referentie-score.xml"/>
   <include file="config/liquibase/changelog/20260306-centroid-matching.xml"/>
   <include file="config/liquibase/changelog/20260306-passage-deduplicatie.xml"/>
+  <include file="config/liquibase/changelog/20260308-tekst-extractie-taak.xml"/>
 
 </databaseChangeLog>
