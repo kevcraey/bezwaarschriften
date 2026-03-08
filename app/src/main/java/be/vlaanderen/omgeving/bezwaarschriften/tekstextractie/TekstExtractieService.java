@@ -134,7 +134,7 @@ public class TekstExtractieService {
           return;
         }
         projectPoort.slaTekstOp(taak.getProjectNaam(), taak.getBestandsnaam(), tekst);
-        markeerKlaar(taak.getId(), null);
+        markeerKlaar(taak.getId(), ExtractieMethode.DIGITAAL);
       } else {
         markeerMislukt(taak.getId(),
             "Niet-ondersteund bestandstype: " + taak.getBestandsnaam());
