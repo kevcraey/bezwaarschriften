@@ -3,6 +3,8 @@ package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import javax.annotation.PostConstruct;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.Loader;
@@ -43,6 +45,24 @@ public class PdfTekstExtractor {
       @Value("${bezwaarschriften.ocr.tessdata-path}") String tessdataPath) {
     this.kwaliteitsControle = kwaliteitsControle;
     this.tessdataPath = tessdataPath;
+  }
+
+  @PostConstruct
+  void configureerJnaBibliotheekPad() {
+    // tessdata-path is bv. /opt/homebrew/share/tessdata
+    // native libs staan in /opt/homebrew/lib (twee niveaus omhoog)
+    Path tessdataDir = Paths.get(tessdataPath);
+    Path prefix = tessdataDir.getParent() != null
+        ? tessdataDir.getParent().getParent() : null;
+    Path libDir = prefix != null ? prefix.resolve("lib") : null;
+    if (libDir != null && libDir.toFile().isDirectory()) {
+      String bestaandPad = System.getProperty("jna.library.path", "");
+      String nieuwPad = bestaandPad.isEmpty()
+          ? libDir.toString()
+          : bestaandPad + ":" + libDir;
+      System.setProperty("jna.library.path", nieuwPad);
+      LOG.info("JNA library pad geconfigureerd: {}", nieuwPad);
+    }
   }
 
   /**
@@ -125,13 +145,20 @@ public class PdfTekstExtractor {
     tesseract.setDatapath(tessdataPath);
     tesseract.setLanguage("nld+eng");
 
+    int totaalPaginas = document.getNumberOfPages();
+    LOG.info("OCR gestart: {} pagina('s) te verwerken", totaalPaginas);
+
     StringBuilder resultaat = new StringBuilder();
-    for (int pagina = 0; pagina < document.getNumberOfPages(); pagina++) {
+    for (int pagina = 0; pagina < totaalPaginas; pagina++) {
+      LOG.info("OCR pagina {}/{} - rendering...", pagina + 1, totaalPaginas);
       BufferedImage afbeelding = renderer.renderImageWithDPI(
           pagina, OCR_DPI);
+      LOG.info("OCR pagina {}/{} - herkenning...", pagina + 1, totaalPaginas);
       String paginaTekst = tesseract.doOCR(afbeelding);
+      LOG.info("OCR pagina {}/{} - klaar ({} tekens)",
+          pagina + 1, totaalPaginas, paginaTekst.length());
       resultaat.append(paginaTekst);
-      if (pagina < document.getNumberOfPages() - 1) {
+      if (pagina < totaalPaginas - 1) {
         resultaat.append("\n");
       }
     }

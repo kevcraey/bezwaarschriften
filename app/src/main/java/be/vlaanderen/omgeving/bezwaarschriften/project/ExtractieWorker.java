@@ -79,7 +79,7 @@ public class ExtractieWorker {
       } catch (IllegalArgumentException e) {
         LOGGER.info("Taak {} niet meer aanwezig na voltooiing (geannuleerd?)", taak.getId());
       }
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOGGER.error("Fout bij verwerking van taak {}: {}", taak.getId(), e.getMessage(), e);
       try {
         service.markeerFout(taak.getId(), e.getMessage());

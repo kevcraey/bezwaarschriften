@@ -67,7 +67,7 @@ public class ConsolidatieWorker {
       } catch (IllegalArgumentException e) {
         LOGGER.info("Consolidatie-taak {} niet meer aanwezig na voltooiing", taak.getId());
       }
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOGGER.error("Fout bij consolidatie-taak {}: {}", taak.getId(), e.getMessage(), e);
       try {
         service.markeerFout(taak.getId(), e.getMessage());

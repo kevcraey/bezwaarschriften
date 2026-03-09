@@ -81,7 +81,7 @@ public class ClusteringWorker {
       }
     } catch (ClusteringGeannuleerdException e) {
       LOGGER.info("Clustering-taak {} is geannuleerd: {}", taak.getId(), e.getMessage());
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOGGER.error("Fout bij clustering-taak {}: {}", taak.getId(), e.getMessage(), e);
       try {
         taakService.markeerFout(taak.getId(), e.getMessage());

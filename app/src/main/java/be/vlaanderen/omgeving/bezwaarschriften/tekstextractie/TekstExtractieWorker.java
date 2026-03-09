@@ -53,7 +53,7 @@ public class TekstExtractieWorker {
   private void verwerkTaak(TekstExtractieTaak taak) {
     try {
       service.verwerkTaak(taak);
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOGGER.error("Fout bij verwerking van tekst-extractie taak {}: {}",
           taak.getId(), e.getMessage(), e);
       try {
