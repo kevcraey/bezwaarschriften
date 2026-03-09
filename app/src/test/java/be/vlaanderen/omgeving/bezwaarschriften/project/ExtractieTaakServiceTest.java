@@ -259,17 +259,34 @@ class ExtractieTaakServiceTest {
   }
 
   @Test
-  void verwerkOnafgerondeCreertTakenVoorTodoDocumentenMetKlareTekstExtractie() {
+  void verwerkOnafgerondeNeemtAlleenTekstExtractieKlareDocumenten() {
+    var klaarBestand = new BezwaarBestand("bezwaar-klaar.pdf", BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
+    var todoBestand = new BezwaarBestand("bezwaar-todo.pdf", BezwaarBestandStatus.TODO);
+    when(projectService.geefBezwaren("windmolens")).thenReturn(List.of(klaarBestand, todoBestand));
+    when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
+        .thenReturn(List.of());
+    when(repository.save(any(ExtractieTaak.class))).thenAnswer(inv -> {
+      var taak = inv.getArgument(0, ExtractieTaak.class);
+      taak.setId(1L);
+      return taak;
+    });
+
+    int resultaat = service.verwerkOnafgeronde("windmolens");
+
+    assertThat(resultaat).isEqualTo(1); // alleen klaarBestand
+    verify(repository, times(1)).save(any(ExtractieTaak.class));
+  }
+
+  @Test
+  void verwerkOnafgerondeCreertTakenVoorDocumentenMetKlareTekstExtractie() {
     when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
         .thenReturn(List.of());
     when(projectService.geefBezwaren("windmolens"))
         .thenReturn(List.of(
-            new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TODO),
+            new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR),
             new BezwaarBestand("klaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR),
             new BezwaarBestand("foto.jpg", BezwaarBestandStatus.NIET_ONDERSTEUND)
         ));
-    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "nieuw-001.txt"))
-        .thenReturn(true);
     when(repository.save(any())).thenAnswer(i -> {
       var t = i.getArgument(0, ExtractieTaak.class);
       t.setId(10L);
@@ -289,15 +306,13 @@ class ExtractieTaakServiceTest {
   }
 
   @Test
-  void verwerkOnafgerondeSluitTodoDocumentenUitZonderKlareTekstExtractie() {
+  void verwerkOnafgerondeSluitTodoDocumentenUit() {
     when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
         .thenReturn(List.of());
     when(projectService.geefBezwaren("windmolens"))
         .thenReturn(List.of(
             new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TODO)
         ));
-    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "nieuw-001.txt"))
-        .thenReturn(false);
 
     int aantal = service.verwerkOnafgeronde("windmolens");
 
@@ -317,10 +332,8 @@ class ExtractieTaakServiceTest {
     when(projectService.geefBezwaren("windmolens"))
         .thenReturn(List.of(
             new BezwaarBestand("fout-001.txt", BezwaarBestandStatus.FOUT),
-            new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TODO)
+            new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR)
         ));
-    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "nieuw-001.txt"))
-        .thenReturn(true);
     when(repository.save(any())).thenAnswer(i -> {
       var t = i.getArgument(0, ExtractieTaak.class);
       if (t.getId() == null) {

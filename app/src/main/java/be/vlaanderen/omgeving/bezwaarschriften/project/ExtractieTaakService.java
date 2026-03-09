@@ -302,7 +302,7 @@ public class ExtractieTaakService {
    * nieuwe taken aan voor documenten die nog niet verwerkt zijn.
    *
    * <p>Gefaalde taken worden teruggezet naar WACHTEND met 1 extra poging.
-   * Documenten met status TODO krijgen een nieuwe extractie-taak.
+   * Documenten met status TEKST_EXTRACTIE_KLAAR krijgen een nieuwe extractie-taak.
    *
    * @param projectNaam naam van het project
    * @return het totaal aantal herstartte en nieuwe taken
@@ -322,10 +322,9 @@ public class ExtractieTaakService {
       notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
     }
 
-    // Maak taken aan voor TODO-documenten met voltooide tekst-extractie
+    // Maak taken aan voor documenten met voltooide tekst-extractie die nog geen bezwaar-extractie hebben
     var todoDocumenten = projectService.geefBezwaren(projectNaam).stream()
-        .filter(b -> b.status() == BezwaarBestandStatus.TODO)
-        .filter(b -> tekstExtractieService.isTekstExtractieKlaar(projectNaam, b.bestandsnaam()))
+        .filter(b -> b.status() == BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR)
         .toList();
     for (var doc : todoDocumenten) {
       var taak = new ExtractieTaak();
@@ -337,7 +336,7 @@ public class ExtractieTaakService {
       taak.setAangemaaktOp(Instant.now());
       var opgeslagen = repository.save(taak);
       notificatie.taakGewijzigd(ExtractieTaakDto.van(opgeslagen));
-      LOGGER.info("Nieuwe extractie-taak voor TODO-document: project='{}', bestand='{}'",
+      LOGGER.info("Nieuwe extractie-taak voor document met voltooide tekst-extractie: project='{}', bestand='{}'",
           projectNaam, doc.bestandsnaam());
     }
 
