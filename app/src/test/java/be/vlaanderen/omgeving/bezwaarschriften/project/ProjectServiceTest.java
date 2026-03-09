@@ -79,7 +79,7 @@ class ProjectServiceTest {
     assertThat(bezwaren).hasSize(2);
     assertThat(bezwaren).anySatisfy(b -> {
       assertThat(b.bestandsnaam()).isEqualTo("bezwaar-001.txt");
-      assertThat(b.status()).isEqualTo(BezwaarBestandStatus.TODO);
+      assertThat(b.status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
     });
     assertThat(bezwaren).anySatisfy(b -> {
       assertThat(b.bestandsnaam()).isEqualTo("bijlage.jpg");
@@ -192,6 +192,34 @@ class ProjectServiceTest {
 
   @Test
   void pdfBestandIsOndersteundFormaat() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.empty());
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TODO);
+  }
+
+  @Test
+  void txtBestandZonderTekstExtractieTaakKrijgtTekstExtractieKlaarStatus() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.txt"));
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.empty());
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
+  }
+
+  @Test
+  void pdfBestandZonderTekstExtractieTaakKrijgtTodoStatus() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.pdf"));
     when(tekstExtractieTaakRepository

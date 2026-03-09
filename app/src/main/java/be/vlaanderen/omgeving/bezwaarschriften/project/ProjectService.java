@@ -69,8 +69,8 @@ public class ProjectService {
    * Geeft de bezwaarbestanden van een project terug met hun huidige status.
    *
    * <p>De status wordt afgeleid uit de meest recente extractie-taak in de database.
-   * Als er geen taak bestaat, is de status {@link BezwaarBestandStatus#TODO} voor
-   * .txt-bestanden en {@link BezwaarBestandStatus#NIET_ONDERSTEUND} voor overige.
+   * Als er geen taak bestaat, krijgen .txt-bestanden status {@link BezwaarBestandStatus#TEKST_EXTRACTIE_KLAAR}
+   * (geen tekst-extractie nodig) en overige ondersteunde formaten {@link BezwaarBestandStatus#TODO}.
    *
    * @param projectNaam Naam van het project
    * @return Lijst van bezwaarbestanden met status
@@ -89,6 +89,10 @@ public class ProjectService {
               .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
               .orElse(null);
           if (tekstExtractieTaak == null) {
+            // .txt bestanden hebben geen tekst-extractie nodig
+            if (naam.toLowerCase().endsWith(".txt")) {
+              return new BezwaarBestand(naam, BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
+            }
             return new BezwaarBestand(naam, BezwaarBestandStatus.TODO);
           }
 
