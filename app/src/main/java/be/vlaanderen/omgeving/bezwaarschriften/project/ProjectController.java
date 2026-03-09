@@ -219,7 +219,8 @@ public class ProjectController {
           .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b.status()),
               b.aantalWoorden(), b.aantalBezwaren(), b.heeftPassagesDieNietInTekstVoorkomen(),
               b.extractieMethode(),
-              b.tekstExtractieAangemaaktOp(), b.tekstExtractieGestartOp()))
+              b.tekstExtractieAangemaaktOp(), b.tekstExtractieGestartOp(),
+              b.tekstExtractieTaakId()))
           .toList());
     }
   }
@@ -228,7 +229,8 @@ public class ProjectController {
   record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden,
       Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen,
       String extractieMethode,
-      String tekstExtractieAangemaaktOp, String tekstExtractieGestartOp) {}
+      String tekstExtractieAangemaaktOp, String tekstExtractieGestartOp,
+      Long tekstExtractieTaakId) {}
 
   /** Response DTO voor upload-resultaat. */
   record UploadResponse(List<String> geupload, List<UploadFoutDto> fouten) {}

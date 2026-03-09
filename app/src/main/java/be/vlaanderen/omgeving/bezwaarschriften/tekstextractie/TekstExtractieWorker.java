@@ -65,4 +65,17 @@ public class TekstExtractieWorker {
       lopendeTaken.remove(taak.getId());
     }
   }
+
+  /**
+   * Annuleert een lopende tekst-extractie taak.
+   *
+   * @param taakId id van de te annuleren taak
+   */
+  public void annuleerTaak(Long taakId) {
+    var future = lopendeTaken.remove(taakId);
+    if (future != null) {
+      future.cancel(true);
+      LOGGER.info("Tekst-extractie taak {} geannuleerd", taakId);
+    }
+  }
 }

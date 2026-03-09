@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -288,5 +289,35 @@ class TekstExtractieServiceTest {
     taak.setBestandsnaam(bestandsnaam);
     taak.setStatus(status);
     return taak;
+  }
+
+  @Test
+  void verwijderTaak_verwijdertBestaandeTaak() {
+    var taak = new TekstExtractieTaak();
+    taak.setProjectNaam("windmolens");
+    taak.setBestandsnaam("bezwaar.pdf");
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+
+    service.verwijderTaak("windmolens", 1L);
+
+    verify(repository).delete(taak);
+  }
+
+  @Test
+  void verwijderTaak_gooitExceptieAlsTaakNietBestaat() {
+    when(repository.findById(99L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.verwijderTaak("windmolens", 99L))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void verwijderTaak_gooitExceptieAlsProjectNietKlopt() {
+    var taak = new TekstExtractieTaak();
+    taak.setProjectNaam("anderProject");
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+
+    assertThatThrownBy(() -> service.verwijderTaak("windmolens", 1L))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }

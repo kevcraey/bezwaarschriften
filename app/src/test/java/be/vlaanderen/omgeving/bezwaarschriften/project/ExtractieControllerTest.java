@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieWorker;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +33,12 @@ class ExtractieControllerTest {
 
   @MockBean
   private ExtractieWorker extractieWorker;
+
+  @MockBean
+  private TekstExtractieService tekstExtractieService;
+
+  @MockBean
+  private TekstExtractieWorker tekstExtractieWorker;
 
   @Test
   void dientExtractieTakenIn() throws Exception {
@@ -88,6 +96,26 @@ class ExtractieControllerTest {
 
     verify(extractieTaakService).verwijderTaak("windmolens", 1L);
     verify(extractieWorker).annuleerTaak(1L);
+  }
+
+  @Test
+  void annuleertTekstExtractieTaak() throws Exception {
+    mockMvc.perform(delete("/api/v1/projects/windmolens/tekst-extracties/1")
+            .with(csrf()))
+        .andExpect(status().isNoContent());
+
+    verify(tekstExtractieService).verwijderTaak("windmolens", 1L);
+    verify(tekstExtractieWorker).annuleerTaak(1L);
+  }
+
+  @Test
+  void annuleertTekstExtractieTaak404AlsNietGevonden() throws Exception {
+    doThrow(new IllegalArgumentException("niet gevonden"))
+        .when(tekstExtractieService).verwijderTaak("windmolens", 99L);
+
+    mockMvc.perform(delete("/api/v1/projects/windmolens/tekst-extracties/99")
+            .with(csrf()))
+        .andExpect(status().isNotFound());
   }
 
   @Test

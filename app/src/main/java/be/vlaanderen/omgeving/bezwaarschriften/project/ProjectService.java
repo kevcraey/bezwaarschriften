@@ -104,11 +104,11 @@ public class ProjectService {
             case WACHTEND -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND,
                 null, null, false, false, extractieMethode,
-                teAangemaaktOp, teGestartOp);
+                teAangemaaktOp, teGestartOp, tekstExtractieTaak.getId());
             case BEZIG -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG,
                 null, null, false, false, extractieMethode,
-                teAangemaaktOp, teGestartOp);
+                teAangemaaktOp, teGestartOp, tekstExtractieTaak.getId());
             case MISLUKT -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT,
                 null, null, false, false, extractieMethode);

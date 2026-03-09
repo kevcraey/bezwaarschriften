@@ -216,4 +216,22 @@ public class TekstExtractieService {
         .map(taak -> taak.getStatus() == TekstExtractieTaakStatus.KLAAR)
         .orElse(false);
   }
+
+  /**
+   * Verwijdert een tekst-extractie taak na validatie van het project.
+   *
+   * @param projectNaam naam van het project waartoe de taak moet behoren
+   * @param taakId id van de te verwijderen taak
+   * @throws IllegalArgumentException als de taak niet bestaat of niet tot het project behoort
+   */
+  @Transactional
+  public void verwijderTaak(String projectNaam, Long taakId) {
+    var taak = repository.findById(taakId)
+        .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden: " + taakId));
+    if (!taak.getProjectNaam().equals(projectNaam)) {
+      throw new IllegalArgumentException("Taak behoort niet tot project: " + projectNaam);
+    }
+    repository.delete(taak);
+    LOGGER.info("Tekst-extractie taak {} verwijderd voor project '{}'", taakId, projectNaam);
+  }
 }

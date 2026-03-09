@@ -1,5 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieWorker;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,17 +21,25 @@ public class ExtractieController {
 
   private final ExtractieTaakService extractieTaakService;
   private final ExtractieWorker extractieWorker;
+  private final TekstExtractieService tekstExtractieService;
+  private final TekstExtractieWorker tekstExtractieWorker;
 
   /**
    * Maakt een nieuwe ExtractieController aan.
    *
    * @param extractieTaakService service voor extractie-takenbeheer
    * @param extractieWorker worker voor het annuleren van lopende taken
+   * @param tekstExtractieService service voor tekst-extractie taken
+   * @param tekstExtractieWorker worker voor tekst-extractie taken
    */
   public ExtractieController(ExtractieTaakService extractieTaakService,
-      ExtractieWorker extractieWorker) {
+      ExtractieWorker extractieWorker,
+      TekstExtractieService tekstExtractieService,
+      TekstExtractieWorker tekstExtractieWorker) {
     this.extractieTaakService = extractieTaakService;
     this.extractieWorker = extractieWorker;
+    this.tekstExtractieService = tekstExtractieService;
+    this.tekstExtractieWorker = tekstExtractieWorker;
   }
 
   /**
@@ -84,6 +94,25 @@ public class ExtractieController {
     try {
       extractieTaakService.verwijderTaak(naam, taakId);
       extractieWorker.annuleerTaak(taakId);
+      return ResponseEntity.noContent().build();
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.notFound().build();
+    }
+  }
+
+  /**
+   * Annuleert een tekst-extractie taak.
+   *
+   * @param naam projectnaam
+   * @param taakId id van de te annuleren taak
+   * @return 204 No Content bij succes, 404 als taak niet gevonden
+   */
+  @DeleteMapping("/{naam}/tekst-extracties/{taakId}")
+  public ResponseEntity<Void> annuleerTekstExtractie(
+      @PathVariable String naam, @PathVariable Long taakId) {
+    try {
+      tekstExtractieService.verwijderTaak(naam, taakId);
+      tekstExtractieWorker.annuleerTaak(taakId);
       return ResponseEntity.noContent().build();
     } catch (IllegalArgumentException e) {
       return ResponseEntity.notFound().build();
