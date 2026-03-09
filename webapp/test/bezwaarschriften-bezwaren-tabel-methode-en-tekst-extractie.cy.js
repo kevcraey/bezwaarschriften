@@ -138,7 +138,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .should('be.disabled');
   });
 
-  it('checkbox disabled voor tekst-extractie-klaar status', () => {
+  it('checkbox enabled voor tekst-extractie-klaar status', () => {
     cy.get('bezwaarschriften-bezwaren-tabel')
         .its(0)
         .then((el) => {
@@ -150,6 +150,21 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('input.rij-checkbox[data-bestandsnaam="doc-008.pdf"]')
+        .should('not.be.disabled');
+  });
+
+  it('checkbox disabled voor todo status', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {bestandsnaam: 'doc-008b.pdf', status: 'todo', aantalBezwaren: null},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('input.rij-checkbox[data-bestandsnaam="doc-008b.pdf"]')
         .should('be.disabled');
   });
 
@@ -197,7 +212,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('vl-pill')
-        .should('contain.text', 'Tekst ge\u00EBxtraheerd')
+        .should('contain.text', 'Klaar voor extractie')
         .find('button[title="Verwerking starten"]')
         .should('exist')
         .and('contain.text', '\u25b6');
