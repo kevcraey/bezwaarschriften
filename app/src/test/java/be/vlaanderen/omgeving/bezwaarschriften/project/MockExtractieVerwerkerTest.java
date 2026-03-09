@@ -33,61 +33,13 @@ class MockExtractieVerwerkerTest {
   }
 
   @Test
-  void bestandZonderTweeFaaltNiet() {
+  void gooitFoutZonderFixture() {
     String bestandsnaam = "bezwaar-001.txt";
     mockBestand(bestandsnaam, "dit is een test tekst");
 
-    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 0);
-
-    assertThat(resultaat.aantalWoorden()).isEqualTo(5);
-    assertThat(resultaat.aantalBezwaren()).isBetween(2, 5);
-  }
-
-  @Test
-  void bestandMetTweeFaaltBijAanroep1En2SlaagdBij3() {
-    String bestandsnaam = "bezwaar2.txt";
-    mockBestand(bestandsnaam, "derde poging tekst hier nu");
-
-    // aanroep 1: faalt
     assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0))
-        .isInstanceOf(RuntimeException.class);
-
-    // aanroep 2: faalt
-    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 1))
-        .isInstanceOf(RuntimeException.class);
-
-    // aanroep 3: slaagt (veelvoud van 3)
-    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 2);
-    assertThat(resultaat.aantalBezwaren()).isEqualTo(4);
-  }
-
-  @Test
-  void bestandMetTweeFaaltOpnieuwNaSucces() {
-    String bestandsnaam = "bezwaar2.txt";
-    mockBestand(bestandsnaam, "tekst voor cyclus test");
-
-    // aanroep 1-3: faal, faal, slaag
-    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0));
-    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0));
-    verwerker.verwerk(PROJECT, bestandsnaam, 0);
-
-    // aanroep 4-6: faal, faal, slaag (cyclus herhaalt)
-    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0))
-        .isInstanceOf(RuntimeException.class);
-    assertThatThrownBy(() -> verwerker.verwerk(PROJECT, bestandsnaam, 0))
-        .isInstanceOf(RuntimeException.class);
-    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 0);
-    assertThat(resultaat.aantalBezwaren()).isEqualTo(4);
-  }
-
-  @Test
-  void woordenTellingWerktCorrect() {
-    String bestandsnaam = "bezwaar-003.txt";
-    mockBestand(bestandsnaam, "een twee drie");
-
-    var resultaat = verwerker.verwerk(PROJECT, bestandsnaam, 0);
-
-    assertThat(resultaat.aantalWoorden()).isEqualTo(3);
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Geen fixture gevonden");
   }
 
   @Test
@@ -99,7 +51,7 @@ class MockExtractieVerwerkerTest {
         + "\"categorie\":\"mobiliteit\"}],"
         + "\"metadata\":{\"aantalWoorden\":5,\"documentSamenvatting\":\"test samenvatting\"}}";
 
-    var bezwarenDir = tempDir.resolve(projectNaam).resolve("bezwaren-orig");
+    var bezwarenDir = tempDir.resolve(projectNaam).resolve("bezwaren");
     Files.createDirectories(bezwarenDir);
     Files.writeString(bezwarenDir.resolve("Bezwaar_01.json"), fixtureJson);
 

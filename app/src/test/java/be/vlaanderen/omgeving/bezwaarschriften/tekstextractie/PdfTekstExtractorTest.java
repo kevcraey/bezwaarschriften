@@ -23,7 +23,7 @@ class PdfTekstExtractorTest {
   private final TekstKwaliteitsControle kwaliteitsControle =
       new TekstKwaliteitsControle();
   private final PdfTekstExtractor extractor =
-      new PdfTekstExtractor(kwaliteitsControle);
+      new PdfTekstExtractor(kwaliteitsControle, "/opt/homebrew/share/tessdata");
 
   @BeforeAll
   static void maakTestPdf() throws IOException {

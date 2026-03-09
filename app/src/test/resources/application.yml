@@ -22,6 +22,8 @@ spring:
 bezwaarschriften:
   input:
     folder: input
+  ocr:
+    tessdata-path: /opt/homebrew/share/tessdata
   testdata:
     pad: testdata
   scheduling:

@@ -63,7 +63,7 @@ public class FixtureChatModel implements ChatModelPoort {
           stream.filter(p -> p.toString().endsWith(".txt")).forEach(txtPath -> {
             var naam = txtPath.getFileName().toString();
             var naamZonderExtensie = naam.substring(0, naam.lastIndexOf('.'));
-            var jsonPath = projectDir.resolve("bezwaren-orig").resolve(naamZonderExtensie + ".json");
+            var jsonPath = projectDir.resolve("bezwaren").resolve(naamZonderExtensie + ".json");
             if (Files.exists(jsonPath)) {
               try {
                 var txtContent = Files.readString(txtPath, StandardCharsets.UTF_8).strip();

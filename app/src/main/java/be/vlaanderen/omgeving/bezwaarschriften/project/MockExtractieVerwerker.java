@@ -9,9 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,12 +16,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Mock-implementatie van {@link ExtractieVerwerker} die fixture-data gebruikt als die
- * beschikbaar is, en anders terugvalt op gesimuleerde resultaten.
+ * Mock-implementatie van {@link ExtractieVerwerker} die fixture-data gebruikt.
  *
  * <p>Zoekt bij verwerking naar een bijbehorend JSON-fixture bestand in de testdata-directory.
- * Als dat bestaat, wordt het geparsed en als realistisch resultaat teruggegeven.
- * Als er geen fixture is, worden random aantallen gegenereerd.
+ * Gooit een {@link IllegalStateException} als er geen fixture gevonden wordt.
  */
 @Component
 @Profile("dev")
@@ -37,8 +32,6 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
   private final Path inputFolder;
   private final Path testdataBaseDir;
   private final ObjectMapper objectMapper = new ObjectMapper();
-  private final ConcurrentHashMap<String, AtomicInteger> aanroepTeller =
-      new ConcurrentHashMap<>();
 
   /**
    * Maakt een nieuwe MockExtractieVerwerker aan.
@@ -84,16 +77,15 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     var aantalWoorden = telWoorden(brondocument.tekst());
 
     var fixtureResultaat = zoekFixture(projectNaam, bestandsnaam, aantalWoorden);
-    if (fixtureResultaat != null) {
-      LOGGER.info("Bestand '{}' verwerkt via fixture (project '{}', {} bezwaren)",
-          bestandsnaam, projectNaam, fixtureResultaat.aantalBezwaren());
-      return fixtureResultaat;
+    if (fixtureResultaat == null) {
+      throw new IllegalStateException(
+          ("Geen fixture gevonden voor bestand '%s' in project '%s'. "
+              + "Voeg een JSON-fixture toe in testdata/%s/bezwaren/")
+              .formatted(bestandsnaam, projectNaam, projectNaam));
     }
-
-    int aantalBezwaren = bepaalAantalBezwaren(bestandsnaam);
-    LOGGER.info("Bestand '{}' verwerkt zonder fixture (project '{}', {} woorden, {} bezwaren)",
-        bestandsnaam, projectNaam, aantalWoorden, aantalBezwaren);
-    return new ExtractieResultaat(aantalWoorden, aantalBezwaren);
+    LOGGER.info("Bestand '{}' verwerkt via fixture (project '{}', {} bezwaren)",
+        bestandsnaam, projectNaam, fixtureResultaat.aantalBezwaren());
+    return fixtureResultaat;
   }
 
   private ExtractieResultaat zoekFixture(String projectNaam, String bestandsnaam, int aantalWoorden) {
@@ -120,7 +112,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
   private Path zoekFixturePad(String projectNaam, String naamZonderExtensie) {
     var jsonNaam = naamZonderExtensie + ".json";
     // Probeer eerst exact projectpad
-    var kandidaat = testdataBaseDir.resolve(projectNaam).resolve("bezwaren-orig").resolve(jsonNaam);
+    var kandidaat = testdataBaseDir.resolve(projectNaam).resolve("bezwaren").resolve(jsonNaam);
     if (Files.exists(kandidaat)) {
       return kandidaat;
     }
@@ -128,7 +120,7 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
     try (var stream = Files.list(testdataBaseDir)) {
       return stream
           .filter(Files::isDirectory)
-          .map(dir -> dir.resolve("bezwaren-orig").resolve(jsonNaam))
+          .map(dir -> dir.resolve("bezwaren").resolve(jsonNaam))
           .filter(Files::exists)
           .findFirst()
           .orElse(null);
@@ -175,20 +167,6 @@ public class MockExtractieVerwerker implements ExtractieVerwerker {
       }
     }
     return List.copyOf(lijst);
-  }
-
-  private int bepaalAantalBezwaren(String bestandsnaam) {
-    if (bestandsnaam.contains("2")) {
-      int aanroep = aanroepTeller
-          .computeIfAbsent(bestandsnaam, k -> new AtomicInteger(0))
-          .incrementAndGet();
-      if (aanroep % 3 != 0) {
-        throw new RuntimeException(
-            "Gesimuleerde fout (aanroep " + aanroep + ") voor bestand '" + bestandsnaam + "'");
-      }
-      return 4;
-    }
-    return ThreadLocalRandom.current().nextInt(2, 6);
   }
 
   private int telWoorden(String tekst) {

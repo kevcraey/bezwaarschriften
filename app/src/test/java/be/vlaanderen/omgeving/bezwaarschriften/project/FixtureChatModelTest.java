@@ -21,7 +21,7 @@ class FixtureChatModelTest {
   void setUp() throws IOException {
     var projectDir = tempDir.resolve("testproject");
     var documentenDir = projectDir.resolve("documenten");
-    var bezwarenDir = projectDir.resolve("bezwaren-orig");
+    var bezwarenDir = projectDir.resolve("bezwaren");
     Files.createDirectories(documentenDir);
     Files.createDirectories(bezwarenDir);
 

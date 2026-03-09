@@ -11,6 +11,7 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,14 +30,19 @@ public class PdfTekstExtractor {
   private static final int OCR_DPI = 300;
 
   private final TekstKwaliteitsControle kwaliteitsControle;
+  private final String tessdataPath;
 
   /**
    * Maakt een nieuwe PdfTekstExtractor aan.
    *
    * @param kwaliteitsControle de kwaliteitscontrole voor geextraheerde tekst
+   * @param tessdataPath pad naar de Tesseract tessdata directory
    */
-  public PdfTekstExtractor(TekstKwaliteitsControle kwaliteitsControle) {
+  public PdfTekstExtractor(
+      TekstKwaliteitsControle kwaliteitsControle,
+      @Value("${bezwaarschriften.ocr.tessdata-path}") String tessdataPath) {
     this.kwaliteitsControle = kwaliteitsControle;
+    this.tessdataPath = tessdataPath;
   }
 
   /**
@@ -116,6 +122,7 @@ public class PdfTekstExtractor {
 
     PDFRenderer renderer = new PDFRenderer(document);
     Tesseract tesseract = new Tesseract();
+    tesseract.setDatapath(tessdataPath);
     tesseract.setLanguage("nld+eng");
 
     StringBuilder resultaat = new StringBuilder();

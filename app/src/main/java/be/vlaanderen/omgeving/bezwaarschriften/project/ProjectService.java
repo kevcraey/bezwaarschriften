@@ -95,13 +95,20 @@ public class ProjectService {
           var extractieMethode = tekstExtractieTaak.getExtractieMethode() != null
               ? tekstExtractieTaak.getExtractieMethode().name() : null;
 
+          var teAangemaaktOp = tekstExtractieTaak.getAangemaaktOp() != null
+              ? tekstExtractieTaak.getAangemaaktOp().toString() : null;
+          var teGestartOp = tekstExtractieTaak.getVerwerkingGestartOp() != null
+              ? tekstExtractieTaak.getVerwerkingGestartOp().toString() : null;
+
           return switch (tekstExtractieTaak.getStatus()) {
             case WACHTEND -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND,
-                null, null, false, false, extractieMethode);
+                null, null, false, false, extractieMethode,
+                teAangemaaktOp, teGestartOp);
             case BEZIG -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG,
-                null, null, false, false, extractieMethode);
+                null, null, false, false, extractieMethode,
+                teAangemaaktOp, teGestartOp);
             case MISLUKT -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT,
                 null, null, false, false, extractieMethode);
@@ -197,6 +204,8 @@ public class ProjectService {
   @Transactional
   public int verwijderBezwaren(String projectNaam, List<String> bestandsnamen) {
     extractieTaakRepository.deleteByProjectNaamAndBestandsnaamIn(
+        projectNaam, bestandsnamen);
+    tekstExtractieTaakRepository.deleteByProjectNaamAndBestandsnaamIn(
         projectNaam, bestandsnamen);
     int aantalVerwijderd = 0;
     for (String bestandsnaam : bestandsnamen) {

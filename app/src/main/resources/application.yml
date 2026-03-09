@@ -15,8 +15,8 @@ spring:
       max-request-size: 500MB
   datasource:
     hikari:
-      minimum-idle: 1
-      maximum-pool-size: 5
+      minimum-idle: 2
+      maximum-pool-size: 15
       connection-test-query: SELECT 1
   application:
     name: bezwaarschriften
@@ -38,6 +38,8 @@ spring:
 bezwaarschriften:
   input:
     folder: input
+  ocr:
+    tessdata-path: /opt/homebrew/share/tessdata
 
 management:
   endpoint:

@@ -227,6 +227,15 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   set bezwaren(waarde) {
     this.__bronBezwaren = waarde || [];
+    this.__bronBezwaren.forEach((b) => {
+      if (b.tekstExtractieAangemaaktOp) {
+        this.__takenData[b.bestandsnaam] = {
+          ...this.__takenData[b.bestandsnaam],
+          aangemaaktOp: b.tekstExtractieAangemaaktOp,
+          verwerkingGestartOp: b.tekstExtractieGestartOp || null,
+        };
+      }
+    });
     this.__huidigePagina = 1;
     this._herbereken();
   }
@@ -294,7 +303,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     };
     this.__bronBezwaren = this.__bronBezwaren.map((b) =>
       b.bestandsnaam === taak.bestandsnaam ? {
-        bestandsnaam: taak.bestandsnaam,
+        ...b,
         status: taak.status,
         aantalWoorden: taak.aantalWoorden,
         aantalBezwaren: taak.aantalBezwaren,
@@ -411,7 +420,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             pill.style.minWidth = '180px';
             pill.style.display = 'inline-block';
 
-            const isActief = rij.status === 'wachtend' || rij.status === 'bezig';
+            const isActief = rij.status === 'wachtend' || rij.status === 'bezig' ||
+                rij.status === 'tekst-extractie-wachtend' || rij.status === 'tekst-extractie-bezig';
             if (isActief) {
               const span = document.createElement('span');
               span.className = 'timer-tekst';
@@ -853,7 +863,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   _beheerTimer() {
     const heeftActief = this.__bronBezwaren.some(
-        (b) => b.status === 'wachtend' || b.status === 'bezig',
+        (b) => b.status === 'wachtend' || b.status === 'bezig' ||
+            b.status === 'tekst-extractie-wachtend' || b.status === 'tekst-extractie-bezig',
     );
     if (heeftActief && !this.__timerInterval) {
       this.__timerInterval = setInterval(() => this._updateTimers(), 1000);
@@ -875,7 +886,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     if (!innerTable) return;
 
     this.__bronBezwaren.forEach((b) => {
-      if (b.status !== 'wachtend' && b.status !== 'bezig') return;
+      if (b.status !== 'wachtend' && b.status !== 'bezig' &&
+          b.status !== 'tekst-extractie-wachtend' && b.status !== 'tekst-extractie-bezig') return;
       const cel = innerTable.querySelector(
           `.status-cel[data-bestandsnaam="${CSS.escape(b.bestandsnaam)}"]`,
       );
@@ -919,12 +931,14 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     nu = nu || Date.now();
     const taakData = this.__takenData[b.bestandsnaam];
 
-    if (b.status === 'wachtend' && taakData && taakData.aangemaaktOp) {
+    if ((b.status === 'wachtend' || b.status === 'tekst-extractie-wachtend') &&
+        taakData && taakData.aangemaaktOp) {
       const wachtMs = nu - new Date(taakData.aangemaaktOp).getTime();
-      return `Wachtend (${this._formatTijd(wachtMs)})`;
+      const label = b.status === 'tekst-extractie-wachtend' ? 'Tekst extractie wachtend' : 'Wachtend';
+      return `${label} (${this._formatTijd(wachtMs)})`;
     }
 
-    if (b.status === 'bezig' && taakData) {
+    if ((b.status === 'bezig' || b.status === 'tekst-extractie-bezig') && taakData) {
       const wachtMs = taakData.verwerkingGestartOp && taakData.aangemaaktOp ?
         new Date(taakData.verwerkingGestartOp).getTime() -
             new Date(taakData.aangemaaktOp).getTime() :
@@ -932,7 +946,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       const verwerkMs = taakData.verwerkingGestartOp ?
         nu - new Date(taakData.verwerkingGestartOp).getTime() :
         0;
-      return `Bezig (${this._formatTijd(wachtMs)} + ${this._formatTijd(verwerkMs)})`;
+      const label = b.status === 'tekst-extractie-bezig' ? 'Tekst extractie bezig' : 'Bezig';
+      return `${label} (${this._formatTijd(wachtMs)} + ${this._formatTijd(verwerkMs)})`;
     }
 
     return STATUS_LABELS[b.status] || b.status;

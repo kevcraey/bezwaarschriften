@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 public class TekstKwaliteitsControle {
 
   private static final int MINIMUM_WOORDEN = 100;
-  private static final double MINIMUM_ALFANUMERIEK_RATIO = 0.70;
+  private static final double MINIMUM_ALFANUMERIEK_RATIO = 0.90;
   private static final double MINIMUM_KLINKER_RATIO = 0.20;
   private static final double MAXIMUM_KLINKER_RATIO = 0.60;
   private static final String KLINKERS = "aeiouAEIOU";

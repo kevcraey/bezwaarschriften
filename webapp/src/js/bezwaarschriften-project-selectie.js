@@ -79,11 +79,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       <vl-modal id="upload-modal" title="Bestanden toevoegen" closable>
         <div slot="content">
           <vl-upload id="bestand-upload"
-            accepted-files=".txt"
+            accepted-files=".txt,.pdf"
             max-files="1000"
             max-size="50"
             main-title="Bezwaarbestanden toevoegen"
-            sub-title="Sleep .txt bestanden hierheen of klik om te bladeren">
+            sub-title="Sleep .txt of .pdf bestanden hierheen of klik om te bladeren">
           </vl-upload>
         </div>
         <div slot="button">
@@ -468,6 +468,21 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         });
   }
 
+  _voegGeuploadeBezwarenToe(bestandsnamen) {
+    const nieuweBezwaren = bestandsnamen.map((naam) => ({
+      bestandsnaam: naam,
+      status: 'tekst-extractie-wachtend',
+      aantalWoorden: null,
+      aantalBezwaren: null,
+      heeftPassagesDieNietInTekstVoorkomen: false,
+      extractieMethode: null,
+    }));
+    this.__bezwaren = [...this.__bezwaren, ...nieuweBezwaren];
+    this._werkTabelBij();
+    this._werkDocumentenTabTitelBij();
+    this._werkVerwerkenKnopBij();
+  }
+
   _werkTabelBij() {
     const sectie = this.shadowRoot && this.shadowRoot.querySelector('#tabs-sectie');
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#bezwaren-tabel');
@@ -587,6 +602,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           if (data.geupload && data.geupload.length > 0) {
             this._toonToast('success',
                 `${data.geupload.length} bestand(en) succesvol opgeladen.`);
+            this._voegGeuploadeBezwarenToe(data.geupload);
           }
 
           if (data.fouten && data.fouten.length > 0) {
@@ -606,8 +622,6 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
             const toaster = this.shadowRoot.querySelector('#toaster');
             if (toaster) toaster.show(alert);
           }
-
-          this._laadBezwaren(this.__geselecteerdProject);
         })
         .catch(() => {
           this._toonToast('error', 'Upload mislukt.');

@@ -22,4 +22,6 @@ public interface TekstExtractieTaakRepository extends JpaRepository<TekstExtract
   void deleteByProjectNaam(String projectNaam);
 
   void deleteByProjectNaamAndBestandsnaam(String projectNaam, String bestandsnaam);
+
+  void deleteByProjectNaamAndBestandsnaamIn(String projectNaam, List<String> bestandsnamen);
 }
