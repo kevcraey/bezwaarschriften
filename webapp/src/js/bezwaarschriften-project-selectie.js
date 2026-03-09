@@ -420,6 +420,13 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       body: JSON.stringify({bestandsnamen}),
     })
         .then((response) => {
+          if (response.status === 400) {
+            return response.json().then((data) => {
+              this._toonToast('error',
+                  data.message || 'Kan geen bezwaren extraheren zonder eerst tekst te extraheren.');
+              throw new Error('blocked');
+            });
+          }
           if (!response.ok) throw new Error('Indienen extracties mislukt');
           return response.json();
         })

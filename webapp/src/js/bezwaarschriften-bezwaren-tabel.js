@@ -24,7 +24,7 @@ registerWebComponents([
 ]);
 
 const STATUS_LABELS = {
-  'todo': 'Te verwerken',
+  'todo': 'Tekst extractie nodig',
   'wachtend': 'Wachtend',
   'bezig': 'Bezig',
   'extractie-klaar': 'Extractie klaar',
@@ -32,13 +32,13 @@ const STATUS_LABELS = {
   'niet ondersteund': 'Niet ondersteund',
   'tekst-extractie-wachtend': 'Tekst extractie wachtend',
   'tekst-extractie-bezig': 'Tekst extractie bezig',
-  'tekst-extractie-klaar': 'Tekst geëxtraheerd',
+  'tekst-extractie-klaar': 'Klaar voor extractie',
   'tekst-extractie-mislukt': 'Tekst extractie mislukt',
   'tekst-extractie-ocr-niet-beschikbaar': 'OCR niet beschikbaar',
 };
 
 const STATUS_PILL_TYPES = {
-  'todo': '',
+  'todo': 'warning',
   'wachtend': 'warning',
   'bezig': 'warning',
   'extractie-klaar': 'success',
@@ -46,13 +46,13 @@ const STATUS_PILL_TYPES = {
   'niet ondersteund': '',
   'tekst-extractie-wachtend': 'warning',
   'tekst-extractie-bezig': 'warning',
-  'tekst-extractie-klaar': '',
+  'tekst-extractie-klaar': 'success',
   'tekst-extractie-mislukt': 'error',
   'tekst-extractie-ocr-niet-beschikbaar': 'error',
 };
 
 const STATUS_OPTIES = [
-  {value: 'todo', label: 'Te verwerken'},
+  {value: 'todo', label: 'Tekst extractie nodig'},
   {value: 'wachtend', label: 'Wachtend'},
   {value: 'bezig', label: 'Bezig'},
   {value: 'extractie-klaar', label: 'Extractie klaar'},
@@ -863,8 +863,9 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   }
 
   _isDisabled(status) {
-    return status === 'niet ondersteund' || status === 'wachtend' || status === 'bezig' ||
-        status.startsWith('tekst-extractie-');
+    return status === 'todo' || status === 'niet ondersteund' ||
+        status === 'wachtend' || status === 'bezig' ||
+        (status.startsWith('tekst-extractie-') && status !== 'tekst-extractie-klaar');
   }
 
   _beheerTimer() {
