@@ -231,6 +231,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       if (b.tekstExtractieAangemaaktOp) {
         this.__takenData[b.bestandsnaam] = {
           ...this.__takenData[b.bestandsnaam],
+          id: b.tekstExtractieTaakId || this.__takenData[b.bestandsnaam]?.id,
           aangemaaktOp: b.tekstExtractieAangemaaktOp,
           verwerkingGestartOp: b.tekstExtractieGestartOp || null,
         };
@@ -429,9 +430,14 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               pill.appendChild(span);
               pill.appendChild(this._maakPillKnop('\u00d7', 'Annuleer verwerking', () => {
                 const taakData = this.__takenData[rij.bestandsnaam];
+                const isTekstExtractie = rij.status.startsWith('tekst-extractie-');
                 if (taakData && taakData.id) {
                   this.dispatchEvent(new CustomEvent('annuleer-taak', {
-                    detail: {bestandsnaam: rij.bestandsnaam, taakId: taakData.id},
+                    detail: {
+                      bestandsnaam: rij.bestandsnaam,
+                      taakId: taakData.id,
+                      type: isTekstExtractie ? 'tekst-extractie' : 'extractie',
+                    },
                     bubbles: true, composed: true,
                   }));
                 }

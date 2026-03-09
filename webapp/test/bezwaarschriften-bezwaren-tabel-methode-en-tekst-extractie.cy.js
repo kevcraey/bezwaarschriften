@@ -274,4 +274,67 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .should('exist')
         .and('contain.text', 'OCR niet beschikbaar');
   });
+
+  // --- Annuleer-knop voor tekst-extractie ---
+
+  it('tekst-extractie-bezig annuleer-knop dispatcht annuleer-taak event met type tekst-extractie', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {
+              bestandsnaam: 'doc-014.pdf',
+              status: 'tekst-extractie-bezig',
+              aantalBezwaren: null,
+              tekstExtractieAangemaaktOp: '2026-03-09T10:00:00Z',
+              tekstExtractieGestartOp: '2026-03-09T10:00:05Z',
+              tekstExtractieTaakId: 42,
+            },
+          ];
+          el.addEventListener('annuleer-taak', cy.stub().as('annuleerTaak'));
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-pill button[title="Annuleer verwerking"]')
+        .click();
+
+    cy.get('@annuleerTaak').should('have.been.calledOnce');
+    cy.get('@annuleerTaak').its('firstCall.args.0.detail')
+        .should('deep.equal', {
+          bestandsnaam: 'doc-014.pdf',
+          taakId: 42,
+          type: 'tekst-extractie',
+        });
+  });
+
+  it('tekst-extractie-wachtend annuleer-knop dispatcht annuleer-taak event met type tekst-extractie', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {
+              bestandsnaam: 'doc-015.pdf',
+              status: 'tekst-extractie-wachtend',
+              aantalBezwaren: null,
+              tekstExtractieAangemaaktOp: '2026-03-09T11:00:00Z',
+              tekstExtractieTaakId: 43,
+            },
+          ];
+          el.addEventListener('annuleer-taak', cy.stub().as('annuleerTaak'));
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-pill button[title="Annuleer verwerking"]')
+        .click();
+
+    cy.get('@annuleerTaak').should('have.been.calledOnce');
+    cy.get('@annuleerTaak').its('firstCall.args.0.detail')
+        .should('deep.equal', {
+          bestandsnaam: 'doc-015.pdf',
+          taakId: 43,
+          type: 'tekst-extractie',
+        });
+  });
 });

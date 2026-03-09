@@ -224,8 +224,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     const verwijderBevestigKnop = this.shadowRoot && this.shadowRoot.querySelector('#verwijder-bevestig-knop');
 
     this.shadowRoot.addEventListener('annuleer-taak', (e) => {
-      const {bestandsnaam, taakId} = e.detail;
-      this._teAnnulerenTaak = {bestandsnaam, taakId};
+      const {bestandsnaam, taakId, type} = e.detail;
+      this._teAnnulerenTaak = {bestandsnaam, taakId, type};
       const tekst = this.shadowRoot.querySelector('#annuleer-bevestiging-tekst');
       if (tekst) {
         tekst.textContent = `Weet je zeker dat je de verwerking van "${bestandsnaam}" wilt annuleren?`;
@@ -238,7 +238,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (annuleerBevestigKnop) {
       annuleerBevestigKnop.addEventListener('vl-click', () => {
         if (this._teAnnulerenTaak) {
-          this._annuleerTaak(this._teAnnulerenTaak.taakId);
+          this._annuleerTaak(this._teAnnulerenTaak.taakId, this._teAnnulerenTaak.type);
         }
       });
     }
@@ -657,13 +657,17 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         });
   }
 
-  _annuleerTaak(taakId) {
+  _annuleerTaak(taakId, type) {
     if (!this.__geselecteerdProject) return;
 
     this._zetBezig(true);
     this._verbergFout();
 
-    fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/extracties/${taakId}`, {
+    const pad = type === 'tekst-extractie' ?
+        `tekst-extracties/${taakId}` :
+        `extracties/${taakId}`;
+
+    fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/${pad}`, {
       method: 'DELETE',
     })
         .then((response) => {
