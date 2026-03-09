@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -70,10 +71,6 @@ class ExtractieTaakServiceTest {
 
   @Test
   void dienTakenInMetStatusWachtend() {
-    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "bezwaar-001.txt"))
-        .thenReturn(true);
-    when(tekstExtractieService.isTekstExtractieKlaar("windmolens", "bezwaar-002.txt"))
-        .thenReturn(true);
     when(repository.save(any())).thenAnswer(i -> {
       var t = i.getArgument(0, ExtractieTaak.class);
       t.setId(1L);
@@ -100,8 +97,21 @@ class ExtractieTaakServiceTest {
 
     org.assertj.core.api.Assertions.assertThatThrownBy(() ->
         service.indienen("windmolens", List.of("bezwaar-001.pdf")))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("Tekst-extractie niet voltooid");
+        .isInstanceOf(TekstExtractieNietVoltooidException.class)
+        .hasMessageContaining("Kan geen bezwaren extraheren zonder eerst tekst te extraheren");
+  }
+
+  @Test
+  void indienenVoorTxtBestandSlaatTekstExtractieCheckOver() {
+    when(repository.save(any(ExtractieTaak.class))).thenAnswer(inv -> {
+      var taak = inv.getArgument(0, ExtractieTaak.class);
+      taak.setId(1L);
+      return taak;
+    });
+
+    var resultaat = service.indienen("windmolens", List.of("bezwaar-001.txt"));
+
+    assertThat(resultaat).hasSize(1);
   }
 
   @Test

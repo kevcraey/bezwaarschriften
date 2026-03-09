@@ -93,9 +93,9 @@ public class ExtractieTaakService {
   public List<ExtractieTaakDto> indienen(String projectNaam, List<String> bestandsnamen) {
     return bestandsnamen.stream()
         .map(bestandsnaam -> {
-          if (!tekstExtractieService.isTekstExtractieKlaar(projectNaam, bestandsnaam)) {
-            throw new IllegalStateException(
-                "Tekst-extractie niet voltooid voor bestand: " + bestandsnaam);
+          if (!bestandsnaam.toLowerCase().endsWith(".txt")
+              && !tekstExtractieService.isTekstExtractieKlaar(projectNaam, bestandsnaam)) {
+            throw new TekstExtractieNietVoltooidException(bestandsnaam);
           }
           var taak = new ExtractieTaak();
           taak.setProjectNaam(projectNaam);
