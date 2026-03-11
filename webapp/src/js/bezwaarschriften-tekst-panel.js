@@ -1,10 +1,10 @@
 import {LitElement, html, css} from 'lit';
 import {registerWebComponents} from '@domg-wc/common';
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
-import {VlAlertComponent} from '@domg-wc/components/block/alert/vl-alert.component.js';
+import {VlAlert} from '@domg-wc/components/block/alert/vl-alert.component.js';
 import {VlLoaderComponent} from '@domg-wc/components/block/loader/vl-loader.component.js';
 
-registerWebComponents([VlButtonComponent, VlAlertComponent, VlLoaderComponent]);
+registerWebComponents([VlButtonComponent, VlAlert, VlLoaderComponent]);
 
 /**
  * Linkse side-sheet die de geextraheerde tekst van een bezwaarschrift toont.
