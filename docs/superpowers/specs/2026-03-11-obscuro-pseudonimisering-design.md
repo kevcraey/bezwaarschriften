@@ -9,7 +9,7 @@ Na tekst-extractie wordt de geextraheerde tekst gepseudonimiseerd via de Obscuro
 - Pseudonimisering toepassen na tekst-extractie, voor opslag
 - Mapping-ID persisteren in `tekst_extractie_taak`
 - Obscuro als Docker container naast de applicatie draaien
-- E2E test voor de volledige happy path
+- E2E test voor de volledige happy path + unit tests
 - **Buiten scope**: de-pseudonimisering UI/API, briefgeneratie-integratie
 
 ## Architectuur
@@ -18,7 +18,7 @@ Na tekst-extractie wordt de geextraheerde tekst gepseudonimiseerd via de Obscuro
 
 ```
 TekstExtractieService
-    ↓ (na extractie, voor opslag)
+    ↓ (na extractie, voor opslag — ongeacht bron: PDF of TXT)
     PseudonimiseringPoort (interface)
         ↓
     ObscuroAdapter (HTTP → Obscuro API)
@@ -30,27 +30,35 @@ TekstExtractieService
 |---|---|---|
 | `PseudonimiseringPoort` | `tekstextractie` | Port: `pseudonimiseer(tekst) → PseudonimiseringResultaat` |
 | `PseudonimiseringResultaat` | `tekstextractie` | Record: `gepseudonimiseerdeTekst` + `mappingId` |
-| `ObscuroAdapter` | `tekstextractie.adapter` | HTTP client naar Obscuro `/pseudonymize` |
-| `ObscuroConfiguratie` | `config` | Spring config: URL, TTL, timeouts |
+| `ObscuroAdapter` | `tekstextractie` | HTTP client naar Obscuro `/pseudonymize` |
+| `PseudonimiseringConfig` | `tekstextractie` | `@ConfigurationProperties(prefix = "bezwaarschriften.pseudonimisering")`: URL, TTL, timeouts |
+
+Naamgeving volgt bestaande patronen: `*Config` suffix (zoals `ExtractieConfig`, `EmbeddingConfig`), adapter in zelfde package als port (zoals `BestandssysteemProjectAdapter` in `project`).
 
 ### Aangepaste componenten
 
 | Component | Wijziging |
 |---|---|
-| `TekstExtractieService` | Na extractie → `pseudonimiseringPoort.pseudonimiseer()` aanroepen, mapping-ID opslaan |
+| `TekstExtractieService` | Na extractie → `pseudonimiseringPoort.pseudonimiseer()` aanroepen, mapping-ID opslaan. Pseudonimisering geldt voor **beide** extractiepaden (PDF en TXT). |
 | `TekstExtractieTaak` | Nieuw veld `pseudonimiseringMappingId` |
-| `docker-compose.yml` | Obscuro container toevoegen |
+| `docker-compose.yml` | Nieuw bestand in project root — Obscuro container toevoegen naast bestaande PostgreSQL |
+
+### Ontwerpkeuze: RestClient
+
+`ObscuroAdapter` gebruikt Spring `RestClient` (synchroon). Dit is een bewuste keuze: de tekst-extractie flow is synchroon (anders dan de embedding flow die `WebClient` gebruikt). `RestClient` is eenvoudiger en past beter bij deze context.
 
 ## Datamodel
 
-### Wijziging `tekst_extractie_taak`
+### Liquibase changelog: `20260311-pseudonimisering-mapping.xml`
+
+Toevoegen aan `app/src/main/resources/config/liquibase/changelog/` en registreren in `master.xml`.
 
 ```sql
 ALTER TABLE tekst_extractie_taak
-  ADD COLUMN pseudonimisering_mapping_id VARCHAR(36);
+  ADD COLUMN pseudonimisering_mapping_id VARCHAR(255);
 ```
 
-Nullable — bestaande records hebben geen mapping.
+Nullable — bestaande records hebben geen mapping. `VARCHAR(255)` i.p.v. `VARCHAR(36)` voor robuustheid: Obscuro API-contract is extern en niet onder onze controle.
 
 ## API-interactie met Obscuro
 
@@ -65,7 +73,7 @@ Content-Type: application/json
   "ttl_seconds": 31536000
 }
 
-→ Response:
+Response:
 {
   "text": "<gepseudonimiseerde tekst>",
   "mapping_id": "550e8400-e29b-41d4-a716-446655440000"
@@ -74,7 +82,7 @@ Content-Type: application/json
 
 ### HTTP Client
 
-- Spring `RestClient` (synchroon, past bij bestaande verwerkingsflow)
+- Spring `RestClient` (synchroon)
 - Connect timeout: 30s (configureerbaar)
 - Read timeout: 120s (configureerbaar, grote documenten)
 - Fout → taak status `MISLUKT` met foutmelding
@@ -92,7 +100,9 @@ bezwaarschriften:
     read-timeout: 120s
 ```
 
-### docker-compose.yml
+### docker-compose.yml (nieuw bestand in project root)
+
+Bevat zowel de bestaande PostgreSQL als de nieuwe Obscuro container:
 
 ```yaml
 obscuro:
@@ -101,7 +111,6 @@ obscuro:
     - "8000:8000"
   environment:
     - PYTHONUNBUFFERED=1
-    - TTL_SECONDS=31536000
   restart: unless-stopped
   healthcheck:
     test: python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
@@ -111,26 +120,37 @@ obscuro:
     start_period: 60s
 ```
 
+De TTL wordt per request meegegeven vanuit de applicatie (`ttl-seconds` in `application.yml`). De Docker-level `TTL_SECONDS` env var is niet nodig omdat elke request zijn eigen TTL specificeert.
+
 ## Aangepaste flow
 
 ```mermaid
 graph TD
-    A[TekstExtractieWorker pikt taak op] --> B[Extraheer tekst - PDFBox/OCR]
+    A[TekstExtractieWorker pikt taak op] --> B[Extraheer tekst - PDFBox of TXT]
     B --> C[PseudonimiseringPoort.pseudonimiseer]
     C --> D{Succes?}
-    D -->|Ja| E[Sla gepseudonimiseerde tekst op in bezwaren-text/]
-    E --> F[Sla mappingId op in tekst_extractie_taak]
+    D -->|Ja| E[Sla mappingId op in tekst_extractie_taak]
+    E --> F[Sla gepseudonimiseerde tekst op in bezwaren-text/]
     F --> G[Status → KLAAR]
     D -->|Nee| H[Status → MISLUKT met foutmelding]
 ```
 
-## E2E Test
+**Opmerking**: mappingId wordt eerst opgeslagen in de database (stap E) voordat de tekst naar het bestandssysteem gaat (stap F). Zo is de mapping-ID altijd beschikbaar, ook als de bestandsopslag faalt.
 
-### Aanpak
+## Testen
 
-- Testcontainers: `GenericContainer` met Obscuro Docker image
-- Volledige happy path: upload PDF → extractie → pseudonimisering → opslag → verificatie
-- Draait als onderdeel van `mvn verify`
+### Unit tests
+
+| Test | Scope |
+|---|---|
+| `ObscuroAdapterTest` | Mocked HTTP responses (succes, 4xx, 5xx, timeout) via MockRestServiceServer |
+| `TekstExtractieServiceTest` | Verify pseudonimiseringspoort wordt aangeroepen en mappingId opgeslagen (mock port) |
+
+### E2E test (integratietest)
+
+- **Testcontainers**: `GenericContainer` met Obscuro Docker image
+- **Volledige happy path**: upload PDF → extractie → pseudonimisering → opslag → verificatie
+- **Draait als onderdeel van**: `mvn verify`
 
 ### Testdata
 
