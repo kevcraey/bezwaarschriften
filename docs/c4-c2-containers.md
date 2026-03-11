@@ -2,8 +2,8 @@
 
 ## Bezwaarschriften Verwerkingssysteem - Container View
 
-**Versie:** 1.3
-**Laatst bijgewerkt:** 2026-03-08
+**Versie:** 1.4
+**Laatst bijgewerkt:** 2026-03-11
 **Status:** In ontwikkeling (MS1 - Minimal Viable Pipeline)
 
 ---
@@ -91,8 +91,9 @@ C4Container
 - `BestandssysteemProjectAdapter` (implementatie/adapter) - Leest projectmappen van `input/`
 - `ProjectService` (orchestration service) - Beheert verwerkingsstatussen, coördineert batchverwerking
 - `ProjectController` (REST controller) - Exposeert 3 endpoints
-- `BezwaarBestandStatus` (enum) - TODO / EXTRACTIE_KLAAR / FOUT / NIET_ONDERSTEUND
+- `BezwaarBestandStatus` (enum) - TODO / TEKST_EXTRACTIE_* / BEZWAAR_EXTRACTIE_* / NIET_ONDERSTEUND
 - `BezwaarBestand` (record) - Bestandsnaam + status
+- `BezwaarBestandEntiteit` (JPA entity) - Persistente bestandsstatus in `bezwaar_bestand` tabel
 
 **REST Endpoints:**
 ```
@@ -103,7 +104,10 @@ GET  /api/v1/projects/{naam}/bezwaren
      → { "bezwaren": [{ "bestandsnaam": "bezwaar-001.txt", "status": "todo" }] }
 
 POST /api/v1/projects/{naam}/verwerk
-     → { "bezwaren": [{ "bestandsnaam": "bezwaar-001.txt", "status": "extractie-klaar" }] }
+     → { "bezwaren": [{ "bestandsnaam": "bezwaar-001.txt", "status": "bezwaar-extractie-klaar" }] }
+
+GET  /api/v1/projects/{naam}/tekst-extracties/{bestandsnaam}/tekst
+     → { "bestandsnaam": "bezwaar-001.pdf", "tekst": "..." }
 ```
 
 **Mappenstructuur:**
@@ -111,16 +115,16 @@ POST /api/v1/projects/{naam}/verwerk
 input/
 ├── windmolens/
 │   └── bezwaren/
-│       ├── bezwaar-001.txt   → status: todo/extractie-klaar/fout
+│       ├── bezwaar-001.txt   → status: todo/tekst-extractie-*/bezwaar-extractie-*/fout
 │       └── bijlage.pdf       → status: niet ondersteund
 └── zonnepanelen/
     └── bezwaren/
 ```
 
 **Statusbeheer:**
-- Statussen zijn in-memory per sessie (geen persistentie in MS1)
-- Bij herstart staan alle bestanden opnieuw op `todo`
-- Alleen `.txt` bestanden worden verwerkt; andere formaten krijgen `niet ondersteund`
+- Statussen zijn persistent in de `bezwaar_bestand` tabel (JPA entity)
+- Status-updates bij elk transitiepunt: upload, tekst-extractie, bezwaar-extractie
+- Ondersteunde formaten: `.txt` en `.pdf`; andere formaten krijgen `niet ondersteund`
 
 **Frontend (Web Components):**
 - `bezwaarschriften-project-selectie` — Orchestrating component: laadt projecten, toont dropdown, start verwerking
@@ -466,12 +470,17 @@ GET /api/v1/projects
 
 GET /api/v1/projects/{naam}/bezwaren
 - Geeft bezwaarbestanden van een project met hun status
-- Response: { "bezwaren": [{ "bestandsnaam": "...", "status": "todo|extractie-klaar|fout|niet ondersteund" }] }
+- Response: { "bezwaren": [{ "bestandsnaam": "...", "status": "todo|tekst-extractie-*|bezwaar-extractie-*|niet ondersteund" }] }
 - 404 als project niet bestaat
 
 POST /api/v1/projects/{naam}/verwerk
 - Start batchverwerking voor alle todo .txt-bestanden van een project
 - Response: bijgewerkte bezwarenlijst met statussen
+
+GET /api/v1/projects/{naam}/tekst-extracties/{bestandsnaam}/tekst
+- Geeft de geëxtraheerde tekst van een bezwaarschrift
+- Response: { "bestandsnaam": "...", "tekst": "..." }
+- 404 als tekst niet beschikbaar (extractie niet klaar)
 ```
 
 **Endpoints (toekomstig):**
@@ -541,7 +550,8 @@ POST /api/v1/kernen/{kernId}/genereer
 
 **Web Components:**
 - `bezwaarschriften-project-selectie` — Orchestrating component
-- `bezwaarschriften-bezwaren-tabel` — Bezwarenlijst met extractie-details
+- `bezwaarschriften-bezwaren-tabel` — Bezwarenlijst met extractie-details en oog-knop voor tekst-preview
+- `bezwaarschriften-tekst-panel` — Linkse side-sheet die geëxtraheerde tekst toont (LitElement)
 - `bezwaarschriften-kernbezwaren` — Kernbezwaren lijst, side panel, toewijzing
 
 **Toekomstige Features:**
