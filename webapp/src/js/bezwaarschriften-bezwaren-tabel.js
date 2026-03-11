@@ -465,7 +465,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             }
 
             if (rij.tekstExtractieFoutmelding) {
-              const pillId = `pill-${rij.bestandsnaam.replace(/[^a-zA-Z0-9]/g, '-')}`;
+              const pillId = `pill-${rij.bestandsnaam.replace(/[^a-zA-Z0-9]/g, (c) => c.charCodeAt(0).toString(16))}`;
               pill.id = pillId;
               const tooltip = document.createElement('vl-tooltip');
               tooltip.setAttribute('for', pillId);
