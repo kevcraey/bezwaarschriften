@@ -1050,15 +1050,108 @@ mvn spring-boot:run -pl app -Pdev
 # Upload een PDF via de UI en controleer of de tekst in bezwaren-text/ gepseudonimiseerd is
 ```
 
-### Task 12: C4 documentatie bijwerken
+### Task 12: Documentatie bijwerken (conform docs/CLAUDE.md)
 
-- [ ] **Step 1: Update C4 C2 container diagram**
+Alle relevante documentatie moet up-to-date zijn na deze feature.
 
-Voeg Obscuro als externe container toe aan `docs/c4-c2-containers.md`.
+**Files:**
+- Modify: `docs/c4-c1-systeemcontext.md`
+- Modify: `docs/c4-c2-containers.md`
+- Modify: `docs/decisions/adr-index.md`
+- Create: `docs/decisions/records/ADR-008.md`
+- Modify: `docs/decisions/tdr-index.md`
+- Create: `docs/decisions/records/TDR-013.md`
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 1: Update C4 C1 Systeemcontext**
+
+In `docs/c4-c1-systeemcontext.md`:
+
+a) Voeg Obscuro toe als extern systeem in het Mermaid diagram:
+```
+System_Ext(obscuro, "Obscuro Service", "PII pseudonimisering van bezwaarteksten")
+```
+En de relatie:
+```
+Rel(bezwaarsysteem, obscuro, "Pseudonimiseert geëxtraheerde tekst", "REST API")
+```
+
+b) Voeg een sectie "Obscuro Service" toe onder "Externe Systemen":
+- Type: Pseudonimiseringsservice
+- Technologie: Python/FastAPI, SpaCy NER
+- Doel: PII (namen, adressen, IBAN, etc.) vervangen door tokens
+- Interface: REST API (`POST /pseudonymize`)
+
+c) Update "Security & Privacy Overwegingen" → Data Privacy: voeg toe dat Obscuro teksten pseudonimiseert vóór AI-verwerking.
+
+- [ ] **Step 2: Update C4 C2 Container diagram**
+
+In `docs/c4-c2-containers.md`:
+
+a) Voeg Obscuro toe als extern systeem in het Mermaid diagram:
+```
+System_Ext(obscuro, "Obscuro Service", "PII pseudonimisering (SpaCy NER)")
+```
+En de relatie vanuit tekstextractie:
+```
+Rel(tekstextractie, obscuro, "Pseudonimiseert tekst na extractie", "REST /pseudonymize")
+```
+
+b) Update de "Tekst Extractie Component" sectie (container 3):
+- Voeg `PseudonimiseringPoort` en `ObscuroAdapter` toe aan "Belangrijkste Klassen"
+- Update de verwerkingsflow: voeg stap "Pseudonimisering via Obscuro" toe tussen extractie en opslag
+- Update de hexagonale architectuur ASCII: voeg `ObscuroAdapter` toe
+
+c) Update de "Tekst Extractie Flow" in "Inter-Container Communicatie":
+```
+     └─> Resultaat pseudonimiseren via ObscuroAdapter (REST → Obscuro)
+     └─> Mapping-ID opslaan in tekst_extractie_taak
+     └─> Gepseudonimiseerde tekst opslaan in bezwaren-text/
+```
+
+d) Update "Deployment Architectuur" docker-compose: voeg obscuro service toe.
+
+e) Update "Hexagonale Architectuur Principes" → Ports: voeg `PseudonimiseringPoort` toe.
+
+- [ ] **Step 3: Schrijf ADR-008 — Pseudonimisering integratie**
+
+Maak `docs/decisions/records/ADR-008.md`:
+```markdown
+# ADR-008: Obscuro pseudonimisering in tekst-extractie pipeline
+
+- **Context:** Bezwaarteksten bevatten PII (namen, adressen, IBAN). Deze worden doorgestuurd naar externe AI-providers. Wettelijke vereisten (AVG) vereisen bescherming van persoonsgegevens.
+- **Besluit:** Pseudonimisering via Obscuro-service (SpaCy NER + regex) direct na tekst-extractie, vóór opslag in bezwaren-text/. Mapping-ID voor de-pseudonimisering wordt opgeslagen in de database.
+- **Consequentie:** Alle downstream verwerking (AI-extractie, clustering) werkt op gepseudonimiseerde tekst. De-pseudonimisering is een aparte toekomstige feature. Obscuro wordt een verplichte dependency — de applicatie werkt niet zonder.
+```
+
+Voeg toe aan `docs/decisions/adr-index.md`:
+```
+| ADR-008 | Obscuro pseudonimisering in pipeline | 2026-03 | PII pseudonimiseren na tekst-extractie via Obscuro; mapping-ID opslaan voor reversibiliteit. |
+```
+
+- [ ] **Step 4: Schrijf TDR-013 — java.net.http.HttpClient voor Obscuro**
+
+Maak `docs/decisions/records/TDR-013.md`:
+```markdown
+# TDR-013: java.net.http.HttpClient voor Obscuro adapter
+
+- **Context:** De ObscuroAdapter heeft een synchrone HTTP client nodig. Spring Boot 2.7.x biedt `RestTemplate` (deprecated) of `WebClient` (reactive). Spring `RestClient` is pas beschikbaar in Spring Boot 3.2+.
+- **Besluit:** JDK standaard `java.net.http.HttpClient` gebruiken. Zero dependencies, synchroon, en eenvoudig te testen met OkHttp MockWebServer (bestaand patroon in project).
+- **Consequentie:** Geen extra dependencies. Bij migratie naar Spring Boot 3.2+ kan worden overgezet naar `RestClient`, maar is niet nodig.
+```
+
+Voeg toe aan `docs/decisions/tdr-index.md`:
+```
+| TDR-013 | java.net.http.HttpClient voor Obscuro | 2026-03 | JDK standaard HttpClient i.p.v. RestTemplate/WebClient voor synchrone Obscuro calls. |
+```
+
+- [ ] **Step 5: Commit alle documentatie**
 
 ```bash
-git add docs/
-git commit -m "docs: C4 C2 diagram bijwerken met Obscuro container"
+git add docs/c4-c1-systeemcontext.md \
+       docs/c4-c2-containers.md \
+       docs/decisions/adr-index.md \
+       docs/decisions/records/ADR-008.md \
+       docs/decisions/tdr-index.md \
+       docs/decisions/records/TDR-013.md
+git commit -m "docs: documentatie bijwerken voor Obscuro pseudonimisering"
 ```
