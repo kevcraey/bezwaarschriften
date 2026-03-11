@@ -14,6 +14,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-11-obscuro-pseudonimisering-design.md`
 
+**HARDE REGEL — Alle testen groen:** Na oplevering van deze feature MOETEN `mvn test -pl app` en `mvn verify -pl app` **volledig groen** zijn. Geen uitzonderingen. Als er bestaande falende testen zijn, fix ze. "Was al rood" is geen excuus — na een feature is alles groen. Lever niet op met falende testen.
+
 ---
 
 ## Chunk 1: Domeinmodel en Port
@@ -1004,9 +1006,25 @@ git commit -m "feat: E2E integratietest voor pseudonimisering happy path"
 
 ## Chunk 6: Verificatie en oplevering
 
-### Task 11: Volledige build verificatie
+### Task 11: Volledige build verificatie — ALLES GROEN
 
-- [ ] **Step 1: Run complete build met alle tests**
+- [ ] **Step 1: Run ALLE unit tests**
+
+```bash
+mvn test -pl app
+```
+
+Verwacht: **0 failures, 0 errors.** Als er falende tests zijn — ook bestaande — fix ze HIER. Niet opleveren met rode tests.
+
+- [ ] **Step 2: Run ALLE integratietests**
+
+```bash
+mvn verify -pl app
+```
+
+Verwacht: **0 failures, 0 errors.** Zelfde regel: alles groen of fixen.
+
+- [ ] **Step 3: Run volledige build**
 
 ```bash
 mvn clean install -pl app
