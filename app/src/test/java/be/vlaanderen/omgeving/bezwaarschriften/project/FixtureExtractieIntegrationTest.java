@@ -81,8 +81,17 @@ class FixtureExtractieIntegrationTest {
       return stream
           .filter(Files::isDirectory)
           .filter(dir -> Files.isDirectory(dir.resolve("documenten"))
-              && Files.isDirectory(dir.resolve("bezwaren")))
+              && Files.isDirectory(dir.resolve("bezwaren"))
+              && heeftBestanden(dir.resolve("bezwaren")))
           .toList();
+    }
+  }
+
+  private static boolean heeftBestanden(Path dir) {
+    try (var stream = Files.list(dir)) {
+      return stream.findFirst().isPresent();
+    } catch (IOException e) {
+      return false;
     }
   }
 
