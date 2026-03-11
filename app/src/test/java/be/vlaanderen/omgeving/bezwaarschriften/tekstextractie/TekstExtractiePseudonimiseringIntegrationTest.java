@@ -42,6 +42,8 @@ class TekstExtractiePseudonimiseringIntegrationTest
     }
   }
 
+  // TODO: Vervang door ghcr.io/kevcraey/obscuro-service:latest zodra GHCR image publiek is.
+  //       In CI/CD moet dit image lokaal gebouwd worden vóór de integratietests.
   @Container
   static final GenericContainer<?> obscuro =
       new GenericContainer<>("pseudonimiseren:test")

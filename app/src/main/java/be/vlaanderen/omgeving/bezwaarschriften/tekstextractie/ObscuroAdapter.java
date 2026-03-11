@@ -28,9 +28,9 @@ public class ObscuroAdapter implements PseudonimiseringPoort {
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient;
 
-  public ObscuroAdapter(PseudonimiseringConfig config) {
+  public ObscuroAdapter(PseudonimiseringConfig config, ObjectMapper objectMapper) {
     this.config = config;
-    this.objectMapper = new ObjectMapper();
+    this.objectMapper = objectMapper;
     this.httpClient =
         HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(config.getConnectTimeoutMs()))
@@ -60,8 +60,14 @@ public class ObscuroAdapter implements PseudonimiseringPoort {
       }
 
       var json = objectMapper.readTree(response.body());
-      var gepseudonimiseerdeTekst = json.get("text").asText();
-      var mappingId = json.get("mapping_id").asText();
+      var tekstNode = json.get("text");
+      var mappingNode = json.get("mapping_id");
+      if (tekstNode == null || mappingNode == null) {
+        throw new PseudonimiseringException(
+            "Obscuro response mist verplichte velden (text/mapping_id): " + response.body());
+      }
+      var gepseudonimiseerdeTekst = tekstNode.asText();
+      var mappingId = mappingNode.asText();
 
       LOGGER.info("Tekst gepseudonimiseerd (mapping={})", mappingId);
       return new PseudonimiseringResultaat(gepseudonimiseerdeTekst, mappingId);

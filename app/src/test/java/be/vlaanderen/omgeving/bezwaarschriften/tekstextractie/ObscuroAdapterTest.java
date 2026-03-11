@@ -3,6 +3,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -27,7 +28,7 @@ class ObscuroAdapterTest {
     config.setConnectTimeoutMs(5000);
     config.setReadTimeoutMs(5000);
 
-    adapter = new ObscuroAdapter(config);
+    adapter = new ObscuroAdapter(config, new ObjectMapper());
   }
 
   @AfterEach
