@@ -253,15 +253,6 @@ public class ProjectService {
     return lower.endsWith(".txt") || lower.endsWith(".pdf");
   }
 
-  private BezwaarBestandStatus vanExtractieTaakStatus(ExtractieTaakStatus status) {
-    return switch (status) {
-      case WACHTEND -> BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND;
-      case BEZIG -> BezwaarBestandStatus.BEZWAAR_EXTRACTIE_BEZIG;
-      case KLAAR -> BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR;
-      case FOUT -> BezwaarBestandStatus.BEZWAAR_EXTRACTIE_FOUT;
-    };
-  }
-
   /**
    * Maakt een nieuw project aan.
    *

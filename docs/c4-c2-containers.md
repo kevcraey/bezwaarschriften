@@ -84,13 +84,13 @@ C4Container
 - Java 21 NIO (`java.nio.file.Files`)
 - Spring Boot 3.4 (dependency injection)
 - Hexagonale architectuur: Port + Adapter pattern
-- In-memory statusregister per sessie (`ConcurrentHashMap`)
+- JPA + Liquibase (persistente bestandsstatus in `bezwaar_bestand` tabel)
 
 **Belangrijkste Klassen:**
 - `ProjectPoort` (interface/port) - Definieert contract voor projecten en bestandsopvraag
 - `BestandssysteemProjectAdapter` (implementatie/adapter) - Leest projectmappen van `input/`
 - `ProjectService` (orchestration service) - Beheert verwerkingsstatussen, coördineert batchverwerking
-- `ProjectController` (REST controller) - Exposeert 3 endpoints
+- `ProjectController` (REST controller) - Exposeert project- en bezwaar-endpoints
 - `BezwaarBestandStatus` (enum) - TODO / TEKST_EXTRACTIE_* / BEZWAAR_EXTRACTIE_* / NIET_ONDERSTEUND
 - `BezwaarBestand` (record) - Bestandsnaam + status
 - `BezwaarBestandEntiteit` (JPA entity) - Persistente bestandsstatus in `bezwaar_bestand` tabel
