@@ -411,4 +411,104 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .invoke('text')
         .should('not.match', /\([1-9]\d*:\d{2}\)/);
   });
+
+  // --- Oog-knop (tekst-preview) ---
+
+  it('toont oog-knop bij tekst-extractie-klaar status', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {bestandsnaam: 'doc-001.pdf', status: 'tekst-extractie-klaar'},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-button[icon="eye"]')
+        .should('exist');
+  });
+
+  it('toont oog-knop bij bezwaar-extractie-klaar status', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {bestandsnaam: 'doc-001.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-button[icon="eye"]')
+        .should('exist');
+  });
+
+  it('toont oog-knop bij bezwaar-extractie-wachtend status', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {bestandsnaam: 'doc-001.pdf', status: 'bezwaar-extractie-wachtend'},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-button[icon="eye"]')
+        .should('exist');
+  });
+
+  it('verbergt oog-knop bij todo status', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {bestandsnaam: 'doc-001.pdf', status: 'todo'},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-button[icon="eye"]')
+        .should('not.exist');
+  });
+
+  it('verbergt oog-knop bij tekst-extractie-bezig status', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {bestandsnaam: 'doc-001.pdf', status: 'tekst-extractie-bezig',
+             tekstExtractieAangemaaktOp: '2026-03-01T10:00:00Z',
+             tekstExtractieVerwerkingGestartOp: '2026-03-01T10:01:00Z',
+             tekstExtractieTaakId: 1},
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-button[icon="eye"]')
+        .should('not.exist');
+  });
+
+  it('oog-knop dispatcht toon-geextraheerde-tekst event', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-001.pdf', status: 'tekst-extractie-klaar'},
+          ];
+          el.addEventListener('toon-geextraheerde-tekst', cy.stub().as('toonTekst'));
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-button[icon="eye"]')
+        .click();
+
+    cy.get('@toonTekst').should('have.been.calledOnce');
+    cy.get('@toonTekst').its('firstCall.args.0.detail')
+        .should('deep.include', {projectNaam: 'testproject', bestandsnaam: 'bezwaar-001.pdf'});
+  });
 });
