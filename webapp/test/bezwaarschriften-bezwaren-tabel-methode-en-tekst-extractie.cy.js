@@ -106,7 +106,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .and('contain.text', 'Tekst extractie mislukt');
   });
 
-  it('toont tooltip met foutmelding bij tekst-extractie-mislukt', () => {
+  it('toont foutmelding tekst bij tekst-extractie-mislukt', () => {
     cy.get('bezwaarschriften-bezwaren-tabel')
         .its(0)
         .then((el) => {
@@ -122,14 +122,13 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('vl-tooltip')
-        .should('exist')
-        .and('contain.text', 'Te weinig woorden: 28 (minimum 40)');
+        .contains('Te weinig woorden: 28 (minimum 40)')
+        .should('exist');
   });
 
-  // --- Checkbox disabled voor tekst-extractie statussen ---
+  // --- Checkboxen altijd enabled ---
 
-  it('checkbox disabled voor tekst-extractie-wachtend status', () => {
+  it('checkbox enabled voor tekst-extractie-wachtend status', () => {
     cy.get('bezwaarschriften-bezwaren-tabel')
         .its(0)
         .then((el) => {
@@ -141,10 +140,10 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('input.rij-checkbox[data-bestandsnaam="doc-006.pdf"]')
-        .should('be.disabled');
+        .should('not.be.disabled');
   });
 
-  it('checkbox disabled voor tekst-extractie-bezig status', () => {
+  it('checkbox enabled voor tekst-extractie-bezig status', () => {
     cy.get('bezwaarschriften-bezwaren-tabel')
         .its(0)
         .then((el) => {
@@ -156,7 +155,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('input.rij-checkbox[data-bestandsnaam="doc-007.pdf"]')
-        .should('be.disabled');
+        .should('not.be.disabled');
   });
 
   it('checkbox enabled voor tekst-extractie-klaar status', () => {
@@ -174,7 +173,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .should('not.be.disabled');
   });
 
-  it('checkbox disabled voor todo status', () => {
+  it('checkbox enabled voor todo status', () => {
     cy.get('bezwaarschriften-bezwaren-tabel')
         .its(0)
         .then((el) => {
@@ -186,10 +185,10 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('input.rij-checkbox[data-bestandsnaam="doc-008b.pdf"]')
-        .should('be.disabled');
+        .should('not.be.disabled');
   });
 
-  it('checkbox disabled voor tekst-extractie-mislukt status', () => {
+  it('checkbox enabled voor tekst-extractie-mislukt status', () => {
     cy.get('bezwaarschriften-bezwaren-tabel')
         .its(0)
         .then((el) => {
@@ -201,7 +200,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('input.rij-checkbox[data-bestandsnaam="doc-009.pdf"]')
-        .should('be.disabled');
+        .should('not.be.disabled');
   });
 
   it('checkbox enabled voor extractie-klaar status', () => {

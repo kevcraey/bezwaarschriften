@@ -5,6 +5,7 @@ AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hex
 ## Algemene regels
 
 - Om code te lezen gebruik je jcodemunch mcp server
+  - jcodemunch get_file_content: parameter heet file_path, NIET path. Fout: path: "...". Correct: file_path: "...".
 - Gebruik voor implementatie altijd de richtlijnen in `richtlijnen/`, de titels spreken voor zich, lees enkel de inhoud als het relevant is voor de taak.
 - We schrijven liever een test teveel dan eentje te weinig.
 - We houden qua documentatie altijd een up-to-date C1 en C2 model bij in `docs/` in mermaid.
@@ -17,13 +18,11 @@ AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hex
 
 ## Documentatie
 
-- C4 C1 + C2 up-to-date in `docs/`
-- domeinmodel up-to-date in `docs/`
-- diagrammen maken we in mermaid
+Alle documentatie staat in `docs/`
 
 ## Code review
 
-- Gebruik altijd de code-review skill en fix de opmerkingen.
+- Gebruik altijd de decibel-code-review skill en fix de opmerkingen.
 
 ## Front-end ontwikkeling
 
@@ -41,7 +40,9 @@ AI-geassisteerde verwerking van bezwaarschriften. Java 21 + Spring Boot 3.x. Hex
 
 ## Testen
 
-- als je testen moet schrijven, zo weinig mogelijk afmocken, komen teveel bugs door op die manier.
+- Als je testen moet schrijven, zo weinig mogelijk afmocken, komen teveel bugs door op die manier.
+- Doel van de testen is het beschermen van de functionaliteit, alle belangrijke functionaliteit is afgetest.
+- Als je een busines regel hebt moeten wijzigen en er is geen test bijgeschreven of aangepast, dan zijn er testen te weinig.
 
 ## Gotchas
 

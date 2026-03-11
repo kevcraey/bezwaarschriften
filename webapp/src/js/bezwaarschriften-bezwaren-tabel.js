@@ -352,7 +352,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             cb.type = 'checkbox';
             cb.className = 'rij-checkbox';
             cb.dataset.bestandsnaam = rij.bestandsnaam;
-            if (this._isDisabled(rij.status)) cb.disabled = true;
             cb.addEventListener('change', () => this._dispatchSelectieGewijzigd());
             td.appendChild(cb);
           };
@@ -464,16 +463,14 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               pill.textContent = this._formatStatusLabel(rij);
             }
 
+            td.appendChild(pill);
             if (rij.tekstExtractieFoutmelding) {
-              const pillId = `pill-${rij.bestandsnaam.replace(/[^a-zA-Z0-9]/g, (c) => c.charCodeAt(0).toString(16))}`;
-              pill.id = pillId;
-              const tooltip = document.createElement('vl-tooltip');
-              tooltip.setAttribute('for', pillId);
-              tooltip.textContent = rij.tekstExtractieFoutmelding;
-              td.appendChild(pill);
-              td.appendChild(tooltip);
-            } else {
-              td.appendChild(pill);
+              const fout = document.createElement('div');
+              fout.textContent = rij.tekstExtractieFoutmelding;
+              fout.style.fontSize = '0.75rem';
+              fout.style.color = '#db3434';
+              fout.style.marginTop = '0.25rem';
+              td.appendChild(fout);
             }
           };
           break;
@@ -874,12 +871,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     });
   }
 
-  _isDisabled(status) {
-    return status === 'todo' || status === 'niet ondersteund' ||
-        status === 'wachtend' || status === 'bezig' ||
-        (status.startsWith('tekst-extractie-') && status !== 'tekst-extractie-klaar');
-  }
-
   _beheerTimer() {
     const heeftActief = this.__bronBezwaren.some(
         (b) => b.status === 'wachtend' || b.status === 'bezig' ||
@@ -1000,7 +991,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       const checked = e.target.checked;
       const table = this._geefInnerTable();
       if (!table) return;
-      table.querySelectorAll('.rij-checkbox:not([disabled])').forEach((rijCb) => {
+      table.querySelectorAll('.rij-checkbox').forEach((rijCb) => {
         rijCb.checked = checked;
       });
       this._dispatchSelectieGewijzigd();

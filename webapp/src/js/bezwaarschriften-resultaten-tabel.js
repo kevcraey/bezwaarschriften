@@ -187,7 +187,6 @@ export class BezwaarschriftenResultatenTabel extends BaseHTMLElement {
             cb.type = 'checkbox';
             cb.className = 'rij-checkbox';
             cb.dataset.bestandsnaam = rij.bestandsnaam;
-            if (this._isDisabled(rij.status)) cb.disabled = true;
             cb.addEventListener('change', () => this._dispatchSelectieGewijzigd());
             td.appendChild(cb);
           };
@@ -402,10 +401,6 @@ export class BezwaarschriftenResultatenTabel extends BaseHTMLElement {
     });
   }
 
-  _isDisabled(status) {
-    return status === 'onvolledig' || status === 'wachtend' || status === 'bezig';
-  }
-
   _beheerTimer() {
     const heeftActief = this.__bronDocumenten.some(
         (d) => d.status === 'wachtend' || d.status === 'bezig',
@@ -521,7 +516,7 @@ export class BezwaarschriftenResultatenTabel extends BaseHTMLElement {
       const checked = e.target.checked;
       const table = this._geefInnerTable();
       if (!table) return;
-      table.querySelectorAll('.rij-checkbox:not([disabled])').forEach((rijCb) => {
+      table.querySelectorAll('.rij-checkbox').forEach((rijCb) => {
         rijCb.checked = checked;
       });
       this._dispatchSelectieGewijzigd();
