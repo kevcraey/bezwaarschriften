@@ -317,10 +317,11 @@ class ProjectServiceTest {
     service.verwijderBezwaar("windmolens", "bezwaar-001.txt");
 
     var inOrder = inOrder(kernbezwaarService, extractieTaakRepository,
-        tekstExtractieTaakRepository, projectPoort);
+        tekstExtractieTaakRepository, bezwaarBestandRepository, projectPoort);
     inOrder.verify(kernbezwaarService).ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
     inOrder.verify(extractieTaakRepository).deleteByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt");
     inOrder.verify(tekstExtractieTaakRepository).deleteByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt");
+    inOrder.verify(bezwaarBestandRepository).deleteByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt");
     inOrder.verify(projectPoort).verwijderBestand("windmolens", "bezwaar-001.txt");
   }
 
@@ -332,11 +333,12 @@ class ProjectServiceTest {
 
     assertThat(result).isTrue();
     var inOrder = inOrder(kernbezwaarService, consolidatieTaakRepository,
-        extractieTaakRepository, tekstExtractieTaakRepository, projectPoort);
+        extractieTaakRepository, tekstExtractieTaakRepository, bezwaarBestandRepository, projectPoort);
     inOrder.verify(kernbezwaarService).ruimAllesOpVoorProject("oud-project");
     inOrder.verify(consolidatieTaakRepository).deleteByProjectNaam("oud-project");
     inOrder.verify(extractieTaakRepository).deleteByProjectNaam("oud-project");
     inOrder.verify(tekstExtractieTaakRepository).deleteByProjectNaam("oud-project");
+    inOrder.verify(bezwaarBestandRepository).deleteByProjectNaam("oud-project");
     inOrder.verify(projectPoort).verwijderProject("oud-project");
   }
 
@@ -351,6 +353,7 @@ class ProjectServiceTest {
     verify(consolidatieTaakRepository).deleteByProjectNaam("bestaat-niet");
     verify(extractieTaakRepository).deleteByProjectNaam("bestaat-niet");
     verify(tekstExtractieTaakRepository).deleteByProjectNaam("bestaat-niet");
+    verify(bezwaarBestandRepository).deleteByProjectNaam("bestaat-niet");
   }
 
   @Test
@@ -380,6 +383,8 @@ class ProjectServiceTest {
     assertThat(aantalVerwijderd).isEqualTo(3);
 
     verify(extractieTaakRepository).deleteByProjectNaamAndBestandsnaamIn(
+        "windmolens", bestandsnamen);
+    verify(bezwaarBestandRepository).deleteByProjectNaamAndBestandsnaamIn(
         "windmolens", bestandsnamen);
 
     verify(kernbezwaarService, times(1)).ruimOpNaBestandenVerwijdering("windmolens", bestandsnamen);

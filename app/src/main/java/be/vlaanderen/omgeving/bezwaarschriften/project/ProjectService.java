@@ -206,6 +206,7 @@ public class ProjectService {
     kernbezwaarService.ruimOpNaDocumentVerwijdering(projectNaam, bestandsnaam);
     extractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
     tekstExtractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
+    bezwaarBestandRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
     return projectPoort.verwijderBestand(projectNaam, bestandsnaam);
   }
 
@@ -223,6 +224,8 @@ public class ProjectService {
     extractieTaakRepository.deleteByProjectNaamAndBestandsnaamIn(
         projectNaam, bestandsnamen);
     tekstExtractieTaakRepository.deleteByProjectNaamAndBestandsnaamIn(
+        projectNaam, bestandsnamen);
+    bezwaarBestandRepository.deleteByProjectNaamAndBestandsnaamIn(
         projectNaam, bestandsnamen);
     int aantalVerwijderd = 0;
     for (String bestandsnaam : bestandsnamen) {
@@ -281,6 +284,7 @@ public class ProjectService {
     consolidatieTaakRepository.deleteByProjectNaam(naam);
     extractieTaakRepository.deleteByProjectNaam(naam);
     tekstExtractieTaakRepository.deleteByProjectNaam(naam);
+    bezwaarBestandRepository.deleteByProjectNaam(naam);
     return projectPoort.verwijderProject(naam);
   }
 
