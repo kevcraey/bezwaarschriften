@@ -133,6 +133,22 @@ class ProjectServiceTest {
   }
 
   @Test
+  void geeftFoutmeldingMeeBijTekstExtractieMislukt() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.MISLUKT, null);
+    tekstTaak.setFoutmelding("Te weinig woorden: 28 (minimum 40)");
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.of(tekstTaak));
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren.get(0).tekstExtractieFoutmelding())
+        .isEqualTo("Te weinig woorden: 28 (minimum 40)");
+  }
+
+  @Test
   void geeftBezwarenMetOcrNietBeschikbaarStatus() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.pdf"));
@@ -146,6 +162,22 @@ class ProjectServiceTest {
     assertThat(bezwaren).hasSize(1);
     assertThat(bezwaren.get(0).status())
         .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR);
+  }
+
+  @Test
+  void geeftFoutmeldingMeeBijOcrNietBeschikbaar() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.pdf"));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.OCR_NIET_BESCHIKBAAR, null);
+    tekstTaak.setFoutmelding("Tesseract is niet geinstalleerd.");
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
+        .thenReturn(Optional.of(tekstTaak));
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren.get(0).tekstExtractieFoutmelding())
+        .isEqualTo("Tesseract is niet geinstalleerd.");
   }
 
   @Test

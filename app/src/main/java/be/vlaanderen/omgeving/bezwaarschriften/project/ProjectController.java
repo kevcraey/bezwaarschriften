@@ -220,7 +220,7 @@ public class ProjectController {
               b.aantalWoorden(), b.aantalBezwaren(), b.heeftPassagesDieNietInTekstVoorkomen(),
               b.extractieMethode(),
               b.tekstExtractieAangemaaktOp(), b.tekstExtractieGestartOp(),
-              b.tekstExtractieTaakId()))
+              b.tekstExtractieTaakId(), b.tekstExtractieFoutmelding()))
           .toList());
     }
   }
@@ -230,7 +230,7 @@ public class ProjectController {
       Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen,
       String extractieMethode,
       String tekstExtractieAangemaaktOp, String tekstExtractieGestartOp,
-      Long tekstExtractieTaakId) {}
+      Long tekstExtractieTaakId, String tekstExtractieFoutmelding) {}
 
   /** Response DTO voor upload-resultaat. */
   record UploadResponse(List<String> geupload, List<UploadFoutDto> fouten) {}

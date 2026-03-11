@@ -106,6 +106,27 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .and('contain.text', 'Tekst extractie mislukt');
   });
 
+  it('toont tooltip met foutmelding bij tekst-extractie-mislukt', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          el.bezwaren = [
+            {
+              bestandsnaam: 'doc-fout.pdf',
+              status: 'tekst-extractie-mislukt',
+              aantalBezwaren: null,
+              tekstExtractieFoutmelding: 'Te weinig woorden: 28 (minimum 40)',
+            },
+          ];
+        });
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-tooltip')
+        .should('exist')
+        .and('contain.text', 'Te weinig woorden: 28 (minimum 40)');
+  });
+
   // --- Checkbox disabled voor tekst-extractie statussen ---
 
   it('checkbox disabled voor tekst-extractie-wachtend status', () => {

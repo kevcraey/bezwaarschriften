@@ -36,6 +36,21 @@ class TekstKwaliteitsControleTest {
   }
 
   @Test
+  void minimumAantalWoordenIs40() {
+    // 39 woorden: ongeldig
+    String tekst39 = "een twee drie vier vijf zes zeven acht negen tien "
+        + "elf twaalf dertien veertien vijftien zestien zeventien achttien negentien twintig "
+        + "eenentwintig tweeentwintig drieentwintig vierentwintig vijfentwintig zesentwintig "
+        + "zevenentwintig achtentwintig negenentwintig dertig eenendertig tweeendertig "
+        + "drieendertig vierendertig vijfendertig zesendertig zevenendertig achtendertig negenendertig";
+    assertThat(controle.controleer(tekst39).isValide()).isFalse();
+
+    // 40 woorden met valide klinkerverhouding: geldig
+    String tekst40 = tekst39 + " veertig";
+    assertThat(controle.controleer(tekst40).isValide()).isTrue();
+  }
+
+  @Test
   void teVeelSpecialeTekensGeeftOngeldigResultaat() {
     // Meer dan 30% speciale tekens (exclusief spaties)
     StringBuilder sb = new StringBuilder();

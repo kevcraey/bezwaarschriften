@@ -108,17 +108,19 @@ public class ProjectService {
             case WACHTEND -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND,
                 null, null, false, false, extractieMethode,
-                teAangemaaktOp, teGestartOp, tekstExtractieTaak.getId());
+                teAangemaaktOp, teGestartOp, tekstExtractieTaak.getId(), null);
             case BEZIG -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG,
                 null, null, false, false, extractieMethode,
-                teAangemaaktOp, teGestartOp, tekstExtractieTaak.getId());
+                teAangemaaktOp, teGestartOp, tekstExtractieTaak.getId(), null);
             case MISLUKT -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT,
-                null, null, false, false, extractieMethode);
+                null, null, false, false, extractieMethode,
+                null, null, null, tekstExtractieTaak.getFoutmelding());
             case OCR_NIET_BESCHIKBAAR -> new BezwaarBestand(naam,
                 BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR,
-                null, null, false, false, extractieMethode);
+                null, null, false, false, extractieMethode,
+                null, null, null, tekstExtractieTaak.getFoutmelding());
             case KLAAR -> {
               // Tekst-extractie klaar: controleer AI-extractie status
               var laatsteTaak = extractieTaakRepository

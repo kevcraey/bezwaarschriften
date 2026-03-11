@@ -13,6 +13,7 @@ import {VlTabsPaneComponent} from '@domg-wc/components/block/tabs/vl-tabs-pane.c
 import {VlTextareaComponent} from '@domg-wc/components/form/textarea/vl-textarea.component.js';
 import {VlButtonComponent} from '@domg-wc/components/atom/button/vl-button.component.js';
 import {VlModalComponent} from '@domg-wc/components/block/modal/vl-modal.component.js';
+import {VlTooltipComponent} from '@domg-wc/components/block/tooltip/vl-tooltip.component.js';
 import {vlGlobalStyles} from '@domg-wc/styles';
 
 registerWebComponents([
@@ -21,6 +22,7 @@ registerWebComponents([
   VlInputFieldComponent, VlFormLabelComponent, VlSelectRichComponent,
   VlSideSheet, VlTabsComponent, VlTabsPaneComponent,
   VlTextareaComponent, VlButtonComponent, VlModalComponent,
+  VlTooltipComponent,
 ]);
 
 const STATUS_LABELS = {
@@ -462,7 +464,17 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               pill.textContent = this._formatStatusLabel(rij);
             }
 
-            td.appendChild(pill);
+            if (rij.tekstExtractieFoutmelding) {
+              const pillId = `pill-${rij.bestandsnaam.replace(/[^a-zA-Z0-9]/g, '-')}`;
+              pill.id = pillId;
+              const tooltip = document.createElement('vl-tooltip');
+              tooltip.setAttribute('for', pillId);
+              tooltip.textContent = rij.tekstExtractieFoutmelding;
+              td.appendChild(pill);
+              td.appendChild(tooltip);
+            } else {
+              td.appendChild(pill);
+            }
           };
           break;
         case 'acties':
