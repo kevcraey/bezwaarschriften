@@ -14,3 +14,4 @@
 | TDR-010 | Minimaal mocken in tests | 2026-01 | Voorkeur voor integratietests boven unit tests met mocks om meer bugs te vangen. |
 | TDR-011 | Cypress voor frontend tests | 2026-02 | Cypress component tests voor Lit web components in shadow DOM. |
 | TDR-012 | Tekst-extractie als aparte stap | 2026-03 | Tekst-extractie losgekoppeld van bezwaar-extractie voor herbruikbaarheid en preview. |
+| TDR-013 | java.net.http.HttpClient voor Obscuro | 2026-03 | JDK standaard HttpClient i.p.v. RestTemplate/WebClient voor synchrone Obscuro calls. |

@@ -9,3 +9,4 @@
 | ADR-005 | Lit + @domg-wc design system voor frontend | 2026-01 | Vlaams design system (@domg-wc/Flux) als enige UI-componentbibliotheek. |
 | ADR-006 | HDBSCAN clustering van bezwaren | 2026-02 | Density-based clustering (HDBSCAN) voor het groeperen van gelijkaardige bezwaren. |
 | ADR-007 | Centroid-matching voor kernbezwaren | 2026-02 | Kernbezwaar selectie via centroid-afstand in embedding-ruimte. |
+| ADR-008 | Obscuro pseudonimisering in pipeline | 2026-03 | PII pseudonimiseren na tekst-extractie via Obscuro; mapping-ID opslaan voor reversibiliteit. |

@@ -40,6 +40,7 @@ C4Container
     System_Ext(filesysteem, "Bestandssysteem", "Lokale file storage")
     System_Ext(openai, "OpenAI API", "GPT-4 + embeddings")
     System_Ext(ollama, "Ollama", "Lokale LLM (mistral-small:24b)")
+    System_Ext(obscuro, "Obscuro Service", "PII pseudonimisering (SpaCy NER)")
 
     Rel(burger, api, "Upload document", "HTTPS (toekomstig)")
     Rel(ambtenaar, webapp, "Selecteert project en start batchverwerking", "HTTPS")
@@ -53,6 +54,7 @@ C4Container
 
     Rel(project, tekstextractie, "Verwerkt geüploade bestanden", "TekstExtractiePoort")
     Rel(tekstextractie, filesysteem, "Leest originelen, schrijft tekst", "java.nio.file.Files")
+    Rel(tekstextractie, obscuro, "Pseudonimiseert tekst na extractie", "REST /pseudonymize")
     Rel(tekstextractie, database, "Beheert extractietaken", "JPA")
 
     Rel(api, extractie, "Extraheert bezwaren", "BezwaarExtractiePoort")
@@ -201,7 +203,8 @@ IngestiePoort <-- BestandssysteemIngestieAdapter --> File System
 3. Async verwerking:
    - PDF: digitale extractie → kwaliteitscontrole → OCR-fallback indien nodig
    - TXT: directe kwaliteitscontrole
-4. Resultaat: platte tekst opgeslagen in `bezwaren-text/`
+4. Pseudonimisering via Obscuro (PII → tokens, mapping-ID opgeslagen)
+5. Resultaat: gepseudonimiseerde tekst opgeslagen in `bezwaren-text/`
 
 **Kwaliteitscriteria:**
 | Criterium | Drempelwaarde |
@@ -222,6 +225,7 @@ IngestiePoort <-- BestandssysteemIngestieAdapter --> File System
 TekstExtractiePoort <-- TekstExtractieService           --> PdfTextExtractor (PDFBox)
                                                         --> OcrTextExtractor (Tesseract)
                                                         --> TekstKwaliteitsAnalyse
+PseudonimiseringPoort                                   --> ObscuroAdapter (HTTP → Obscuro)
 ```
 
 Zie ook: `docs/text-extractie.md` voor de volledige functionele beschrijving.
@@ -590,7 +594,9 @@ Web Application
                  │         └─> Niet OK → OcrTextExtractor (Tesseract nld+eng 300DPI)
                  │              └─> TekstKwaliteitsAnalyse → KLAAR / MISLUKT
                  ├─> TXT: TekstKwaliteitsAnalyse → KLAAR / MISLUKT
-                 └─> Resultaat opslaan in bezwaren-text/
+                 └─> Resultaat pseudonimiseren via ObscuroAdapter (REST → Obscuro)
+                 └─> Mapping-ID opslaan in tekst_extractie_taak
+                 └─> Gepseudonimiseerde tekst opslaan in bezwaren-text/
   └─> WebSocket update naar frontend
 ```
 
@@ -645,6 +651,7 @@ Alle domeinlogica wordt aangestuurd via port interfaces:
 - `TekstExtractiePoort` - Tekst extractie uit PDF/TXT met kwaliteitscontrole
 - `BezwaarExtractiePoort` - Bezwaar extractie
 - `ClusteringPoort` - Groepering
+- `PseudonimiseringPoort` - Pseudonimisering van teksten (PII → tokens)
 - `AntwoordGeneratiePoort` - Antwoord generatie
 
 ### Adapters (Implementaties)
@@ -683,6 +690,13 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+
+  obscuro:
+    image: ghcr.io/kevcraey/obscuro-service:latest
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
   app:
     build: .

@@ -28,6 +28,7 @@ C4Context
     System_Ext(filesysteem, "Bestandssysteem", "Lokale opslag voor ingediende documenten (TXT formaat)")
     System_Ext(ai_provider, "AI Provider", "OpenAI / Ollama voor LLM en embeddings")
     System_Ext(database, "PostgreSQL + pgvector", "Persistente opslag voor bezwaren en vectordata")
+    System_Ext(obscuro, "Obscuro Service", "PII pseudonimisering van bezwaarteksten")
 
     Rel(burger, bezwaarsysteem, "Dient bezwaarschrift in", "Document upload")
     Rel(ambtenaar, bezwaarsysteem, "Beoordeelt kernen en schrijft antwoorden", "Web UI")
@@ -36,6 +37,7 @@ C4Context
     Rel(bezwaarsysteem, filesysteem, "Leest documenten in", "File I/O")
     Rel(bezwaarsysteem, ai_provider, "Vraagt extractie en embeddings aan", "HTTPS / gRPC")
     Rel(bezwaarsysteem, database, "Slaat bezwaren en vectoren op", "JDBC + pgvector")
+    Rel(bezwaarsysteem, obscuro, "Pseudonimiseert geëxtraheerde tekst", "REST API")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
@@ -83,6 +85,13 @@ C4Context
   - Groepering van gelijkaardige bezwaren
   - Generatie van gepersonaliseerde antwoorden
 - **Interface:** Spring AI framework (profiel-gebaseerd: `openai` / `local`)
+
+### Obscuro Service
+- **Type:** Pseudonimiseringsservice
+- **Technologie:** Python/FastAPI, SpaCy NER
+- **Doel:** PII (namen, adressen, IBAN, etc.) vervangen door generieke tokens
+- **Interface:** REST API (`POST /pseudonymize`)
+- **Mapping:** Retourneert mapping-ID voor toekomstige de-pseudonimisering
 
 ### PostgreSQL + pgvector
 - **Type:** Relationele database met vector extensie
@@ -155,6 +164,7 @@ C4Context
 ### Data Privacy
 - Bezwaarschriften bevatten potentieel privacygevoelige informatie
 - **Mitigatie:**
+  - Pseudonimisering via Obscuro vóór opslag en AI-verwerking
   - Lokale verwerking waar mogelijk (Ollama optie)
   - Duidelijke ToS bij gebruik van externe AI providers
   - Logging zonder PII
