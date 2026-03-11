@@ -14,7 +14,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-001.pdf', status: 'extractie-klaar', aantalBezwaren: 2, extractieMethode: 'DIGITAAL'},
+            {bestandsnaam: 'doc-001.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 2, extractieMethode: 'DIGITAAL'},
           ];
         });
 
@@ -33,7 +33,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'scan-001.pdf', status: 'extractie-klaar', aantalBezwaren: 1, extractieMethode: 'OCR'},
+            {bestandsnaam: 'scan-001.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 1, extractieMethode: 'OCR'},
           ];
         });
 
@@ -209,7 +209,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-010.pdf', status: 'extractie-klaar', aantalBezwaren: 5},
+            {bestandsnaam: 'doc-010.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 5},
           ];
         });
 
@@ -266,7 +266,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'digitaal.pdf', status: 'extractie-klaar', aantalBezwaren: 3, extractieMethode: 'DIGITAAL'},
+            {bestandsnaam: 'digitaal.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3, extractieMethode: 'DIGITAAL'},
             {bestandsnaam: 'scan.pdf', status: 'tekst-extractie-klaar', aantalBezwaren: null, extractieMethode: 'OCR'},
             {bestandsnaam: 'nieuw.pdf', status: 'tekst-extractie-wachtend', aantalBezwaren: null, extractieMethode: null},
           ];
@@ -285,7 +285,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
     // Status pills
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('vl-pill[type="success"]')
-        .should('contain.text', 'Extractie klaar');
+        .should('contain.text', 'Bezwaar-extractie klaar');
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('vl-pill[type="warning"]')

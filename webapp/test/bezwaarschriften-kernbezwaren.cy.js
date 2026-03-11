@@ -6,7 +6,7 @@ import '../src/js/bezwaarschriften-kernbezwaren';
 const MOCK_CLUSTERING_WACHTEND = {
   id: 1,
   projectNaam: 'testproject',
-  status: 'wachtend',
+  status: 'bezwaar-extractie-wachtend',
   aantalBezwaren: 42,
   aangemaaktOp: '2026-03-03T10:00:00Z',
 };
@@ -14,7 +14,7 @@ const MOCK_CLUSTERING_WACHTEND = {
 const MOCK_CLUSTERING_BEZIG = {
   id: 2,
   projectNaam: 'testproject',
-  status: 'bezig',
+  status: 'bezwaar-extractie-bezig',
   aantalBezwaren: 42,
   aangemaaktOp: '2026-03-03T10:00:00Z',
   verwerkingGestartOp: '2026-03-03T10:00:05Z',
@@ -34,7 +34,7 @@ const MOCK_CLUSTERING_KLAAR = {
 const MOCK_CLUSTERING_FOUT = {
   id: 4,
   projectNaam: 'testproject',
-  status: 'fout',
+  status: 'bezwaar-extractie-fout',
   aantalBezwaren: 42,
   foutmelding: 'Timeout bij clustering',
   aangemaaktOp: '2026-03-03T10:00:00Z',
@@ -142,7 +142,7 @@ describe('clustering status weergave', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-button[loading][disabled]')
         .should('exist')
-        .and('contain.text', 'Wachtend');
+        .and('contain.text', 'Bezwaar-extractie wachtend');
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-link[button-as-link]')
@@ -155,7 +155,7 @@ describe('clustering status weergave', () => {
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-button[loading][disabled]')
         .should('exist')
-        .and('contain.text', 'Bezig');
+        .and('contain.text', 'Bezwaar-extractie bezig');
   });
 
   it('toont fout-status met foutmelding en opnieuw-knop', () => {
@@ -177,7 +177,7 @@ describe('clustering status weergave', () => {
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-button[loading]')
-        .should('contain.text', 'Wachtend');
+        .should('contain.text', 'Bezwaar-extractie wachtend');
 
     cy.get('bezwaarschriften-kernbezwaren')
         .then(($el) => $el[0].werkBijMetClusteringUpdate({
@@ -186,7 +186,7 @@ describe('clustering status weergave', () => {
 
     cy.get('bezwaarschriften-kernbezwaren')
         .find('vl-button[loading]')
-        .should('contain.text', 'Bezig');
+        .should('contain.text', 'Bezwaar-extractie bezig');
   });
 });
 

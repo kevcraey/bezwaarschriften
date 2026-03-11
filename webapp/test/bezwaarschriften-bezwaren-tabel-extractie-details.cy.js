@@ -247,8 +247,8 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .then((el) => {
           el.projectNaam = 'windmolens';
           el.bezwaren = [
-            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3, heeftPassagesDieNietInTekstVoorkomen: true},
-            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftPassagesDieNietInTekstVoorkomen: false},
+            {bestandsnaam: 'bezwaar-001.txt', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3, heeftPassagesDieNietInTekstVoorkomen: true},
+            {bestandsnaam: 'bezwaar-002.txt', status: 'bezwaar-extractie-klaar', aantalBezwaren: 2, heeftPassagesDieNietInTekstVoorkomen: false},
           ];
         });
 
@@ -264,8 +264,8 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .then((el) => {
           el.projectNaam = 'windmolens';
           el.bezwaren = [
-            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3, heeftPassagesDieNietInTekstVoorkomen: false},
-            {bestandsnaam: 'bezwaar-002.txt', status: 'extractie-klaar', aantalBezwaren: 2, heeftPassagesDieNietInTekstVoorkomen: false},
+            {bestandsnaam: 'bezwaar-001.txt', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3, heeftPassagesDieNietInTekstVoorkomen: false},
+            {bestandsnaam: 'bezwaar-002.txt', status: 'bezwaar-extractie-klaar', aantalBezwaren: 2, heeftPassagesDieNietInTekstVoorkomen: false},
           ];
         });
 
@@ -280,7 +280,7 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .then((el) => {
           el.projectNaam = 'windmolens';
           el.bezwaren = [
-            {bestandsnaam: 'bezwaar-001.txt', status: 'bezig', aantalBezwaren: null, heeftPassagesDieNietInTekstVoorkomen: false},
+            {bestandsnaam: 'bezwaar-001.txt', status: 'bezwaar-extractie-bezig', aantalBezwaren: null, heeftPassagesDieNietInTekstVoorkomen: false},
           ];
         });
 
@@ -292,7 +292,7 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .its(0)
         .invoke('werkBijMetTaakUpdate', {
           bestandsnaam: 'bezwaar-001.txt',
-          status: 'extractie-klaar',
+          status: 'bezwaar-extractie-klaar',
           aantalBezwaren: 3,
           heeftPassagesDieNietInTekstVoorkomen: true,
         });
@@ -327,7 +327,7 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .then((el) => {
           el.projectNaam = 'windmolens';
           el.bezwaren = [
-            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3,
+            {bestandsnaam: 'bezwaar-001.txt', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3,
               heeftPassagesDieNietInTekstVoorkomen: false, heeftManueel: true},
           ];
         });
@@ -344,7 +344,7 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .then((el) => {
           el.projectNaam = 'windmolens';
           el.bezwaren = [
-            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3,
+            {bestandsnaam: 'bezwaar-001.txt', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3,
               heeftPassagesDieNietInTekstVoorkomen: false, heeftManueel: false},
           ];
         });
@@ -360,7 +360,7 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .then((el) => {
           el.projectNaam = 'windmolens';
           el.bezwaren = [
-            {bestandsnaam: 'bezwaar-001.txt', status: 'extractie-klaar', aantalBezwaren: 3,
+            {bestandsnaam: 'bezwaar-001.txt', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3,
               heeftPassagesDieNietInTekstVoorkomen: true, heeftManueel: true},
           ];
         });
