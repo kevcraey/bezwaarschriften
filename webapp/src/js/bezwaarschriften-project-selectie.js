@@ -179,11 +179,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     }
     this._werkDocumentenTabTitelBij();
     this._werkVerwerkenKnopBij();
-    if (taak.status === 'extractie-klaar') {
+    if (taak.status === 'bezwaar-extractie-klaar') {
       const kernComp = this.shadowRoot.querySelector('#kernbezwaren-component');
       if (kernComp) {
         const totaalBezwaren = this.__bezwaren
-            .filter((b) => b.status === 'extractie-klaar')
+            .filter((b) => b.status === 'bezwaar-extractie-klaar')
             .reduce((sum, b) => sum + (b.aantalBezwaren || 0), 0);
         kernComp.setAantalBezwaren(totaalBezwaren);
         kernComp.setExtractieKlaar(true);
@@ -507,10 +507,10 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (!pane || this.__bezwaren.length === 0) return;
 
     const totaal = this.__bezwaren.length;
-    const aantalKlaar = this.__bezwaren.filter((b) => b.status === 'extractie-klaar').length;
-    const aantalFout = this.__bezwaren.filter((b) => b.status === 'fout').length;
+    const aantalKlaar = this.__bezwaren.filter((b) => b.status === 'bezwaar-extractie-klaar').length;
+    const aantalFout = this.__bezwaren.filter((b) => b.status === 'bezwaar-extractie-fout').length;
     const isBezig = this.__bezwaren.some(
-        (b) => b.status === 'wachtend' || b.status === 'bezig',
+        (b) => b.status === 'bezwaar-extractie-wachtend' || b.status === 'bezwaar-extractie-bezig',
     );
     const allesKlaar = aantalKlaar === totaal;
 
@@ -559,7 +559,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       verwerkenKnop.textContent = `Verwerken (${geselecteerd.length})`;
     } else {
       const aantalTeVerwerken = this.__bezwaren.filter(
-          (b) => b.status === 'fout' || b.status === 'todo' || b.status === 'tekst-extractie-klaar').length;
+          (b) => b.status === 'bezwaar-extractie-fout' || b.status === 'todo' || b.status === 'tekst-extractie-klaar').length;
       verwerkenKnop.hidden = aantalTeVerwerken === 0;
       if (aantalTeVerwerken > 0) {
         verwerkenKnop.textContent = `Verwerken (${aantalTeVerwerken})`;
@@ -570,9 +570,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _werkKernbezwarenBij(projectNaam, bezwaren) {
     const kernComp = this.shadowRoot.querySelector('#kernbezwaren-component');
     if (!kernComp) return;
-    const aantalKlaar = bezwaren.filter((b) => b.status === 'extractie-klaar').length;
+    const aantalKlaar = bezwaren.filter((b) => b.status === 'bezwaar-extractie-klaar').length;
     const totaalBezwaren = bezwaren
-        .filter((b) => b.status === 'extractie-klaar')
+        .filter((b) => b.status === 'bezwaar-extractie-klaar')
         .reduce((sum, b) => sum + (b.aantalBezwaren || 0), 0);
     kernComp.setAantalBezwaren(totaalBezwaren);
     kernComp.setExtractieKlaar(aantalKlaar > 0);
