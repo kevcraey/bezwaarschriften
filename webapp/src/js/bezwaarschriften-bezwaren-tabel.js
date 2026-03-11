@@ -355,8 +355,10 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   _configureerStatusOpties() {
     const select = this.shadowRoot.querySelector('#filter-status');
     if (select) {
+      const aanwezigeStatussen = new Set(this.__bronBezwaren.map((b) => b.status));
+      const opties = STATUS_OPTIES.filter((o) => aanwezigeStatussen.has(o.value));
       customElements.whenDefined('vl-select-rich').then(() => {
-        select.setOptions(STATUS_OPTIES);
+        select.setOptions(opties);
       });
     }
   }
@@ -845,6 +847,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   _doeHerbereken() {
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#tabel');
     if (!tabel) return;
+
+    this._configureerStatusOpties();
 
     let resultaat = this._filterBezwaren(this.__bronBezwaren, this.__filters);
     resultaat = this._sorteerBezwaren(resultaat, this.__sorting);

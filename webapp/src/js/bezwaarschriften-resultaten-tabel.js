@@ -172,7 +172,9 @@ export class BezwaarschriftenResultatenTabel extends BaseHTMLElement {
   _configureerStatusOpties() {
     const select = this.shadowRoot.querySelector('#filter-status');
     if (select) {
-      select.options = STATUS_OPTIES;
+      const aanwezigeStatussen = new Set(this.__bronDocumenten.map((d) => d.status));
+      const opties = STATUS_OPTIES.filter((o) => o.value === '' || aanwezigeStatussen.has(o.value));
+      select.options = opties;
     }
   }
 
@@ -339,6 +341,8 @@ export class BezwaarschriftenResultatenTabel extends BaseHTMLElement {
   _doeHerbereken() {
     const tabel = this.shadowRoot && this.shadowRoot.querySelector('#tabel');
     if (!tabel) return;
+
+    this._configureerStatusOpties();
 
     let resultaat = this._filterDocumenten(this.__bronDocumenten, this.__filters);
     resultaat = this._sorteerDocumenten(resultaat, this.__sorting);
