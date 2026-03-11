@@ -229,6 +229,12 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   set bezwaren(waarde) {
     this.__bronBezwaren = waarde || [];
+    const bestandsnamen = new Set(this.__bronBezwaren.map((b) => b.bestandsnaam));
+    Object.keys(this.__takenData).forEach((naam) => {
+      if (!bestandsnamen.has(naam)) {
+        delete this.__takenData[naam];
+      }
+    });
     this.__bronBezwaren.forEach((b) => {
       if (b.tekstExtractieAangemaaktOp) {
         this.__takenData[b.bestandsnaam] = {

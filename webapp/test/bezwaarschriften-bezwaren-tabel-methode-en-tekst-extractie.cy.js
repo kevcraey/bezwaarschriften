@@ -372,4 +372,43 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
           type: 'tekst-extractie',
         });
   });
+
+  // --- Stale takenData na verwijder + herlaad ---
+
+  it('toont geen oude timestamp na verwijder + herlaad van hetzelfde bestand', () => {
+    const oudeTimestamp = new Date(Date.now() - 5 * 60 * 1000).toISOString(); // 5 minuten geleden
+
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'testproject';
+          // Stap 1: bestand met oude timestamp (simuleert eerste upload)
+          el.bezwaren = [
+            {
+              bestandsnaam: 'herlaad.pdf',
+              status: 'tekst-extractie-wachtend',
+              aantalBezwaren: null,
+              tekstExtractieAangemaaktOp: oudeTimestamp,
+              tekstExtractieTaakId: 99,
+            },
+          ];
+          // Stap 2: bestand verwijderd, lijst ververst zonder het bestand
+          el.bezwaren = [];
+          // Stap 3: bestand opnieuw geüpload zonder timing-data (zoals _voegGeuploadeBezwarenToe doet)
+          el.bezwaren = [
+            {
+              bestandsnaam: 'herlaad.pdf',
+              status: 'tekst-extractie-wachtend',
+              aantalBezwaren: null,
+            },
+          ];
+        });
+
+    // De pill mag GEEN timer tonen met minuten (stale data van vorige upload)
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .find('vl-pill[type="warning"]')
+        .find('.timer-tekst')
+        .invoke('text')
+        .should('not.match', /\([1-9]\d*:\d{2}\)/);
+  });
 });
