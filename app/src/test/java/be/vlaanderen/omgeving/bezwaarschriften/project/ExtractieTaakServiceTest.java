@@ -56,13 +56,17 @@ class ExtractieTaakServiceTest {
   @Mock
   private TekstExtractieService tekstExtractieService;
 
+  @Mock
+  private BezwaarBestandRepository bezwaarBestandRepository;
+
   private ExtractieTaakService service;
 
   @BeforeEach
   void setUp() {
     service = new ExtractieTaakService(repository, notificatie, projectService,
         passageRepository, bezwaarRepository, projectPoort, ingestiePoort,
-        passageValidator, embeddingPoort, tekstExtractieService, 3, 3);
+        passageValidator, embeddingPoort, tekstExtractieService,
+        bezwaarBestandRepository, 3, 3);
     lenient().when(embeddingPoort.genereerEmbeddings(any())).thenAnswer(inv -> {
       List<String> teksten = inv.getArgument(0);
       return teksten.stream().map(t -> new float[]{0.1f}).toList();
@@ -720,6 +724,108 @@ class ExtractieTaakServiceTest {
         service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("behoort niet tot project");
+  }
+
+  @Test
+  void indienenUpdatetBezwaarBestandNaarBezwaarExtractieWachtend() {
+    when(repository.save(any())).thenAnswer(i -> {
+      var t = i.getArgument(0, ExtractieTaak.class);
+      t.setId(1L);
+      return t;
+    });
+    var bestandEntiteit = new BezwaarBestandEntiteit();
+    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(bestandEntiteit));
+    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
+        .thenAnswer(i -> i.getArgument(0));
+
+    service.indienen("windmolens", List.of("bezwaar-001.txt"));
+
+    assertThat(bestandEntiteit.getStatus())
+        .isEqualTo(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND);
+    verify(bezwaarBestandRepository).save(bestandEntiteit);
+  }
+
+  @Test
+  void pakOpVoorVerwerkingUpdatetBezwaarBestandNaarBezwaarExtractieBezig() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.WACHTEND);
+    when(repository.countByStatus(ExtractieTaakStatus.BEZIG)).thenReturn(0L);
+    when(repository.findByStatusOrderByAangemaaktOpAsc(ExtractieTaakStatus.WACHTEND))
+        .thenReturn(List.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var bestandEntiteit = new BezwaarBestandEntiteit();
+    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(bestandEntiteit));
+    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
+        .thenAnswer(i -> i.getArgument(0));
+
+    service.pakOpVoorVerwerking();
+
+    assertThat(bestandEntiteit.getStatus())
+        .isEqualTo(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_BEZIG);
+    verify(bezwaarBestandRepository).save(bestandEntiteit);
+  }
+
+  @Test
+  void markeerKlaarUpdatetBezwaarBestandNaarBezwaarExtractieKlaar() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var bestandEntiteit = new BezwaarBestandEntiteit();
+    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(bestandEntiteit));
+    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
+        .thenAnswer(i -> i.getArgument(0));
+
+    service.markeerKlaar(1L, 500, 7);
+
+    assertThat(bestandEntiteit.getStatus())
+        .isEqualTo(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR);
+    verify(bezwaarBestandRepository).save(bestandEntiteit);
+  }
+
+  @Test
+  void markeerFoutDefinitiefUpdatetBezwaarBestandNaarBezwaarExtractieFout() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    taak.setAantalPogingen(2);
+    taak.setMaxPogingen(3);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var bestandEntiteit = new BezwaarBestandEntiteit();
+    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(bestandEntiteit));
+    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
+        .thenAnswer(i -> i.getArgument(0));
+
+    service.markeerFout(1L, "Definitieve fout");
+
+    assertThat(bestandEntiteit.getStatus())
+        .isEqualTo(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_FOUT);
+    verify(bezwaarBestandRepository).save(bestandEntiteit);
+  }
+
+  @Test
+  void markeerFoutRetryUpdatetBezwaarBestandNaarBezwaarExtractieWachtend() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    taak.setAantalPogingen(0);
+    taak.setMaxPogingen(3);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var bestandEntiteit = new BezwaarBestandEntiteit();
+    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(bestandEntiteit));
+    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
+        .thenAnswer(i -> i.getArgument(0));
+
+    service.markeerFout(1L, "Timeout bij AI-call");
+
+    assertThat(bestandEntiteit.getStatus())
+        .isEqualTo(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND);
+    verify(bezwaarBestandRepository).save(bestandEntiteit);
   }
 
   private ExtractiePassageEntiteit maakPassage(Long taakId, int passageNr) {

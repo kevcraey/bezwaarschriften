@@ -36,6 +36,7 @@ public class ExtractieTaakService {
   private final PassageValidator passageValidator;
   private final EmbeddingPoort embeddingPoort;
   private final TekstExtractieService tekstExtractieService;
+  private final BezwaarBestandRepository bezwaarBestandRepository;
   private final int maxConcurrent;
   private final int maxPogingen;
 
@@ -52,6 +53,7 @@ public class ExtractieTaakService {
    * @param passageValidator validator voor passage-verificatie
    * @param embeddingPoort poort voor het genereren van embeddings
    * @param tekstExtractieService service voor tekst-extractie
+   * @param bezwaarBestandRepository repository voor bezwaarbestand-entiteiten
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
    * @param maxPogingen maximum aantal pogingen per taak
    */
@@ -66,6 +68,7 @@ public class ExtractieTaakService {
       PassageValidator passageValidator,
       EmbeddingPoort embeddingPoort,
       TekstExtractieService tekstExtractieService,
+      BezwaarBestandRepository bezwaarBestandRepository,
       @Value("${bezwaarschriften.extractie.max-concurrent:3}") int maxConcurrent,
       @Value("${bezwaarschriften.extractie.max-pogingen:3}") int maxPogingen) {
     this.repository = repository;
@@ -78,6 +81,7 @@ public class ExtractieTaakService {
     this.passageValidator = passageValidator;
     this.embeddingPoort = embeddingPoort;
     this.tekstExtractieService = tekstExtractieService;
+    this.bezwaarBestandRepository = bezwaarBestandRepository;
     this.maxConcurrent = maxConcurrent;
     this.maxPogingen = maxPogingen;
   }
@@ -105,6 +109,8 @@ public class ExtractieTaakService {
           taak.setMaxPogingen(maxPogingen);
           taak.setAangemaaktOp(Instant.now());
           var opgeslagen = repository.save(taak);
+          werkBestandStatusBij(projectNaam, bestandsnaam,
+              BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND);
           var dto = ExtractieTaakDto.van(opgeslagen);
           notificatie.taakGewijzigd(dto);
           LOGGER.info("Extractie-taak ingediend: project='{}', bestand='{}'",
@@ -151,6 +157,8 @@ public class ExtractieTaakService {
       taak.setStatus(ExtractieTaakStatus.BEZIG);
       taak.setVerwerkingGestartOp(Instant.now());
       repository.save(taak);
+      werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
+          BezwaarBestandStatus.BEZWAAR_EXTRACTIE_BEZIG);
       notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
       LOGGER.info("Taak {} opgepakt voor verwerking: project='{}', bestand='{}'",
           taak.getId(), taak.getProjectNaam(), taak.getBestandsnaam());
@@ -184,6 +192,8 @@ public class ExtractieTaakService {
   public void markeerKlaar(Long taakId, ExtractieResultaat resultaat) {
     var taak = repository.findById(taakId)
         .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden: " + taakId));
+    werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
+        BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR);
     taak.setStatus(ExtractieTaakStatus.KLAAR);
     taak.setAantalWoorden(resultaat.aantalWoorden());
     taak.setAantalBezwaren(resultaat.aantalBezwaren());
@@ -271,12 +281,16 @@ public class ExtractieTaakService {
     if (taak.getAantalPogingen() < taak.getMaxPogingen()) {
       taak.setStatus(ExtractieTaakStatus.WACHTEND);
       taak.setVerwerkingGestartOp(null);
+      werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
+          BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND);
       LOGGER.warn("Taak {} mislukt (poging {}/{}), terug naar wachtend: {}",
           taakId, taak.getAantalPogingen(), taak.getMaxPogingen(), foutmelding);
     } else {
       taak.setStatus(ExtractieTaakStatus.FOUT);
       taak.setFoutmelding(foutmelding);
       taak.setAfgerondOp(Instant.now());
+      werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
+          BezwaarBestandStatus.BEZWAAR_EXTRACTIE_FOUT);
       LOGGER.error("Taak {} definitief mislukt na {} pogingen: {}",
           taakId, taak.getAantalPogingen(), foutmelding);
     }
@@ -524,5 +538,14 @@ public class ExtractieTaakService {
 
     repository.save(taak);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
+  }
+
+  private void werkBestandStatusBij(String projectNaam, String bestandsnaam,
+      BezwaarBestandStatus status) {
+    bezwaarBestandRepository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam)
+        .ifPresent(entiteit -> {
+          entiteit.setStatus(status);
+          bezwaarBestandRepository.save(entiteit);
+        });
   }
 }
