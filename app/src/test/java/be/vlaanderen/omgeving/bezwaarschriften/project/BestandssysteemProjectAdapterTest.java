@@ -277,4 +277,50 @@ class BestandssysteemProjectAdapterTest {
         () -> adapter.geefTekstBestandsPad("windmolens", "../etc/passwd")
     );
   }
+
+  @Test
+  void verwijderBestandRuimtOokTekstBestandOp() throws Exception {
+    // Setup: project met origineel PDF en geëxtraheerd tekstbestand
+    adapter.maakProjectAan("test-project");
+    adapter.slaBestandOp("test-project", "v2-001.pdf", "pdf-inhoud".getBytes());
+    adapter.slaTekstOp("test-project", "v2-001.pdf", "Geëxtraheerde tekst uit PDF");
+
+    var origPad = inputFolder.resolve("test-project/bezwaren-orig/v2-001.pdf");
+    var tekstPad = inputFolder.resolve("test-project/bezwaren-text/v2-001.txt");
+    assertThat(Files.exists(origPad)).isTrue();
+    assertThat(Files.exists(tekstPad)).isTrue();
+
+    // Verwijder het bezwaarbestand
+    boolean verwijderd = adapter.verwijderBestand("test-project", "v2-001.pdf");
+
+    // Origineel bestand is verwijderd
+    assertThat(verwijderd).isTrue();
+    assertThat(Files.exists(origPad)).isFalse();
+
+    // Tekstbestand moet ook verwijderd worden (BUG: dit wordt niet gedaan)
+    assertThat(Files.exists(tekstPad))
+        .as("Tekstbestand in bezwaren-text/ moet verwijderd worden bij verwijdering van het origineel")
+        .isFalse();
+  }
+
+  @Test
+  void verwijderBestandMetTxtExtensieMoetGeenTekstBestandZoeken() throws Exception {
+    // Een .txt bestand heeft als tekst-versie dezelfde naam
+    adapter.maakProjectAan("test-project");
+    adapter.slaBestandOp("test-project", "bezwaar.txt", "inhoud".getBytes());
+    adapter.slaTekstOp("test-project", "bezwaar.txt", "dezelfde inhoud");
+
+    var origPad = inputFolder.resolve("test-project/bezwaren-orig/bezwaar.txt");
+    var tekstPad = inputFolder.resolve("test-project/bezwaren-text/bezwaar.txt");
+    assertThat(Files.exists(origPad)).isTrue();
+    assertThat(Files.exists(tekstPad)).isTrue();
+
+    boolean verwijderd = adapter.verwijderBestand("test-project", "bezwaar.txt");
+
+    assertThat(verwijderd).isTrue();
+    assertThat(Files.exists(origPad)).isFalse();
+    assertThat(Files.exists(tekstPad))
+        .as("Tekstbestand moet ook verwijderd worden")
+        .isFalse();
+  }
 }

@@ -57,7 +57,7 @@ class BezwaarschriftenTekstPanel extends LitElement {
         min-height: 3.5rem;
       }
 
-      .panel-header h3 {
+      .panel-header h2 {
         margin: 0;
         font-size: 1.1rem;
         overflow: hidden;
@@ -128,7 +128,7 @@ class BezwaarschriftenTekstPanel extends LitElement {
     return html`
       <div class="tekst-panel ${this.__open ? 'open' : ''}">
         <div class="panel-header">
-          <h3 title="${this.__bestandsnaam}">${this.__bestandsnaam}</h3>
+          <h2 title="${this.__bestandsnaam}">${this.__bestandsnaam}</h2>
           <vl-button
             icon="close"
             ghost=""

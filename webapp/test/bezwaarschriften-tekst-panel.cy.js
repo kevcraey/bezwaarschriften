@@ -38,7 +38,7 @@ describe('bezwaarschriften-tekst-panel', () => {
 
     cy.get('bezwaarschriften-tekst-panel')
         .shadow()
-        .find('h3')
+        .find('h2')
         .should('contain.text', 'bezwaar.pdf');
 
     cy.get('bezwaarschriften-tekst-panel')

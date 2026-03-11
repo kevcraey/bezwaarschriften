@@ -57,9 +57,9 @@ class MockExtractieVerwerkerTest {
 
     var verwerkerMetFixture = new MockExtractieVerwerker(
         ingestiePoort, "input", tempDir.toString());
-    when(ingestiePoort.leesBestand(Path.of("input", projectNaam, "bezwaren-orig", bestandsnaam)))
+    when(ingestiePoort.leesBestand(Path.of("input", projectNaam, "bezwaren-text", bestandsnaam)))
         .thenReturn(new Brondocument("dit is een test tekst", bestandsnaam,
-            "input/" + projectNaam + "/bezwaren-orig/" + bestandsnaam, Instant.now()));
+            "input/" + projectNaam + "/bezwaren-text/" + bestandsnaam, Instant.now()));
 
     var resultaat = verwerkerMetFixture.verwerk(projectNaam, bestandsnaam, 0);
 
@@ -70,8 +70,8 @@ class MockExtractieVerwerkerTest {
 
   private void mockBestand(String bestandsnaam, String tekst) {
     when(ingestiePoort.leesBestand(
-        Path.of("input", PROJECT, "bezwaren-orig", bestandsnaam)))
+        Path.of("input", PROJECT, "bezwaren-text", bestandsnaam)))
         .thenReturn(new Brondocument(tekst, bestandsnaam,
-            "input/" + PROJECT + "/bezwaren-orig/" + bestandsnaam, Instant.now()));
+            "input/" + PROJECT + "/bezwaren-text/" + bestandsnaam, Instant.now()));
   }
 }

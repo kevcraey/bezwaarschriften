@@ -404,4 +404,98 @@ class ProjectServiceTest {
 
     assertThat(aantalVerwijderd).isEqualTo(1);
   }
+
+  /**
+   * Reproduceert de bug: na verwijderen en opnieuw uploaden van een document
+   * verschijnt het document in de oude status i.p.v. opnieuw te beginnen.
+   *
+   * <p>De oorzaak is dat uploadBezwaren het bestand op disk opslaat VÓÓR de
+   * database-save. Als de DB-save faalt (bv. bij een achtergebleven
+   * bezwaar_bestand record), blijft het bestand op disk staan maar mislukt
+   * de upload. Na een refresh verschijnt het bestand met de oude status uit
+   * de achtergebleven bezwaar_bestand entiteit.
+   */
+  @Test
+  void uploadRuimtBestandOpAlsDatabaseSaveFaalt() {
+    when(projectPoort.geefBestandsnamen("windmolens")).thenReturn(List.of());
+    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
+        .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+            "unique constraint violated"));
+
+    var bestanden = new LinkedHashMap<String, byte[]>();
+    bestanden.put("v2-001.pdf", "pdf-inhoud".getBytes());
+
+    // Upload moet falen
+    org.junit.jupiter.api.Assertions.assertThrows(
+        org.springframework.dao.DataIntegrityViolationException.class,
+        () -> service.uploadBezwaren("windmolens", bestanden));
+
+    // Het bestand is al opgeslagen op disk vóór de DB-fout
+    verify(projectPoort).slaBestandOp("windmolens", "v2-001.pdf", "pdf-inhoud".getBytes());
+
+    // BUG: het bestand wordt NIET opgeruimd van disk na de DB-fout
+    // Dit zorgt ervoor dat het bestand na refresh verschijnt in de oude status
+    verify(projectPoort).verwijderBestand("windmolens", "v2-001.pdf");
+  }
+
+  /**
+   * Reproduceert de bug: na verwijderen en opnieuw uploaden moet het document
+   * opnieuw beginnen met status TODO, niet in de oude status verschijnen.
+   */
+  @Test
+  void naVerwijderenEnOpnieuwUploadenBegintDocumentVanafTodo() {
+    var bestandsnaam = "v2-001.pdf";
+
+    // Stap 1: Document is volledig verwerkt (BEZWAAR_EXTRACTIE_KLAAR)
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of(bestandsnaam));
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(new BezwaarBestandEntiteit("windmolens", bestandsnaam,
+            BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR)));
+
+    var bezwarenVoorVerwijdering = service.geefBezwaren("windmolens");
+    assertThat(bezwarenVoorVerwijdering.get(0).status())
+        .isEqualTo(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR);
+
+    // Stap 2: Verwijder het document
+    when(projectPoort.verwijderBestand("windmolens", bestandsnaam)).thenReturn(true);
+    service.verwijderBezwaar("windmolens", bestandsnaam);
+
+    // Stap 3: Upload hetzelfde document opnieuw
+    when(projectPoort.geefBestandsnamen("windmolens")).thenReturn(List.of());
+    var bestanden = new LinkedHashMap<String, byte[]>();
+    bestanden.put(bestandsnaam, "pdf-inhoud".getBytes());
+
+    var resultaat = service.uploadBezwaren("windmolens", bestanden);
+
+    // Upload moet slagen
+    assertThat(resultaat.geupload()).containsExactly(bestandsnaam);
+    assertThat(resultaat.fouten()).isEmpty();
+
+    // Tekst-extractie moet opnieuw gestart worden
+    verify(tekstExtractieService).indienen("windmolens", bestandsnaam);
+
+    // Stap 4: Na refresh moet het document TODO status hebben (nieuwe entiteit)
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of(bestandsnaam));
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(new BezwaarBestandEntiteit("windmolens", bestandsnaam,
+            BezwaarBestandStatus.TODO)));
+    when(tekstExtractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", bestandsnaam))
+        .thenReturn(Optional.empty());
+    when(extractieTaakRepository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", bestandsnaam))
+        .thenReturn(Optional.empty());
+
+    var bezwarenNaHerUpload = service.geefBezwaren("windmolens");
+
+    assertThat(bezwarenNaHerUpload).hasSize(1);
+    assertThat(bezwarenNaHerUpload.get(0).status())
+        .as("Na verwijdering en herupload moet document opnieuw beginnen als TODO")
+        .isEqualTo(BezwaarBestandStatus.TODO);
+    assertThat(bezwarenNaHerUpload.get(0).aantalBezwaren())
+        .as("Na herupload mogen er geen oude extractieresultaten meer zijn")
+        .isNull();
+  }
 }

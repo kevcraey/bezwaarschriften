@@ -181,8 +181,13 @@ public class ProjectService {
       }
 
       projectPoort.slaBestandOp(projectNaam, bestandsnaam, inhoud);
-      bezwaarBestandRepository.save(
-          new BezwaarBestandEntiteit(projectNaam, bestandsnaam, BezwaarBestandStatus.TODO));
+      try {
+        bezwaarBestandRepository.save(
+            new BezwaarBestandEntiteit(projectNaam, bestandsnaam, BezwaarBestandStatus.TODO));
+      } catch (Exception e) {
+        projectPoort.verwijderBestand(projectNaam, bestandsnaam);
+        throw e;
+      }
       geupload.add(bestandsnaam);
     }
 

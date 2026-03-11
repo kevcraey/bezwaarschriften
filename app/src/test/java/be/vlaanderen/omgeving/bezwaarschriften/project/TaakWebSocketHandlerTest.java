@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakDto;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieTaakDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,6 +84,26 @@ class TaakWebSocketHandlerTest {
       return payload.contains("\"type\":\"consolidatie-update\"")
           && payload.contains("\"bestandsnaam\":\"bezwaar-001.txt\"")
           && payload.contains("\"status\":\"bezig\"");
+    }));
+  }
+
+  @Test
+  void broadcastTekstExtractieUpdate() throws Exception {
+    when(session.isOpen()).thenReturn(true);
+    when(session.getId()).thenReturn("test-sessie-4");
+    handler.afterConnectionEstablished(session);
+
+    var taak = new TekstExtractieTaakDto(
+        1L, "windmolens", "bezwaar-001.pdf", "tekst-extractie-wachtend",
+        "2026-03-11T10:00:00Z", null, null);
+
+    handler.tekstExtractieTaakGewijzigd(taak);
+
+    verify(session).sendMessage(argThat(msg -> {
+      String payload = ((TextMessage) msg).getPayload();
+      return payload.contains("\"type\":\"tekst-extractie-update\"")
+          && payload.contains("\"bestandsnaam\":\"bezwaar-001.pdf\"")
+          && payload.contains("\"status\":\"tekst-extractie-wachtend\"");
     }));
   }
 }

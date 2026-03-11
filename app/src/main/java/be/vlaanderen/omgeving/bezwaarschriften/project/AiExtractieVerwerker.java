@@ -87,7 +87,10 @@ public class AiExtractieVerwerker implements ExtractieVerwerker {
 
   @Override
   public ExtractieResultaat verwerk(String projectNaam, String bestandsnaam, int poging) {
-    var pad = inputFolder.resolve(projectNaam).resolve("bezwaren-orig").resolve(bestandsnaam);
+    var tekstBestandsnaam = bestandsnaam.contains(".")
+        ? bestandsnaam.substring(0, bestandsnaam.lastIndexOf('.')) + ".txt"
+        : bestandsnaam + ".txt";
+    var pad = inputFolder.resolve(projectNaam).resolve("bezwaren-text").resolve(tekstBestandsnaam);
     var brondocument = ingestiePoort.leesBestand(pad);
     var userPrompt = String.format(USER_PROMPT_TEMPLATE, brondocument.tekst());
 

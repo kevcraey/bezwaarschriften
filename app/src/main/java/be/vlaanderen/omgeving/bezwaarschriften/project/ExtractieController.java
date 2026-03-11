@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieTaakDto;
 import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieWorker;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -193,6 +194,29 @@ public class ExtractieController {
     }
     return ResponseEntity.ok(new GeextraheerdetekstResponse(bestandsnaam, tekst));
   }
+
+  /**
+   * Herstart mislukte tekst-extractie taken voor de opgegeven bestanden.
+   *
+   * @param naam projectnaam
+   * @param request verzoek met bestandsnamen
+   * @return geherstarte tekst-extractie taken
+   */
+  @PostMapping("/{naam}/tekst-extracties/herstarten")
+  public ResponseEntity<?> herstartTekstExtracties(
+      @PathVariable String naam, @RequestBody ExtractiesRequest request) {
+    try {
+      var taken = request.bestandsnamen().stream()
+          .map(bestandsnaam -> tekstExtractieService.herstartTekstExtractie(naam, bestandsnaam))
+          .toList();
+      return ResponseEntity.ok(new TekstExtractieTakenResponse(taken));
+    } catch (IllegalArgumentException | IllegalStateException e) {
+      return ResponseEntity.badRequest().body(new FoutResponse(e.getMessage()));
+    }
+  }
+
+  /** Response DTO met een lijst van tekst-extractie taken. */
+  record TekstExtractieTakenResponse(List<TekstExtractieTaakDto> taken) {}
 
   /** Response DTO voor geextraheerde tekst. */
   record GeextraheerdetekstResponse(String bestandsnaam, String tekst) {}

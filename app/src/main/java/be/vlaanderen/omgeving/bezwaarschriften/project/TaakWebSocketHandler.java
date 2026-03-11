@@ -4,6 +4,8 @@ import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieNotifica
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakDto;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.ClusteringNotificatie;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.ClusteringTaakDto;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieNotificatie;
+import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieTaakDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 /**
@@ -23,7 +26,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
  */
 @Component
 public class TaakWebSocketHandler extends TextWebSocketHandler
-    implements ExtractieNotificatie, ConsolidatieNotificatie, ClusteringNotificatie {
+    implements ExtractieNotificatie, ConsolidatieNotificatie, ClusteringNotificatie,
+    TekstExtractieNotificatie {
 
   private static final Logger LOG = LoggerFactory.getLogger(TaakWebSocketHandler.class);
 
@@ -34,15 +38,25 @@ public class TaakWebSocketHandler extends TextWebSocketHandler
     this.objectMapper = objectMapper;
   }
 
+  private static final int SEND_TIME_LIMIT_MS = 5000;
+  private static final int BUFFER_SIZE_LIMIT = 65536;
+
   @Override
   public void afterConnectionEstablished(WebSocketSession session) {
-    sessions.add(session);
+    var concurrentSession = new ConcurrentWebSocketSessionDecorator(
+        session, SEND_TIME_LIMIT_MS, BUFFER_SIZE_LIMIT);
+    sessions.add(concurrentSession);
     LOG.info("WebSocket sessie verbonden: {}", session.getId());
   }
 
   @Override
   public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-    sessions.remove(session);
+    sessions.removeIf(s -> {
+      if (s instanceof ConcurrentWebSocketSessionDecorator decorator) {
+        return decorator.getDelegate().getId().equals(session.getId());
+      }
+      return s.getId().equals(session.getId());
+    });
     LOG.info("WebSocket sessie afgesloten: {} (status: {})", session.getId(), status);
   }
 
@@ -59,6 +73,11 @@ public class TaakWebSocketHandler extends TextWebSocketHandler
   @Override
   public void clusteringTaakGewijzigd(ClusteringTaakDto taak) {
     verstuur(Map.of("type", "clustering-update", "taak", taak));
+  }
+
+  @Override
+  public void tekstExtractieTaakGewijzigd(TekstExtractieTaakDto taak) {
+    verstuur(Map.of("type", "tekst-extractie-update", "taak", taak));
   }
 
   void verstuur(Map<String, Object> bericht) {

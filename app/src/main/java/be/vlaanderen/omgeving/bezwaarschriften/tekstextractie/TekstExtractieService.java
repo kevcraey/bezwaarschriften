@@ -32,6 +32,7 @@ public class TekstExtractieService {
   private final TekstKwaliteitsControle kwaliteitsControle;
   private final ProjectPoort projectPoort;
   private final BezwaarBestandRepository bezwaarBestandRepository;
+  private final TekstExtractieNotificatie notificatie;
   private final int maxConcurrent;
 
   /**
@@ -42,6 +43,7 @@ public class TekstExtractieService {
    * @param kwaliteitsControle kwaliteitscontrole voor geextraheerde tekst
    * @param projectPoort poort voor projectbestanden
    * @param bezwaarBestandRepository repository voor bezwaarbestand-entiteiten
+   * @param notificatie notificatie-interface voor statuswijzigingen
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
    */
   public TekstExtractieService(
@@ -50,12 +52,14 @@ public class TekstExtractieService {
       TekstKwaliteitsControle kwaliteitsControle,
       ProjectPoort projectPoort,
       BezwaarBestandRepository bezwaarBestandRepository,
+      TekstExtractieNotificatie notificatie,
       @Value("${bezwaarschriften.tekst-extractie.max-concurrent:2}") int maxConcurrent) {
     this.repository = repository;
     this.pdfExtractor = pdfExtractor;
     this.kwaliteitsControle = kwaliteitsControle;
     this.projectPoort = projectPoort;
     this.bezwaarBestandRepository = bezwaarBestandRepository;
+    this.notificatie = notificatie;
     this.maxConcurrent = maxConcurrent;
   }
 
@@ -76,6 +80,7 @@ public class TekstExtractieService {
     var opgeslagen = repository.save(taak);
     werkBestandStatusBij(projectNaam, bestandsnaam,
         BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND);
+    notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(opgeslagen));
     LOGGER.info("Tekst-extractie taak ingediend: project='{}', bestand='{}'",
         projectNaam, bestandsnaam);
     return opgeslagen;
@@ -109,6 +114,7 @@ public class TekstExtractieService {
       repository.save(taak);
       werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
           BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG);
+      notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(taak));
       LOGGER.info("Tekst-extractie taak {} opgepakt: project='{}', bestand='{}'",
           taak.getId(), taak.getProjectNaam(), taak.getBestandsnaam());
     }
@@ -178,6 +184,7 @@ public class TekstExtractieService {
     repository.save(taak);
     werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
         BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
+    notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(taak));
     LOGGER.info("Tekst-extractie taak {} afgerond (methode={})", taakId, methode);
   }
 
@@ -197,6 +204,7 @@ public class TekstExtractieService {
     repository.save(taak);
     werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
         BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT);
+    notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(taak));
     LOGGER.error("Tekst-extractie taak {} mislukt: {}", taakId, foutmelding);
   }
 
@@ -216,6 +224,7 @@ public class TekstExtractieService {
     repository.save(taak);
     werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
         BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR);
+    notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(taak));
     LOGGER.warn("Tekst-extractie taak {} - OCR niet beschikbaar: {}", taakId, foutmelding);
   }
 
@@ -253,6 +262,42 @@ public class TekstExtractieService {
           projectNaam, bestandsnaam, e.getMessage());
       return null;
     }
+  }
+
+  /**
+   * Herstart een mislukte tekst-extractie taak door de status terug te zetten naar WACHTEND.
+   *
+   * @param projectNaam naam van het project
+   * @param bestandsnaam naam van het bestand
+   * @return het bijgewerkte DTO
+   * @throws IllegalArgumentException als geen taak gevonden wordt
+   * @throws IllegalStateException als de taak niet in een herstartbare status staat
+   */
+  @Transactional
+  public TekstExtractieTaakDto herstartTekstExtractie(String projectNaam, String bestandsnaam) {
+    var taak = repository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, bestandsnaam)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Geen tekst-extractie taak gevonden voor: " + bestandsnaam));
+
+    if (taak.getStatus() != TekstExtractieTaakStatus.MISLUKT
+        && taak.getStatus() != TekstExtractieTaakStatus.OCR_NIET_BESCHIKBAAR) {
+      throw new IllegalStateException(
+          "Taak kan niet herstart worden vanuit status: " + taak.getStatus());
+    }
+
+    taak.setStatus(TekstExtractieTaakStatus.WACHTEND);
+    taak.setFoutmelding(null);
+    taak.setVerwerkingGestartOp(null);
+    taak.setAfgerondOp(null);
+    repository.save(taak);
+    werkBestandStatusBij(projectNaam, bestandsnaam,
+        BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND);
+    var dto = TekstExtractieTaakDto.van(taak);
+    notificatie.tekstExtractieTaakGewijzigd(dto);
+    LOGGER.info("Tekst-extractie taak {} herstart voor bestand '{}' in project '{}'",
+        taak.getId(), bestandsnaam, projectNaam);
+    return dto;
   }
 
   /**

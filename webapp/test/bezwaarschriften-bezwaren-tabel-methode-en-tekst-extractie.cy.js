@@ -232,7 +232,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('vl-pill')
-        .should('contain.text', 'Klaar voor extractie')
+        .should('contain.text', 'Te verwerken')
         .find('button[title="Verwerking starten"]')
         .should('exist')
         .and('contain.text', '\u25b6');

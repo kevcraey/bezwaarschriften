@@ -44,20 +44,25 @@ class TekstExtractieServiceTest {
   @Mock
   private BezwaarBestandRepository bezwaarBestandRepository;
 
+  @Mock
+  private TekstExtractieNotificatie notificatie;
+
   private TekstExtractieService service;
 
   @BeforeEach
   void setUp() {
     service = new TekstExtractieService(
         repository, pdfExtractor, kwaliteitsControle, projectPoort,
-        bezwaarBestandRepository, 2);
+        bezwaarBestandRepository, notificatie, 2);
   }
 
   @Test
   void indienen_maaktTaakAanMetStatusWachtend() {
-    var taak = new TekstExtractieTaak();
-    taak.setId(1L);
-    when(repository.save(any(TekstExtractieTaak.class))).thenReturn(taak);
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> {
+      TekstExtractieTaak t = i.getArgument(0);
+      t.setId(1L);
+      return t;
+    });
 
     var resultaat = service.indienen("windmolens", "bezwaar.pdf");
 
@@ -330,6 +335,52 @@ class TekstExtractieServiceTest {
   }
 
   @Test
+  void indienen_stuurtWebSocketNotificatie() {
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> {
+      TekstExtractieTaak t = i.getArgument(0);
+      t.setId(1L);
+      return t;
+    });
+
+    service.indienen("windmolens", "bezwaar.pdf");
+
+    var captor = ArgumentCaptor.forClass(TekstExtractieTaakDto.class);
+    verify(notificatie).tekstExtractieTaakGewijzigd(captor.capture());
+    var dto = captor.getValue();
+    assertThat(dto.status()).isEqualTo("tekst-extractie-wachtend");
+    assertThat(dto.projectNaam()).isEqualTo("windmolens");
+    assertThat(dto.bestandsnaam()).isEqualTo("bezwaar.pdf");
+  }
+
+  @Test
+  void markeerKlaar_stuurtWebSocketNotificatie() {
+    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.markeerKlaar(1L, ExtractieMethode.DIGITAAL);
+
+    var captor = ArgumentCaptor.forClass(TekstExtractieTaakDto.class);
+    verify(notificatie).tekstExtractieTaakGewijzigd(captor.capture());
+    assertThat(captor.getValue().status()).isEqualTo("tekst-extractie-klaar");
+  }
+
+  @Test
+  void pakOpVoorVerwerking_stuurtWebSocketNotificatiePerTaak() {
+    var taak1 = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.WACHTEND);
+    when(repository.countByStatus(TekstExtractieTaakStatus.BEZIG)).thenReturn(0L);
+    when(repository.findByStatusOrderByAangemaaktOpAsc(TekstExtractieTaakStatus.WACHTEND))
+        .thenReturn(List.of(taak1));
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.pakOpVoorVerwerking();
+
+    var captor = ArgumentCaptor.forClass(TekstExtractieTaakDto.class);
+    verify(notificatie).tekstExtractieTaakGewijzigd(captor.capture());
+    assertThat(captor.getValue().status()).isEqualTo("tekst-extractie-bezig");
+  }
+
+  @Test
   void indienenUpdatetBezwaarBestandNaarTekstExtractieWachtend() {
     when(repository.save(any(TekstExtractieTaak.class)))
         .thenAnswer(i -> i.getArgument(0));
@@ -431,6 +482,7 @@ class TekstExtractieServiceTest {
     taak.setProjectNaam(projectNaam);
     taak.setBestandsnaam(bestandsnaam);
     taak.setStatus(status);
+    taak.setAangemaaktOp(java.time.Instant.parse("2026-03-11T10:00:00Z"));
     return taak;
   }
 

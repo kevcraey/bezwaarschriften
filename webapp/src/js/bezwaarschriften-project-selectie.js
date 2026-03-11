@@ -142,6 +142,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       if (data.type === 'clustering-update') {
         this._verwerkClusteringUpdate(data.taak);
       }
+      if (data.type === 'tekst-extractie-update') {
+        this._verwerkTekstExtractieUpdate(data.taak);
+      }
     };
 
     this._ws.onclose = () => {
@@ -194,6 +197,24 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         kernComp.setExtractieKlaar(true);
       }
     }
+  }
+
+  _verwerkTekstExtractieUpdate(taak) {
+    if (!this.__geselecteerdProject || taak.projectNaam !== this.__geselecteerdProject) {
+      return;
+    }
+    this.__bezwaren = this.__bezwaren.map((b) =>
+      b.bestandsnaam === taak.bestandsnaam ? {
+        ...b,
+        status: taak.status,
+      } : b,
+    );
+    const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+    if (tabel) {
+      tabel.werkBijMetTaakUpdate(taak);
+    }
+    this._werkDocumentenTabTitelBij();
+    this._werkVerwerkenKnopBij();
   }
 
   _syncExtracties(projectNaam) {
@@ -263,6 +284,13 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       const {bestandsnaam} = e.detail;
       if (this.__geselecteerdProject) {
         this._dienExtractiesIn(this.__geselecteerdProject, [bestandsnaam]);
+      }
+    });
+
+    this.shadowRoot.addEventListener('herstart-tekst-extractie', (e) => {
+      const {bestandsnaam} = e.detail;
+      if (this.__geselecteerdProject) {
+        this._herstartTekstExtractie(this.__geselecteerdProject, [bestandsnaam]);
       }
     });
 
@@ -478,6 +506,43 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         })
         .catch(() => {
           this._toonFout('Extracties konden niet worden ingediend.');
+        })
+        .finally(() => {
+          this._zetBezig(false);
+        });
+  }
+
+  _herstartTekstExtractie(projectNaam, bestandsnamen) {
+    this._verbergFout();
+    this._zetBezig(true);
+
+    fetch(`/api/v1/projects/${encodeURIComponent(projectNaam)}/tekst-extracties/herstarten`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bestandsnamen}),
+    })
+        .then((response) => {
+          if (!response.ok) throw new Error('Herstarten tekst-extractie mislukt');
+          return response.json();
+        })
+        .then((data) => {
+          const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
+          if (tabel && data.taken) {
+            data.taken.forEach((taak) => {
+              this.__bezwaren = this.__bezwaren.map((b) =>
+                b.bestandsnaam === taak.bestandsnaam ? {
+                  ...b,
+                  status: taak.status,
+                } : b,
+              );
+              tabel.werkBijMetTaakUpdate(taak);
+            });
+            this._werkDocumentenTabTitelBij();
+            this._werkVerwerkenKnopBij();
+          }
+        })
+        .catch(() => {
+          this._toonFout('Herstarten tekst-extractie mislukt.');
         })
         .finally(() => {
           this._zetBezig(false);

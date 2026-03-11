@@ -34,7 +34,7 @@ const STATUS_LABELS = {
   'niet ondersteund': 'Niet ondersteund',
   'tekst-extractie-wachtend': 'Tekst extractie wachtend',
   'tekst-extractie-bezig': 'Tekst extractie bezig',
-  'tekst-extractie-klaar': 'Klaar voor extractie',
+  'tekst-extractie-klaar': 'Te verwerken',
   'tekst-extractie-mislukt': 'Tekst extractie mislukt',
   'tekst-extractie-ocr-niet-beschikbaar': 'OCR niet beschikbaar',
 };
@@ -48,7 +48,7 @@ const STATUS_PILL_TYPES = {
   'niet ondersteund': '',
   'tekst-extractie-wachtend': 'warning',
   'tekst-extractie-bezig': 'warning',
-  'tekst-extractie-klaar': 'success',
+  'tekst-extractie-klaar': '',
   'tekst-extractie-mislukt': 'error',
   'tekst-extractie-ocr-niet-beschikbaar': 'error',
 };
@@ -101,16 +101,21 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         .side-sheet-header {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
-          padding: 1rem 1.5rem;
-          border-bottom: 2px solid #e8ebee;
+          align-items: center;
+          padding: var(--vl-spacing--xsmall);
+          border-bottom: 1px solid #e8ebee;
+          min-height: 3.5rem;
           flex-shrink: 0;
           background: white;
         }
-        .side-sheet-titel {
-          font-weight: bold;
+        .side-sheet-header h2 {
+          margin: 0;
+          font-size: 1.1rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
           flex: 1;
-          margin-right: 1rem;
+          margin-right: var(--vl-spacing--xsmall);
         }
         .side-sheet-body {
           flex: 1;
@@ -200,7 +205,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       <vl-side-sheet id="extractie-side-sheet" hide-toggle-button>
         <div class="side-sheet-wrapper">
           <div class="side-sheet-header">
-            <div id="extractie-side-sheet-titel" class="side-sheet-titel"></div>
+            <h2 id="extractie-side-sheet-titel"></h2>
             <vl-button id="extractie-side-sheet-sluit" icon="close" ghost label="Sluiten"></vl-button>
           </div>
           <div id="extractie-side-sheet-inhoud" class="side-sheet-body"></div>
@@ -326,6 +331,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         aantalBezwaren: taak.aantalBezwaren,
         heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
         heeftManueel: taak.heeftManueel,
+        tekstExtractieFoutmelding: taak.foutmelding || null,
       } : b,
     );
     this._herbereken();
@@ -461,6 +467,14 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               pill.textContent = this._formatStatusLabel(rij);
               pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw proberen', () => {
                 this.dispatchEvent(new CustomEvent('herstart-taak', {
+                  detail: {bestandsnaam: rij.bestandsnaam},
+                  bubbles: true, composed: true,
+                }));
+              }));
+            } else if (rij.status === 'tekst-extractie-mislukt' || rij.status === 'tekst-extractie-ocr-niet-beschikbaar') {
+              pill.textContent = this._formatStatusLabel(rij);
+              pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw proberen', () => {
+                this.dispatchEvent(new CustomEvent('herstart-tekst-extractie', {
                   detail: {bestandsnaam: rij.bestandsnaam},
                   bubbles: true, composed: true,
                 }));

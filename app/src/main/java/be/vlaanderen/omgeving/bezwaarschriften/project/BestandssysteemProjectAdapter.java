@@ -100,10 +100,27 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
       boolean verwijderd = Files.deleteIfExists(doelPad);
       if (verwijderd) {
         LOGGER.info("Bestand '{}' verwijderd voor project '{}'", bestandsnaam, projectNaam);
+        verwijderTekstBestand(projectNaam, bestandsnaam);
       }
       return verwijderd;
     } catch (IOException e) {
       throw new RuntimeException("Kon bestand niet verwijderen: " + bestandsnaam, e);
+    }
+  }
+
+  /**
+   * Verwijdert het bijhorende tekstbestand uit de bezwaren-text map (best effort).
+   */
+  private void verwijderTekstBestand(final String projectNaam, final String bestandsnaam) {
+    try {
+      var tekstPad = resolveEnValideerTekstPad(projectNaam);
+      var txtNaam = vervangExtensieDoorTxt(bestandsnaam);
+      var txtPad = tekstPad.resolve(txtNaam).normalize();
+      if (txtPad.startsWith(tekstPad) && Files.deleteIfExists(txtPad)) {
+        LOGGER.info("Tekstbestand '{}' verwijderd voor project '{}'", txtNaam, projectNaam);
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Kon tekstbestand niet verwijderen voor '{}': {}", bestandsnaam, e.getMessage());
     }
   }
 
