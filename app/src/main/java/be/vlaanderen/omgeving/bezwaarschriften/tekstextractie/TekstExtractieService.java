@@ -1,5 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarBestandRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarBestandStatus;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectPoort;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -29,6 +31,7 @@ public class TekstExtractieService {
   private final PdfTekstExtractor pdfExtractor;
   private final TekstKwaliteitsControle kwaliteitsControle;
   private final ProjectPoort projectPoort;
+  private final BezwaarBestandRepository bezwaarBestandRepository;
   private final int maxConcurrent;
 
   /**
@@ -38,6 +41,7 @@ public class TekstExtractieService {
    * @param pdfExtractor extractor voor PDF-bestanden
    * @param kwaliteitsControle kwaliteitscontrole voor geextraheerde tekst
    * @param projectPoort poort voor projectbestanden
+   * @param bezwaarBestandRepository repository voor bezwaarbestand-entiteiten
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
    */
   public TekstExtractieService(
@@ -45,11 +49,13 @@ public class TekstExtractieService {
       PdfTekstExtractor pdfExtractor,
       TekstKwaliteitsControle kwaliteitsControle,
       ProjectPoort projectPoort,
+      BezwaarBestandRepository bezwaarBestandRepository,
       @Value("${bezwaarschriften.tekst-extractie.max-concurrent:2}") int maxConcurrent) {
     this.repository = repository;
     this.pdfExtractor = pdfExtractor;
     this.kwaliteitsControle = kwaliteitsControle;
     this.projectPoort = projectPoort;
+    this.bezwaarBestandRepository = bezwaarBestandRepository;
     this.maxConcurrent = maxConcurrent;
   }
 
@@ -68,6 +74,8 @@ public class TekstExtractieService {
     taak.setStatus(TekstExtractieTaakStatus.WACHTEND);
     taak.setAangemaaktOp(Instant.now());
     var opgeslagen = repository.save(taak);
+    werkBestandStatusBij(projectNaam, bestandsnaam,
+        BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND);
     LOGGER.info("Tekst-extractie taak ingediend: project='{}', bestand='{}'",
         projectNaam, bestandsnaam);
     return opgeslagen;
@@ -99,6 +107,8 @@ public class TekstExtractieService {
       taak.setStatus(TekstExtractieTaakStatus.BEZIG);
       taak.setVerwerkingGestartOp(Instant.now());
       repository.save(taak);
+      werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
+          BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG);
       LOGGER.info("Tekst-extractie taak {} opgepakt: project='{}', bestand='{}'",
           taak.getId(), taak.getProjectNaam(), taak.getBestandsnaam());
     }
@@ -166,6 +176,8 @@ public class TekstExtractieService {
     taak.setExtractieMethode(methode);
     taak.setAfgerondOp(Instant.now());
     repository.save(taak);
+    werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
+        BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
     LOGGER.info("Tekst-extractie taak {} afgerond (methode={})", taakId, methode);
   }
 
@@ -183,6 +195,8 @@ public class TekstExtractieService {
     taak.setFoutmelding(foutmelding);
     taak.setAfgerondOp(Instant.now());
     repository.save(taak);
+    werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
+        BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT);
     LOGGER.error("Tekst-extractie taak {} mislukt: {}", taakId, foutmelding);
   }
 
@@ -200,6 +214,8 @@ public class TekstExtractieService {
     taak.setFoutmelding(foutmelding);
     taak.setAfgerondOp(Instant.now());
     repository.save(taak);
+    werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
+        BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR);
     LOGGER.warn("Tekst-extractie taak {} - OCR niet beschikbaar: {}", taakId, foutmelding);
   }
 
@@ -218,6 +234,28 @@ public class TekstExtractieService {
   }
 
   /**
+   * Geeft de geextraheerde tekst voor een bestand.
+   *
+   * @return de tekst, of null als niet beschikbaar
+   */
+  public String geefGeextraheerdetekst(String projectNaam, String bestandsnaam) {
+    var taak = repository
+        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, bestandsnaam)
+        .orElse(null);
+    if (taak == null || taak.getStatus() != TekstExtractieTaakStatus.KLAAR) {
+      return null;
+    }
+    try {
+      var pad = projectPoort.geefTekstBestandsPad(projectNaam, bestandsnaam);
+      return Files.readString(pad);
+    } catch (Exception e) {
+      LOGGER.error("Kan tekst niet lezen voor {}/{}: {}",
+          projectNaam, bestandsnaam, e.getMessage());
+      return null;
+    }
+  }
+
+  /**
    * Verwijdert een tekst-extractie taak na validatie van het project.
    *
    * @param projectNaam naam van het project waartoe de taak moet behoren
@@ -233,5 +271,14 @@ public class TekstExtractieService {
     }
     repository.delete(taak);
     LOGGER.info("Tekst-extractie taak {} verwijderd voor project '{}'", taakId, projectNaam);
+  }
+
+  private void werkBestandStatusBij(String projectNaam, String bestandsnaam,
+      BezwaarBestandStatus status) {
+    bezwaarBestandRepository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam)
+        .ifPresent(entiteit -> {
+          entiteit.setStatus(status);
+          bezwaarBestandRepository.save(entiteit);
+        });
   }
 }

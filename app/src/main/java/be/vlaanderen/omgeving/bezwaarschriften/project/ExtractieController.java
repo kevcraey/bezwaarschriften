@@ -177,6 +177,26 @@ public class ExtractieController {
     }
   }
 
+  /**
+   * Geeft de geextraheerde tekst voor een bestand.
+   *
+   * @param naam projectnaam
+   * @param bestandsnaam naam van het bestand
+   * @return tekst of 404 als niet beschikbaar
+   */
+  @GetMapping("/{naam}/tekst-extracties/{bestandsnaam}/tekst")
+  public ResponseEntity<GeextraheerdetekstResponse> geefGeextraheerdetekst(
+      @PathVariable String naam, @PathVariable String bestandsnaam) {
+    var tekst = tekstExtractieService.geefGeextraheerdetekst(naam, bestandsnaam);
+    if (tekst == null) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(new GeextraheerdetekstResponse(bestandsnaam, tekst));
+  }
+
+  /** Response DTO voor geextraheerde tekst. */
+  record GeextraheerdetekstResponse(String bestandsnaam, String tekst) {}
+
   /** Response DTO voor het verwerken-endpoint. */
   record VerwerkenResponse(int aantalIngepland) {}
 

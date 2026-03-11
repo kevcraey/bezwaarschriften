@@ -217,6 +217,26 @@ class ExtractieControllerTest {
 
 
   @Test
+  void geefTekstRetourneertGeextraheerdetekst() throws Exception {
+    when(tekstExtractieService.geefGeextraheerdetekst("windmolens", "bezwaar.pdf"))
+        .thenReturn("De aanvrager stelt...");
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/tekst-extracties/bezwaar.pdf/tekst"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bestandsnaam").value("bezwaar.pdf"))
+        .andExpect(jsonPath("$.tekst").value("De aanvrager stelt..."));
+  }
+
+  @Test
+  void geefTekstRetourneert404AlsTekstNietBeschikbaar() throws Exception {
+    when(tekstExtractieService.geefGeextraheerdetekst("windmolens", "bezwaar.pdf"))
+        .thenReturn(null);
+
+    mockMvc.perform(get("/api/v1/projects/windmolens/tekst-extracties/bezwaar.pdf/tekst"))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
   void verwijderBezwaarGeeft404BijOnbekendBezwaar() throws Exception {
     doThrow(new IllegalArgumentException("Bezwaar niet gevonden"))
         .when(extractieTaakService).verwijderBezwaar("windmolens", "bezwaar-001.txt", 999L);
