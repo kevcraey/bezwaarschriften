@@ -67,6 +67,14 @@ const STATUS_OPTIES = [
   {value: 'tekst-extractie-ocr-niet-beschikbaar', label: 'OCR niet beschikbaar'},
 ];
 
+const TEKST_BESCHIKBAAR_STATUSSEN = new Set([
+  'tekst-extractie-klaar',
+  'bezwaar-extractie-wachtend',
+  'bezwaar-extractie-bezig',
+  'bezwaar-extractie-klaar',
+  'bezwaar-extractie-fout',
+]);
+
 const ITEMS_PER_PAGINA = 300;
 
 export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
@@ -484,6 +492,21 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           veld.renderer = (td, rij) => {
             td.style.verticalAlign = 'middle';
             td.style.whiteSpace = 'nowrap';
+            if (TEKST_BESCHIKBAAR_STATUSSEN.has(rij.status)) {
+              const oogBtn = document.createElement('vl-button');
+              oogBtn.setAttribute('icon', 'eye');
+              oogBtn.setAttribute('ghost', '');
+              oogBtn.setAttribute('label', 'Geëxtraheerde tekst bekijken');
+              oogBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.dispatchEvent(new CustomEvent('toon-geextraheerde-tekst', {
+                  bubbles: true,
+                  composed: true,
+                  detail: {projectNaam: this._projectNaam, bestandsnaam: rij.bestandsnaam},
+                }));
+              });
+              td.appendChild(oogBtn);
+            }
             if (rij.status === 'bezwaar-extractie-klaar') {
               const zoekBtn = document.createElement('vl-button');
               zoekBtn.setAttribute('icon', 'search');
