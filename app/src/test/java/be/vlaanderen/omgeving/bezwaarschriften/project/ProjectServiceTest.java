@@ -2,9 +2,11 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +26,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -48,13 +51,17 @@ class ProjectServiceTest {
   @Mock
   private TekstExtractieTaakRepository tekstExtractieTaakRepository;
 
+  @Mock
+  private BezwaarBestandRepository bezwaarBestandRepository;
+
   private ProjectService service;
 
   @BeforeEach
   void setUp() {
     service = new ProjectService(projectPoort, extractieTaakRepository,
         kernbezwaarService, consolidatieTaakRepository,
-        tekstExtractieService, tekstExtractieTaakRepository);
+        tekstExtractieService, tekstExtractieTaakRepository,
+        bezwaarBestandRepository);
   }
 
   @Test
@@ -67,123 +74,67 @@ class ProjectServiceTest {
   }
 
   @Test
-  void geeftBezwarenMetInitieleStatussen() {
+  void geefBezwarenLeestStatusUitDatabase() {
     when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.txt", "bijlage.jpg"));
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
-        .thenReturn(Optional.empty());
-
-    var bezwaren = service.geefBezwaren("windmolens");
-
-    assertThat(bezwaren).hasSize(2);
-    assertThat(bezwaren).anySatisfy(b -> {
-      assertThat(b.bestandsnaam()).isEqualTo("bezwaar-001.txt");
-      assertThat(b.status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
-    });
-    assertThat(bezwaren).anySatisfy(b -> {
-      assertThat(b.bestandsnaam()).isEqualTo("bijlage.jpg");
-      assertThat(b.status()).isEqualTo(BezwaarBestandStatus.NIET_ONDERSTEUND);
-    });
-  }
-
-  @Test
-  void geeftBezwarenMetTekstExtractieWachtendStatus() {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.pdf"));
-    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.WACHTEND, null);
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.of(tekstTaak));
+        .thenReturn(List.of("bezwaar-001.txt"));
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(new BezwaarBestandEntiteit("windmolens", "bezwaar-001.txt",
+            BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG)));
 
     var bezwaren = service.geefBezwaren("windmolens");
 
     assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND);
-  }
-
-  @Test
-  void geeftBezwarenMetTekstExtractieBezigStatus() {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.pdf"));
-    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.BEZIG, null);
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.of(tekstTaak));
-
-    var bezwaren = service.geefBezwaren("windmolens");
-
-    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).bestandsnaam()).isEqualTo("bezwaar-001.txt");
     assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG);
   }
 
   @Test
-  void geeftBezwarenMetTekstExtractieMisluktStatus() {
+  void geefBezwarenGeeftNietOndersteundVoorOnbekendFormaat() {
     when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.pdf"));
-    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.MISLUKT, null);
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.of(tekstTaak));
+        .thenReturn(List.of("bijlage.jpg"));
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of());
 
     var bezwaren = service.geefBezwaren("windmolens");
 
     assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT);
+    assertThat(bezwaren.get(0).bestandsnaam()).isEqualTo("bijlage.jpg");
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.NIET_ONDERSTEUND);
   }
 
   @Test
-  void geeftFoutmeldingMeeBijTekstExtractieMislukt() {
+  void geefBezwarenGeeftTodoVoorLegacyBestandZonderEntiteit() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.pdf"));
-    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.MISLUKT, null);
-    tekstTaak.setFoutmelding("Te weinig woorden: 28 (minimum 40)");
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.of(tekstTaak));
-
-    var bezwaren = service.geefBezwaren("windmolens");
-
-    assertThat(bezwaren.get(0).tekstExtractieFoutmelding())
-        .isEqualTo("Te weinig woorden: 28 (minimum 40)");
-  }
-
-  @Test
-  void geeftBezwarenMetOcrNietBeschikbaarStatus() {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.pdf"));
-    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.OCR_NIET_BESCHIKBAAR, null);
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.of(tekstTaak));
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of());
 
     var bezwaren = service.geefBezwaren("windmolens");
 
     assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status())
-        .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TODO);
   }
 
   @Test
-  void geeftFoutmeldingMeeBijOcrNietBeschikbaar() {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.pdf"));
-    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.OCR_NIET_BESCHIKBAAR, null);
-    tekstTaak.setFoutmelding("Tesseract is niet geinstalleerd.");
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.of(tekstTaak));
-
-    var bezwaren = service.geefBezwaren("windmolens");
-
-    assertThat(bezwaren.get(0).tekstExtractieFoutmelding())
-        .isEqualTo("Tesseract is niet geinstalleerd.");
-  }
-
-  @Test
-  void leidtStatusAfUitExtractieTaakNaTekstExtractie() {
+  void geefBezwarenGeeftTekstExtractieKlaarVoorLegacyTxtZonderEntiteit() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.txt"));
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of());
+
+    var bezwaren = service.geefBezwaren("windmolens");
+
+    assertThat(bezwaren).hasSize(1);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
+  }
+
+  @Test
+  void geefBezwarenVultMetadataAanUitTaakTabellen() {
+    when(projectPoort.geefBestandsnamen("windmolens"))
+        .thenReturn(List.of("bezwaar-001.txt"));
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(new BezwaarBestandEntiteit("windmolens", "bezwaar-001.txt",
+            BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR)));
     var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.KLAAR,
         ExtractieMethode.DIGITAAL);
     when(tekstExtractieTaakRepository
@@ -204,64 +155,41 @@ class ProjectServiceTest {
   }
 
   @Test
-  void tekstExtractieKlaarMaarGeenExtractieTaakGeeftTodoMetMethode() {
+  void geefBezwarenVultTimerInfoAanUitTekstExtractieTaak() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.pdf"));
-    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.KLAAR, ExtractieMethode.OCR);
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(new BezwaarBestandEntiteit("windmolens", "bezwaar-001.pdf",
+            BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG)));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.BEZIG, null);
     when(tekstExtractieTaakRepository
         .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
         .thenReturn(Optional.of(tekstTaak));
-    when(extractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.empty());
 
     var bezwaren = service.geefBezwaren("windmolens");
 
-    assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TODO);
-    assertThat(bezwaren.get(0).extractieMethode()).isEqualTo("OCR");
+    assertThat(bezwaren.get(0).tekstExtractieAangemaaktOp()).isNotNull();
+    assertThat(bezwaren.get(0).tekstExtractieTaakId()).isNotNull();
   }
 
   @Test
-  void pdfBestandIsOndersteundFormaat() {
+  void geefBezwarenVultFoutmeldingAanUitTekstExtractieTaak() {
     when(projectPoort.geefBestandsnamen("windmolens"))
         .thenReturn(List.of("bezwaar-001.pdf"));
+    when(bezwaarBestandRepository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(new BezwaarBestandEntiteit("windmolens", "bezwaar-001.pdf",
+            BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT)));
+    var tekstTaak = maakTekstExtractieTaak(TekstExtractieTaakStatus.MISLUKT, null);
+    tekstTaak.setFoutmelding("Te weinig woorden: 28 (minimum 40)");
     when(tekstExtractieTaakRepository
         .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.empty());
+        .thenReturn(Optional.of(tekstTaak));
 
     var bezwaren = service.geefBezwaren("windmolens");
 
-    assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TODO);
-  }
-
-  @Test
-  void txtBestandZonderTekstExtractieTaakKrijgtTekstExtractieKlaarStatus() {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.txt"));
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.txt"))
-        .thenReturn(Optional.empty());
-
-    var bezwaren = service.geefBezwaren("windmolens");
-
-    assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
-  }
-
-  @Test
-  void pdfBestandZonderTekstExtractieTaakKrijgtTodoStatus() {
-    when(projectPoort.geefBestandsnamen("windmolens"))
-        .thenReturn(List.of("bezwaar-001.pdf"));
-    when(tekstExtractieTaakRepository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc("windmolens", "bezwaar-001.pdf"))
-        .thenReturn(Optional.empty());
-
-    var bezwaren = service.geefBezwaren("windmolens");
-
-    assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TODO);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT);
+    assertThat(bezwaren.get(0).tekstExtractieFoutmelding())
+        .isEqualTo("Te weinig woorden: 28 (minimum 40)");
   }
 
   @Test
@@ -301,6 +229,39 @@ class ProjectServiceTest {
   }
 
   @Test
+  void uploadMaaktBezwaarBestandEntiteitAanMetStatusTodo() {
+    when(projectPoort.geefBestandsnamen("windmolens")).thenReturn(List.of());
+
+    var bestanden = new LinkedHashMap<String, byte[]>();
+    bestanden.put("bezwaar.txt", "inhoud".getBytes());
+    bestanden.put("bezwaar.pdf", "pdf-inhoud".getBytes());
+
+    service.uploadBezwaren("windmolens", bestanden);
+
+    var captor = ArgumentCaptor.forClass(BezwaarBestandEntiteit.class);
+    verify(bezwaarBestandRepository, times(2)).save(captor.capture());
+    var entiteiten = captor.getAllValues();
+    assertThat(entiteiten).allSatisfy(e -> {
+      assertThat(e.getProjectNaam()).isEqualTo("windmolens");
+      assertThat(e.getStatus()).isEqualTo(BezwaarBestandStatus.TODO);
+    });
+    assertThat(entiteiten).extracting(BezwaarBestandEntiteit::getBestandsnaam)
+        .containsExactly("bezwaar.txt", "bezwaar.pdf");
+  }
+
+  @Test
+  void uploadMaaktGeenEntiteitVoorNietOndersteundFormaat() {
+    when(projectPoort.geefBestandsnamen("windmolens")).thenReturn(List.of());
+
+    var bestanden = new LinkedHashMap<String, byte[]>();
+    bestanden.put("foto.jpg", "jpg-inhoud".getBytes());
+
+    service.uploadBezwaren("windmolens", bestanden);
+
+    verify(bezwaarBestandRepository, never()).save(any());
+  }
+
+  @Test
   void uploadWeigertNietOndersteundFormaatMaarAccepteertPdfEnTxt() {
     when(projectPoort.geefBestandsnamen("windmolens")).thenReturn(List.of());
 
@@ -333,6 +294,7 @@ class ProjectServiceTest {
   private TekstExtractieTaak maakTekstExtractieTaak(TekstExtractieTaakStatus status,
       ExtractieMethode methode) {
     var taak = new TekstExtractieTaak();
+    taak.setId(42L);
     taak.setProjectNaam("windmolens");
     taak.setBestandsnaam("bezwaar-001.txt");
     taak.setStatus(status);

@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ public class ProjectService {
   private final ConsolidatieTaakRepository consolidatieTaakRepository;
   private final TekstExtractieService tekstExtractieService;
   private final TekstExtractieTaakRepository tekstExtractieTaakRepository;
+  private final BezwaarBestandRepository bezwaarBestandRepository;
 
   /**
    * Maakt een nieuwe ProjectService aan.
@@ -41,19 +43,22 @@ public class ProjectService {
    * @param consolidatieTaakRepository Repository voor consolidatie-taken
    * @param tekstExtractieService Service voor tekst-extractie
    * @param tekstExtractieTaakRepository Repository voor tekst-extractie taken
+   * @param bezwaarBestandRepository Repository voor bezwaar-bestand entiteiten
    */
   public ProjectService(ProjectPoort projectPoort,
       ExtractieTaakRepository extractieTaakRepository,
       KernbezwaarService kernbezwaarService,
       ConsolidatieTaakRepository consolidatieTaakRepository,
       TekstExtractieService tekstExtractieService,
-      TekstExtractieTaakRepository tekstExtractieTaakRepository) {
+      TekstExtractieTaakRepository tekstExtractieTaakRepository,
+      BezwaarBestandRepository bezwaarBestandRepository) {
     this.projectPoort = projectPoort;
     this.extractieTaakRepository = extractieTaakRepository;
     this.kernbezwaarService = kernbezwaarService;
     this.consolidatieTaakRepository = consolidatieTaakRepository;
     this.tekstExtractieService = tekstExtractieService;
     this.tekstExtractieTaakRepository = tekstExtractieTaakRepository;
+    this.bezwaarBestandRepository = bezwaarBestandRepository;
   }
 
   /**
@@ -68,9 +73,11 @@ public class ProjectService {
   /**
    * Geeft de bezwaarbestanden van een project terug met hun huidige status.
    *
-   * <p>De status wordt afgeleid uit de meest recente extractie-taak in de database.
-   * Als er geen taak bestaat, krijgen .txt-bestanden status {@link BezwaarBestandStatus#TEKST_EXTRACTIE_KLAAR}
-   * (geen tekst-extractie nodig) en overige ondersteunde formaten {@link BezwaarBestandStatus#TODO}.
+   * <p>De status wordt gelezen uit de {@code bezwaar_bestand} tabel. Voor legacy-bestanden
+   * zonder entiteit wordt de status afgeleid uit het bestandsformaat: .txt-bestanden krijgen
+   * {@link BezwaarBestandStatus#TEKST_EXTRACTIE_KLAAR}, overige ondersteunde formaten
+   * {@link BezwaarBestandStatus#TODO}. Metadata (aantalWoorden, extractieMethode, etc.)
+   * komt nog steeds uit de taak-tabellen.
    *
    * @param projectNaam Naam van het project
    * @return Lijst van bezwaarbestanden met status
@@ -78,67 +85,69 @@ public class ProjectService {
    */
   public List<BezwaarBestand> geefBezwaren(String projectNaam) {
     var bestandsnamen = projectPoort.geefBestandsnamen(projectNaam);
+    var entiteitenMap = bezwaarBestandRepository.findByProjectNaam(projectNaam)
+        .stream()
+        .collect(Collectors.toMap(BezwaarBestandEntiteit::getBestandsnaam, e -> e));
+
     return bestandsnamen.stream()
         .map(naam -> {
           if (!isOndersteundFormaat(naam)) {
             return new BezwaarBestand(naam, BezwaarBestandStatus.NIET_ONDERSTEUND);
           }
 
-          // Controleer tekst-extractie status
+          // Status uit de database, of fallback voor legacy-bestanden
+          var entiteit = entiteitenMap.get(naam);
+          BezwaarBestandStatus status;
+          if (entiteit != null) {
+            status = entiteit.getStatus();
+          } else if (naam.toLowerCase().endsWith(".txt")) {
+            status = BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR;
+          } else {
+            status = BezwaarBestandStatus.TODO;
+          }
+
+          // Metadata uit tekst-extractie taak
           var tekstExtractieTaak = tekstExtractieTaakRepository
               .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
               .orElse(null);
-          if (tekstExtractieTaak == null) {
-            // .txt bestanden hebben geen tekst-extractie nodig
-            if (naam.toLowerCase().endsWith(".txt")) {
-              return new BezwaarBestand(naam, BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
-            }
-            return new BezwaarBestand(naam, BezwaarBestandStatus.TODO);
+
+          String extractieMethode = null;
+          String teAangemaaktOp = null;
+          String teGestartOp = null;
+          Long tekstExtractieTaakId = null;
+          String foutmelding = null;
+
+          if (tekstExtractieTaak != null) {
+            extractieMethode = tekstExtractieTaak.getExtractieMethode() != null
+                ? tekstExtractieTaak.getExtractieMethode().name() : null;
+            teAangemaaktOp = tekstExtractieTaak.getAangemaaktOp() != null
+                ? tekstExtractieTaak.getAangemaaktOp().toString() : null;
+            teGestartOp = tekstExtractieTaak.getVerwerkingGestartOp() != null
+                ? tekstExtractieTaak.getVerwerkingGestartOp().toString() : null;
+            tekstExtractieTaakId = tekstExtractieTaak.getId();
+            foutmelding = tekstExtractieTaak.getFoutmelding();
           }
 
-          var extractieMethode = tekstExtractieTaak.getExtractieMethode() != null
-              ? tekstExtractieTaak.getExtractieMethode().name() : null;
+          // Metadata uit AI-extractie taak
+          var extractieTaak = extractieTaakRepository
+              .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
+              .orElse(null);
 
-          var teAangemaaktOp = tekstExtractieTaak.getAangemaaktOp() != null
-              ? tekstExtractieTaak.getAangemaaktOp().toString() : null;
-          var teGestartOp = tekstExtractieTaak.getVerwerkingGestartOp() != null
-              ? tekstExtractieTaak.getVerwerkingGestartOp().toString() : null;
+          Integer aantalWoorden = null;
+          Integer aantalBezwaren = null;
+          boolean heeftPassages = false;
+          boolean heeftManueel = false;
 
-          return switch (tekstExtractieTaak.getStatus()) {
-            case WACHTEND -> new BezwaarBestand(naam,
-                BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND,
-                null, null, false, false, extractieMethode,
-                teAangemaaktOp, teGestartOp, tekstExtractieTaak.getId(), null);
-            case BEZIG -> new BezwaarBestand(naam,
-                BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG,
-                null, null, false, false, extractieMethode,
-                teAangemaaktOp, teGestartOp, tekstExtractieTaak.getId(), null);
-            case MISLUKT -> new BezwaarBestand(naam,
-                BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT,
-                null, null, false, false, extractieMethode,
-                null, null, null, tekstExtractieTaak.getFoutmelding());
-            case OCR_NIET_BESCHIKBAAR -> new BezwaarBestand(naam,
-                BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR,
-                null, null, false, false, extractieMethode,
-                null, null, null, tekstExtractieTaak.getFoutmelding());
-            case KLAAR -> {
-              // Tekst-extractie klaar: controleer AI-extractie status
-              var laatsteTaak = extractieTaakRepository
-                  .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
-                  .orElse(null);
-              if (laatsteTaak == null) {
-                yield new BezwaarBestand(naam, BezwaarBestandStatus.TODO,
-                    null, null, false, false, extractieMethode);
-              }
-              yield new BezwaarBestand(naam,
-                  vanExtractieTaakStatus(laatsteTaak.getStatus()),
-                  laatsteTaak.getAantalWoorden(),
-                  laatsteTaak.getAantalBezwaren(),
-                  laatsteTaak.isHeeftPassagesDieNietInTekstVoorkomen(),
-                  laatsteTaak.isHeeftManueel(),
-                  extractieMethode);
-            }
-          };
+          if (extractieTaak != null) {
+            aantalWoorden = extractieTaak.getAantalWoorden();
+            aantalBezwaren = extractieTaak.getAantalBezwaren();
+            heeftPassages = extractieTaak.isHeeftPassagesDieNietInTekstVoorkomen();
+            heeftManueel = extractieTaak.isHeeftManueel();
+          }
+
+          return new BezwaarBestand(naam, status, aantalWoorden, aantalBezwaren,
+              heeftPassages, heeftManueel, extractieMethode,
+              teAangemaaktOp, teGestartOp, tekstExtractieTaakId, foutmelding);
         })
         .toList();
   }
@@ -172,6 +181,8 @@ public class ProjectService {
       }
 
       projectPoort.slaBestandOp(projectNaam, bestandsnaam, inhoud);
+      bezwaarBestandRepository.save(
+          new BezwaarBestandEntiteit(projectNaam, bestandsnaam, BezwaarBestandStatus.TODO));
       geupload.add(bestandsnaam);
     }
 
