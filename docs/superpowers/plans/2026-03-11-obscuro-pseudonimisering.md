@@ -8,7 +8,9 @@
 
 **Tech Stack:** Java 21, Spring Boot, `java.net.http.HttpClient` (JDK standaard, synchroon) + OkHttp3 MockWebServer voor testen, Liquibase, Testcontainers, Obscuro Docker image.
 
-**Spec-afwijking:** Spec vermeldt `RestClient`, maar het project draait op Spring Boot 2.7.x (`acd-springboot-parent:2.7.12.0`) waar `RestClient` niet beschikbaar is (geïntroduceerd in Spring Boot 3.2). We gebruiken `java.net.http.HttpClient` — zero-dependency, synchroon, en getest met `MockWebServer` (bestaand patroon in project, zie `WebClientEmbeddingAdapterTest`).
+**Spec-afwijkingen:**
+- **HTTP client:** Spec vermeldt `RestClient`, maar het project draait op Spring Boot 2.7.x (`acd-springboot-parent:2.7.12.0`) waar `RestClient` niet beschikbaar is (geïntroduceerd in Spring Boot 3.2). We gebruiken `java.net.http.HttpClient` — zero-dependency, synchroon, en getest met `MockWebServer` (bestaand patroon in project, zie `WebClientEmbeddingAdapterTest`).
+- **Config properties:** Spec gebruikt `connect-timeout: 30s` / `read-timeout: 120s` (Duration). Plan gebruikt `connect-timeout-ms: 30000` / `read-timeout-ms: 120000` (int milliseconden). Reden: eenvoudiger parsing met `int` — geen Duration-binding nodig.
 
 **Spec:** `docs/superpowers/specs/2026-03-11-obscuro-pseudonimisering-design.md`
 
@@ -831,7 +833,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -850,7 +851,17 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class TekstExtractiePseudonimiseringIntegrationTest
     extends BaseBezwaarschriftenIntegrationTest {
 
-  private static Path testInputDir;
+  // Static initializer: moet vóór @DynamicPropertySource beschikbaar zijn
+  private static final Path testInputDir;
+
+  static {
+    try {
+      testInputDir = Files.createTempDirectory("e2e-pseudonimisering");
+      testInputDir.toFile().deleteOnExit();
+    } catch (IOException e) {
+      throw new RuntimeException("Kan test input directory niet aanmaken", e);
+    }
+  }
 
   @Container
   static final GenericContainer<?> obscuro =
@@ -858,12 +869,6 @@ class TekstExtractiePseudonimiseringIntegrationTest
           .withExposedPorts(8000)
           .waitingFor(Wait.forHttp("/health").forStatusCode(200))
           .withStartupTimeout(Duration.ofMinutes(3));
-
-  @BeforeAll
-  static void setUpTestDir() throws IOException {
-    testInputDir = Files.createTempDirectory("e2e-pseudonimisering");
-    testInputDir.toFile().deleteOnExit();
-  }
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
@@ -962,7 +967,7 @@ class TekstExtractiePseudonimiseringIntegrationTest
 }
 ```
 
-- [ ] **Step 3: Run de E2E test**
+- [ ] **Step 2: Run de E2E test**
 
 ```bash
 mvn verify -pl app -Dtest=TekstExtractiePseudonimiseringIntegrationTest -DfailIfNoTests=false
@@ -970,7 +975,7 @@ mvn verify -pl app -Dtest=TekstExtractiePseudonimiseringIntegrationTest -DfailIf
 
 Verwacht: PASS. De test kan 1-3 minuten duren (Obscuro container opstarten + SpaCy model laden).
 
-- [ ] **Step 4: Fix eventuele issues**
+- [ ] **Step 3: Fix eventuele issues**
 
 De E2E test zal waarschijnlijk aanpassingen nodig hebben voor:
 - De juiste manier om `ProjectPoort.geefBestandsPad()` te laten wijzen naar het temp-directory
@@ -979,7 +984,7 @@ De E2E test zal waarschijnlijk aanpassingen nodig hebben voor:
 
 Pas de test aan totdat hij groen is.
 
-- [ ] **Step 5: Run de volledige test suite**
+- [ ] **Step 4: Run de volledige test suite**
 
 ```bash
 mvn test -pl app
@@ -988,7 +993,7 @@ mvn verify -pl app
 
 Verwacht: alle bestaande tests + nieuwe tests PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add app/src/test/java/be/vlaanderen/omgeving/bezwaarschriften/tekstextractie/TekstExtractiePseudonimiseringIntegrationTest.java
