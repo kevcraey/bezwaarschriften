@@ -47,13 +47,16 @@ class TekstExtractieServiceTest {
   @Mock
   private TekstExtractieNotificatie notificatie;
 
+  @Mock
+  private PseudonimiseringPoort pseudonimiseringPoort;
+
   private TekstExtractieService service;
 
   @BeforeEach
   void setUp() {
     service = new TekstExtractieService(
         repository, pdfExtractor, kwaliteitsControle, projectPoort,
-        bezwaarBestandRepository, notificatie, 2);
+        pseudonimiseringPoort, bezwaarBestandRepository, notificatie, 2);
   }
 
   @Test
@@ -198,6 +201,8 @@ class TekstExtractieServiceTest {
     when(pdfExtractor.extraheer(pad)).thenReturn(
         new TekstExtractieResultaat("Geextraheerde tekst", ExtractieMethode.DIGITAAL,
             "OK"));
+    when(pseudonimiseringPoort.pseudonimiseer("Geextraheerde tekst")).thenReturn(
+        new PseudonimiseringResultaat("Geextraheerde tekst", "stub-mapping-id"));
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
     when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -219,6 +224,8 @@ class TekstExtractieServiceTest {
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.txt")).thenReturn(txtBestand);
     when(kwaliteitsControle.controleer(tekst))
         .thenReturn(TekstKwaliteitsControle.Resultaat.valide());
+    when(pseudonimiseringPoort.pseudonimiseer(tekst)).thenReturn(
+        new PseudonimiseringResultaat(tekst, "stub-mapping-id"));
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
     when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -473,6 +480,66 @@ class TekstExtractieServiceTest {
     assertThat(bestandEntiteit.getStatus())
         .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR);
     verify(bezwaarBestandRepository).save(bestandEntiteit);
+  }
+
+  @Test
+  void verwerkTaak_pseudonimiseertPdfTekstVoorOpslag() throws IOException {
+    var taak = maakTaak(1L, "windmolens", "bezwaar.pdf", TekstExtractieTaakStatus.BEZIG);
+    var pad = Path.of("/tmp/bezwaar.pdf");
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar.pdf")).thenReturn(pad);
+    when(pdfExtractor.extraheer(pad)).thenReturn(
+        new TekstExtractieResultaat("Jan uit Gent", ExtractieMethode.DIGITAAL, "OK"));
+    when(pseudonimiseringPoort.pseudonimiseer("Jan uit Gent")).thenReturn(
+        new PseudonimiseringResultaat("{persoon_1} uit {adres_1}", "mapping-uuid-123"));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.verwerkTaak(taak);
+
+    // Gepseudonimiseerde tekst wordt opgeslagen, niet de originele
+    verify(projectPoort).slaTekstOp("windmolens", "bezwaar.pdf", "{persoon_1} uit {adres_1}");
+    assertThat(taak.getPseudonimiseringMappingId()).isEqualTo("mapping-uuid-123");
+    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
+  }
+
+  @Test
+  void verwerkTaak_pseudonimiseertTxtTekstVoorOpslag(@TempDir Path tempDir) throws IOException {
+    var txtBestand = tempDir.resolve("bezwaar.txt");
+    var tekst = "Maria uit Antwerpen " + "heeft een bezwaar ".repeat(10);
+    Files.writeString(txtBestand, tekst);
+
+    var taak = maakTaak(1L, "windmolens", "bezwaar.txt", TekstExtractieTaakStatus.BEZIG);
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar.txt")).thenReturn(txtBestand);
+    when(kwaliteitsControle.controleer(tekst))
+        .thenReturn(TekstKwaliteitsControle.Resultaat.valide());
+    when(pseudonimiseringPoort.pseudonimiseer(tekst)).thenReturn(
+        new PseudonimiseringResultaat("{persoon_1} uit {adres_1}", "mapping-uuid-456"));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.verwerkTaak(taak);
+
+    verify(projectPoort).slaTekstOp("windmolens", "bezwaar.txt", "{persoon_1} uit {adres_1}");
+    assertThat(taak.getPseudonimiseringMappingId()).isEqualTo("mapping-uuid-456");
+  }
+
+  @Test
+  void verwerkTaak_pseudonimiseringFoutWordtMislukt() throws IOException {
+    var taak = maakTaak(1L, "windmolens", "bezwaar.pdf", TekstExtractieTaakStatus.BEZIG);
+    var pad = Path.of("/tmp/bezwaar.pdf");
+    when(projectPoort.geefBestandsPad("windmolens", "bezwaar.pdf")).thenReturn(pad);
+    when(pdfExtractor.extraheer(pad)).thenReturn(
+        new TekstExtractieResultaat("tekst", ExtractieMethode.DIGITAAL, "OK"));
+    when(pseudonimiseringPoort.pseudonimiseer("tekst"))
+        .thenThrow(new PseudonimiseringException("Obscuro onbereikbaar"));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.verwerkTaak(taak);
+
+    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
+    assertThat(taak.getFoutmelding()).contains("Obscuro onbereikbaar");
+    verify(projectPoort, never()).slaTekstOp(anyString(), anyString(), anyString());
   }
 
   private TekstExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam,

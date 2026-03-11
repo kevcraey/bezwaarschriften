@@ -31,6 +31,7 @@ public class TekstExtractieService {
   private final PdfTekstExtractor pdfExtractor;
   private final TekstKwaliteitsControle kwaliteitsControle;
   private final ProjectPoort projectPoort;
+  private final PseudonimiseringPoort pseudonimiseringPoort;
   private final BezwaarBestandRepository bezwaarBestandRepository;
   private final TekstExtractieNotificatie notificatie;
   private final int maxConcurrent;
@@ -42,6 +43,7 @@ public class TekstExtractieService {
    * @param pdfExtractor extractor voor PDF-bestanden
    * @param kwaliteitsControle kwaliteitscontrole voor geextraheerde tekst
    * @param projectPoort poort voor projectbestanden
+   * @param pseudonimiseringPoort poort voor pseudonimisering van tekst
    * @param bezwaarBestandRepository repository voor bezwaarbestand-entiteiten
    * @param notificatie notificatie-interface voor statuswijzigingen
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
@@ -51,6 +53,7 @@ public class TekstExtractieService {
       PdfTekstExtractor pdfExtractor,
       TekstKwaliteitsControle kwaliteitsControle,
       ProjectPoort projectPoort,
+      PseudonimiseringPoort pseudonimiseringPoort,
       BezwaarBestandRepository bezwaarBestandRepository,
       TekstExtractieNotificatie notificatie,
       @Value("${bezwaarschriften.tekst-extractie.max-concurrent:2}") int maxConcurrent) {
@@ -58,6 +61,7 @@ public class TekstExtractieService {
     this.pdfExtractor = pdfExtractor;
     this.kwaliteitsControle = kwaliteitsControle;
     this.projectPoort = projectPoort;
+    this.pseudonimiseringPoort = pseudonimiseringPoort;
     this.bezwaarBestandRepository = bezwaarBestandRepository;
     this.notificatie = notificatie;
     this.maxConcurrent = maxConcurrent;
@@ -138,9 +142,8 @@ public class TekstExtractieService {
 
       if (bestandsnaam.endsWith(".pdf")) {
         var resultaat = pdfExtractor.extraheer(pad);
-        projectPoort.slaTekstOp(taak.getProjectNaam(), taak.getBestandsnaam(),
-            resultaat.tekst());
-        markeerKlaar(taak.getId(), resultaat.methode());
+        var pseudonimisering = pseudonimiseringPoort.pseudonimiseer(resultaat.tekst());
+        slaOpMetMapping(taak, pseudonimisering, resultaat.methode());
       } else if (bestandsnaam.endsWith(".txt")) {
         var tekst = Files.readString(pad);
         var controle = kwaliteitsControle.controleer(tekst);
@@ -149,12 +152,15 @@ public class TekstExtractieService {
               "Kwaliteitscontrole mislukt: " + controle.reden());
           return;
         }
-        projectPoort.slaTekstOp(taak.getProjectNaam(), taak.getBestandsnaam(), tekst);
-        markeerKlaar(taak.getId(), ExtractieMethode.DIGITAAL);
+        var pseudonimisering = pseudonimiseringPoort.pseudonimiseer(tekst);
+        slaOpMetMapping(taak, pseudonimisering, ExtractieMethode.DIGITAAL);
       } else {
         markeerMislukt(taak.getId(),
             "Niet-ondersteund bestandstype: " + taak.getBestandsnaam());
       }
+    } catch (PseudonimiseringException e) {
+      LOGGER.error("Pseudonimisering mislukt voor taak {}: {}", taak.getId(), e.getMessage(), e);
+      markeerMislukt(taak.getId(), e.getMessage());
     } catch (OcrNietBeschikbaarException e) {
       LOGGER.warn("OCR niet beschikbaar voor taak {}: {}", taak.getId(), e.getMessage());
       markeerOcrNietBeschikbaar(taak.getId(), e.getMessage());
@@ -166,6 +172,15 @@ public class TekstExtractieService {
           taak.getId(), e.getMessage(), e);
       markeerMislukt(taak.getId(), e.getMessage());
     }
+  }
+
+  private void slaOpMetMapping(TekstExtractieTaak taak,
+      PseudonimiseringResultaat pseudonimisering, ExtractieMethode methode) {
+    taak.setPseudonimiseringMappingId(pseudonimisering.mappingId());
+    repository.save(taak);  // flush mappingId naar DB
+    projectPoort.slaTekstOp(taak.getProjectNaam(), taak.getBestandsnaam(),
+        pseudonimisering.gepseudonimiseerdeTekst());
+    markeerKlaar(taak.getId(), methode);
   }
 
   /**
