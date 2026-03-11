@@ -494,7 +494,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             td.style.whiteSpace = 'nowrap';
             if (TEKST_BESCHIKBAAR_STATUSSEN.has(rij.status)) {
               const oogBtn = document.createElement('vl-button');
-              oogBtn.setAttribute('icon', 'eye');
+              oogBtn.setAttribute('icon', 'view-add');
               oogBtn.setAttribute('ghost', '');
               oogBtn.setAttribute('label', 'Geëxtraheerde tekst bekijken');
               oogBtn.addEventListener('click', (e) => {

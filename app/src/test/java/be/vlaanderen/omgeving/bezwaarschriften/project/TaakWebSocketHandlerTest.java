@@ -35,7 +35,7 @@ class TaakWebSocketHandlerTest {
     handler.afterConnectionEstablished(session);
 
     var taak = new ExtractieTaakDto(
-        1L, "windmolens", "bezwaar-001.txt", "bezig",
+        1L, "windmolens", "bezwaar-001.txt", "bezwaar-extractie-bezig",
         1, "2026-02-28T10:00:00Z", "2026-02-28T10:01:00Z",
         null, null, null, false, false);
 
@@ -45,7 +45,7 @@ class TaakWebSocketHandlerTest {
       String payload = ((TextMessage) msg).getPayload();
       return payload.contains("\"type\":\"taak-update\"")
           && payload.contains("\"bestandsnaam\":\"bezwaar-001.txt\"")
-          && payload.contains("\"status\":\"bezig\"");
+          && payload.contains("\"status\":\"bezwaar-extractie-bezig\"");
     }));
   }
 

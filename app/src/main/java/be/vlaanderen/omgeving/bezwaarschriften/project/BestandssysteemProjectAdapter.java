@@ -224,7 +224,8 @@ public final class BestandssysteemProjectAdapter implements ProjectPoort {
       throw new IllegalArgumentException("Ongeldige bestandsnaam: " + bestandsnaam);
     }
     var tekstPad = resolveEnValideerTekstPad(projectNaam);
-    var bestandsPad = tekstPad.resolve(bestandsnaam).normalize();
+    var txtNaam = vervangExtensieDoorTxt(bestandsnaam);
+    var bestandsPad = tekstPad.resolve(txtNaam).normalize();
     if (!bestandsPad.startsWith(tekstPad) || !Files.exists(bestandsPad)) {
       throw new BestandNietGevondenException(bestandsnaam);
     }

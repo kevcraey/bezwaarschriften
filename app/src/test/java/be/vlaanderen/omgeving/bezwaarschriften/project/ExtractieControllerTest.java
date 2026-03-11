@@ -44,9 +44,9 @@ class ExtractieControllerTest {
   void dientExtractieTakenIn() throws Exception {
     when(extractieTaakService.indienen("windmolens", List.of("a.txt", "b.txt")))
         .thenReturn(List.of(
-            new ExtractieTaakDto(1L, "windmolens", "a.txt", "wachtend",
+            new ExtractieTaakDto(1L, "windmolens", "a.txt", "bezwaar-extractie-wachtend",
                 0, "2026-02-28T10:00:00Z", null, null, null, null, false, false),
-            new ExtractieTaakDto(2L, "windmolens", "b.txt", "wachtend",
+            new ExtractieTaakDto(2L, "windmolens", "b.txt", "bezwaar-extractie-wachtend",
                 0, "2026-02-28T10:00:00Z", null, null, null, null, false, false)
         ));
 
@@ -56,16 +56,16 @@ class ExtractieControllerTest {
             .content("{\"bestandsnamen\":[\"a.txt\",\"b.txt\"]}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.taken[0].bestandsnaam").value("a.txt"))
-        .andExpect(jsonPath("$.taken[0].status").value("wachtend"))
+        .andExpect(jsonPath("$.taken[0].status").value("bezwaar-extractie-wachtend"))
         .andExpect(jsonPath("$.taken[1].bestandsnaam").value("b.txt"))
-        .andExpect(jsonPath("$.taken[1].status").value("wachtend"));
+        .andExpect(jsonPath("$.taken[1].status").value("bezwaar-extractie-wachtend"));
   }
 
   @Test
   void geeftExtractieTakenVoorProject() throws Exception {
     when(extractieTaakService.geefTaken("windmolens"))
         .thenReturn(List.of(
-            new ExtractieTaakDto(1L, "windmolens", "bezwaar-001.txt", "klaar",
+            new ExtractieTaakDto(1L, "windmolens", "bezwaar-001.txt", "bezwaar-extractie-klaar",
                 0, "2026-02-28T10:00:00Z", "2026-02-28T10:01:00Z",
                 150, 3, null, false, false)
         ));
@@ -73,7 +73,7 @@ class ExtractieControllerTest {
     mockMvc.perform(get("/api/v1/projects/windmolens/extracties"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.taken[0].bestandsnaam").value("bezwaar-001.txt"))
-        .andExpect(jsonPath("$.taken[0].status").value("klaar"))
+        .andExpect(jsonPath("$.taken[0].status").value("bezwaar-extractie-klaar"))
         .andExpect(jsonPath("$.taken[0].aantalWoorden").value(150))
         .andExpect(jsonPath("$.taken[0].aantalBezwaren").value(3));
   }

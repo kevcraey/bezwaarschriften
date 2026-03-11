@@ -40,10 +40,10 @@ public record ExtractieTaakDto(
 
   private static String statusNaarString(ExtractieTaakStatus status) {
     return switch (status) {
-      case WACHTEND -> "wachtend";
-      case BEZIG -> "bezig";
-      case KLAAR -> "extractie-klaar";
-      case FOUT -> "fout";
+      case WACHTEND -> "bezwaar-extractie-wachtend";
+      case BEZIG -> "bezwaar-extractie-bezig";
+      case KLAAR -> "bezwaar-extractie-klaar";
+      case FOUT -> "bezwaar-extractie-fout";
     };
   }
 }

@@ -425,7 +425,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('vl-button[icon="eye"]')
+        .find('vl-button[icon="view-add"]')
         .should('exist');
   });
 
@@ -440,7 +440,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('vl-button[icon="eye"]')
+        .find('vl-button[icon="view-add"]')
         .should('exist');
   });
 
@@ -455,7 +455,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('vl-button[icon="eye"]')
+        .find('vl-button[icon="view-add"]')
         .should('exist');
   });
 
@@ -470,7 +470,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('vl-button[icon="eye"]')
+        .find('vl-button[icon="view-add"]')
         .should('not.exist');
   });
 
@@ -488,7 +488,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('vl-button[icon="eye"]')
+        .find('vl-button[icon="view-add"]')
         .should('not.exist');
   });
 
@@ -504,7 +504,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
-        .find('vl-button[icon="eye"]')
+        .find('vl-button[icon="view-add"]')
         .click();
 
     cy.get('@toonTekst').should('have.been.calledOnce');
