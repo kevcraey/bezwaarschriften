@@ -1144,7 +1144,26 @@ Voeg toe aan `docs/decisions/tdr-index.md`:
 | TDR-013 | java.net.http.HttpClient voor Obscuro | 2026-03 | JDK standaard HttpClient i.p.v. RestTemplate/WebClient voor synchrone Obscuro calls. |
 ```
 
-- [ ] **Step 5: Commit alle documentatie**
+- [ ] **Step 5: Maak domeinmodel aan**
+
+`docs/architecture/domain-model.md` bestaat nog niet (vereist door `docs/CLAUDE.md`). Maak dit bestand aan met een Mermaid diagram dat het volledige domeinmodel toont.
+
+Scan de codebase voor alle JPA entities en domeinrecords. Teken een `erDiagram` in Mermaid met alle entiteiten en hun relaties. Zorg dat de nieuwe `pseudonimiseringMappingId` op `TekstExtractieTaak` erin staat.
+
+Verwachte entiteiten (controleer volledigheid aan de hand van de codebase):
+- `TekstExtractieTaak` (met nieuw veld `pseudonimiseringMappingId`)
+- `IndividueelBezwaar` / `GeextraheerdBezwaar`
+- `KernbezwaarEntiteit` + `KernbezwaarReferentieEntiteit`
+- `KernbezwaarAntwoord`
+- `ExtractieTaak`
+- `BezwaarBestandEntiteit`
+- `ClusteringTaak`
+- `ConsolidatieTaak`
+- Eventuele andere entities
+
+Houd het diagram lean: entiteiten + relaties + key fields. Geen volledige kolom-lijsten.
+
+- [ ] **Step 6: Commit alle documentatie**
 
 ```bash
 git add docs/c4-c1-systeemcontext.md \
@@ -1152,6 +1171,7 @@ git add docs/c4-c1-systeemcontext.md \
        docs/decisions/adr-index.md \
        docs/decisions/records/ADR-008.md \
        docs/decisions/tdr-index.md \
-       docs/decisions/records/TDR-013.md
+       docs/decisions/records/TDR-013.md \
+       docs/architecture/domain-model.md
 git commit -m "docs: documentatie bijwerken voor Obscuro pseudonimisering"
 ```
