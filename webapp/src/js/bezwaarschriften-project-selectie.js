@@ -9,6 +9,7 @@ import {vlGlobalStyles, vlGridStyles, vlGroupStyles} from '@domg-wc/styles';
 import './bezwaarschriften-bezwaren-tabel.js';
 import './bezwaarschriften-kernbezwaren.js';
 import './bezwaarschriften-resultaten-tabel.js';
+import './bezwaarschriften-tekst-panel.js';
 
 registerWebComponents([VlButtonComponent, VlTabsComponent, VlTabsPaneComponent, VlUploadComponent, VlModalComponent, VlToasterComponent]);
 
@@ -39,6 +40,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         ${vlGlobalStyles}
         ${vlGridStyles}
         ${vlGroupStyles}
+        #tabs-sectie {
+          transition: margin-left 0.3s ease;
+        }
       </style>
       <div id="tabs-sectie">
         <vl-tabs observe-title active-tab="documenten" disable-links>
@@ -90,6 +94,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
           <vl-button id="upload-verzend-knop">Uploaden</vl-button>
         </div>
       </vl-modal>
+      <bezwaarschriften-tekst-panel id="tekst-panel"></bezwaarschriften-tekst-panel>
       <vl-toaster id="toaster"></vl-toaster>
     `);
     this.__bezwaren = [];
@@ -266,6 +271,28 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
       if (tabel && this.__geselecteerdProject) {
         tabel.toonExtractieDetails(this.__geselecteerdProject, bestandsnaam);
+      }
+    });
+
+    this.shadowRoot.addEventListener('toon-geextraheerde-tekst', (e) => {
+      const {projectNaam, bestandsnaam} = e.detail;
+      const panel = this.shadowRoot.querySelector('#tekst-panel');
+      if (panel) {
+        panel.open(projectNaam, bestandsnaam);
+      }
+    });
+
+    this.shadowRoot.addEventListener('tekst-panel-geopend', () => {
+      const tabsSectie = this.shadowRoot.querySelector('#tabs-sectie');
+      if (tabsSectie) {
+        tabsSectie.style.marginLeft = '33.3%';
+      }
+    });
+
+    this.shadowRoot.addEventListener('tekst-panel-gesloten', () => {
+      const tabsSectie = this.shadowRoot.querySelector('#tabs-sectie');
+      if (tabsSectie) {
+        tabsSectie.style.marginLeft = '';
       }
     });
 
