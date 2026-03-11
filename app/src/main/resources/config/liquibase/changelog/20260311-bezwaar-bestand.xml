@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <changeSet id="20260311-1" author="bezwaarschriften">
+    <createTable tableName="bezwaar_bestand">
+      <column name="id" type="bigserial" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="project_naam" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="bestandsnaam" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="status" type="varchar(100)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addUniqueConstraint tableName="bezwaar_bestand"
+        columnNames="project_naam, bestandsnaam"
+        constraintName="uq_bezwaar_bestand_project_bestand"/>
+  </changeSet>
+
+</databaseChangeLog>
