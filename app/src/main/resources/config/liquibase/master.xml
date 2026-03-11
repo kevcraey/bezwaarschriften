@@ -23,5 +23,6 @@
   <include file="config/liquibase/changelog/20260306-passage-deduplicatie.xml"/>
   <include file="config/liquibase/changelog/20260308-tekst-extractie-taak.xml"/>
   <include file="config/liquibase/changelog/20260311-bezwaar-bestand.xml"/>
+  <include file="config/liquibase/changelog/20260311-pseudonimisering-mapping.xml"/>
 
 </databaseChangeLog>
