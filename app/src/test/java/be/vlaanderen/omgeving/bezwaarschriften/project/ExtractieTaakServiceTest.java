@@ -245,7 +245,7 @@ class ExtractieTaakServiceTest {
     when(repository.findByProjectNaamAndStatus("windmolens", ExtractieTaakStatus.FOUT))
         .thenReturn(List.of(taak1));
     when(projectService.geefBezwaren("windmolens"))
-        .thenReturn(List.of(new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.FOUT)));
+        .thenReturn(List.of(new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.BEZWAAR_EXTRACTIE_FOUT)));
 
     int aantal = service.verwerkOnafgeronde("windmolens");
 
@@ -284,7 +284,7 @@ class ExtractieTaakServiceTest {
     when(projectService.geefBezwaren("windmolens"))
         .thenReturn(List.of(
             new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR),
-            new BezwaarBestand("klaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR),
+            new BezwaarBestand("klaar-001.txt", BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR),
             new BezwaarBestand("foto.jpg", BezwaarBestandStatus.NIET_ONDERSTEUND)
         ));
     when(repository.save(any())).thenAnswer(i -> {
@@ -331,7 +331,7 @@ class ExtractieTaakServiceTest {
         .thenReturn(List.of(foutTaak));
     when(projectService.geefBezwaren("windmolens"))
         .thenReturn(List.of(
-            new BezwaarBestand("fout-001.txt", BezwaarBestandStatus.FOUT),
+            new BezwaarBestand("fout-001.txt", BezwaarBestandStatus.BEZWAAR_EXTRACTIE_FOUT),
             new BezwaarBestand("nieuw-001.txt", BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR)
         ));
     when(repository.save(any())).thenAnswer(i -> {
@@ -353,7 +353,7 @@ class ExtractieTaakServiceTest {
         .thenReturn(List.of());
     when(projectService.geefBezwaren("windmolens"))
         .thenReturn(List.of(
-            new BezwaarBestand("klaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR)
+            new BezwaarBestand("klaar-001.txt", BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR)
         ));
 
     int aantal = service.verwerkOnafgeronde("windmolens");

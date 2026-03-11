@@ -194,10 +194,10 @@ public class ProjectController {
       case TEKST_EXTRACTIE_KLAAR -> "tekst-extractie-klaar";
       case TEKST_EXTRACTIE_MISLUKT -> "tekst-extractie-mislukt";
       case TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR -> "tekst-extractie-ocr-niet-beschikbaar";
-      case WACHTEND -> "wachtend";
-      case BEZIG -> "bezig";
-      case EXTRACTIE_KLAAR -> "extractie-klaar";
-      case FOUT -> "fout";
+      case BEZWAAR_EXTRACTIE_WACHTEND -> "bezwaar-extractie-wachtend";
+      case BEZWAAR_EXTRACTIE_BEZIG -> "bezwaar-extractie-bezig";
+      case BEZWAAR_EXTRACTIE_KLAAR -> "bezwaar-extractie-klaar";
+      case BEZWAAR_EXTRACTIE_FOUT -> "bezwaar-extractie-fout";
       case NIET_ONDERSTEUND -> "niet ondersteund";
     };
   }

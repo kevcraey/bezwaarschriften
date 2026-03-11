@@ -197,7 +197,7 @@ class ProjectServiceTest {
     var bezwaren = service.geefBezwaren("windmolens");
 
     assertThat(bezwaren).hasSize(1);
-    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.EXTRACTIE_KLAAR);
+    assertThat(bezwaren.get(0).status()).isEqualTo(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR);
     assertThat(bezwaren.get(0).aantalWoorden()).isEqualTo(150);
     assertThat(bezwaren.get(0).aantalBezwaren()).isEqualTo(3);
     assertThat(bezwaren.get(0).extractieMethode()).isEqualTo("DIGITAAL");

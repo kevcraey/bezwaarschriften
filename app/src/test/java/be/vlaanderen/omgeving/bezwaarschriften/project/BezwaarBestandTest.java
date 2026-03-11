@@ -17,7 +17,7 @@ class BezwaarBestandTest {
 
   @Test
   void maaktRecordAanMetAantalWoordenEnAantalBezwaren() {
-    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR,
+    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR,
         42, 3, false, false, "DIGITAAL");
 
     assertThat(bestand.aantalWoorden()).isEqualTo(42);
@@ -40,7 +40,7 @@ class BezwaarBestandTest {
 
   @Test
   void maaktRecordAanMetHeeftPassagesDieNietInTekstVoorkomen() {
-    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.EXTRACTIE_KLAAR,
+    var bestand = new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR,
         42, 3, true, false, "OCR");
 
     assertThat(bestand.heeftPassagesDieNietInTekstVoorkomen()).isTrue();

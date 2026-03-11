@@ -19,10 +19,10 @@ class BezwaarBestandStatusTest {
     assertThat(BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR).isNotNull();
     assertThat(BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT).isNotNull();
     assertThat(BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR).isNotNull();
-    assertThat(BezwaarBestandStatus.WACHTEND).isNotNull();
-    assertThat(BezwaarBestandStatus.BEZIG).isNotNull();
-    assertThat(BezwaarBestandStatus.EXTRACTIE_KLAAR).isNotNull();
-    assertThat(BezwaarBestandStatus.FOUT).isNotNull();
+    assertThat(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND).isNotNull();
+    assertThat(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_BEZIG).isNotNull();
+    assertThat(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR).isNotNull();
+    assertThat(BezwaarBestandStatus.BEZWAAR_EXTRACTIE_FOUT).isNotNull();
     assertThat(BezwaarBestandStatus.NIET_ONDERSTEUND).isNotNull();
   }
 }

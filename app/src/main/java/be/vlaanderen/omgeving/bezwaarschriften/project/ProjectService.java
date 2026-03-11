@@ -241,10 +241,10 @@ public class ProjectService {
 
   private BezwaarBestandStatus vanExtractieTaakStatus(ExtractieTaakStatus status) {
     return switch (status) {
-      case WACHTEND -> BezwaarBestandStatus.WACHTEND;
-      case BEZIG -> BezwaarBestandStatus.BEZIG;
-      case KLAAR -> BezwaarBestandStatus.EXTRACTIE_KLAAR;
-      case FOUT -> BezwaarBestandStatus.FOUT;
+      case WACHTEND -> BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND;
+      case BEZIG -> BezwaarBestandStatus.BEZWAAR_EXTRACTIE_BEZIG;
+      case KLAAR -> BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR;
+      case FOUT -> BezwaarBestandStatus.BEZWAAR_EXTRACTIE_FOUT;
     };
   }
 
