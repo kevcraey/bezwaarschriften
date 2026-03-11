@@ -40,6 +40,11 @@ bezwaarschriften:
     folder: input
   ocr:
     tessdata-path: /opt/homebrew/share/tessdata
+  pseudonimisering:
+    url: http://localhost:8000
+    ttl-seconds: 31536000
+    connect-timeout-ms: 30000
+    read-timeout-ms: 120000
 
 management:
   endpoint:
