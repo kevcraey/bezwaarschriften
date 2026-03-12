@@ -67,8 +67,22 @@ npm install                             # dependencies
 npm run build                           # lint + webpack
 npm run start                           # dev server op :9000
 npm test                                # Cypress component tests
+npm run test:e2e                        # Cypress E2E tests
 npm run format:fix                      # eslint auto-fix
 ```
+
+### E2E tests (`webapp/`)
+
+Vereisten: Spring Boot draaiend op :8080, Docker (PostgreSQL + Obscuro), mock Ollama.
+
+```bash
+docker compose up -d                                        # PostgreSQL + Obscuro
+node webapp/test/e2e/mock-ollama.js &                       # mock Ollama (port 11434)
+mvn spring-boot:run -pl app -Dspring.profiles.active=dev,e2e -Denforcer.skip=true -Dcheckstyle.skip=true  # backend met e2e profiel
+cd webapp && npm run test:e2e                               # E2E tests draaien
+```
+
+Het `e2e` profiel (`application-e2e.yml`) verlaagt clustering-drempels en wijst testdata naar `webapp/test/e2e/testdata/`.
 
 **Na `npm run build`:** ook `mvn process-resources -pl webapp -Denforcer.skip=true` draaien zodat `target/classes` bijwerkt (Spring Boot serveert daaruit).
 
@@ -95,7 +109,7 @@ richtlijnen/      # codestijl + architectuurrichtlijnen (ALTIJD eerst lezen!)
 Vereisten: Docker, Java 21, Node.js, Maven.
 
 ```bash
-docker compose up -d    # PostgreSQL + pgvector
+docker compose up -d    # PostgreSQL + pgvector + Obscuro
 ```
 
 Dev-gebruikers (via `cumuli.security.enable.mock=true`):
