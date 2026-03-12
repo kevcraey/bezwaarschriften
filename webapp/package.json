@@ -14,7 +14,10 @@
     "format:fix": "npm run format:source:fix",
     "format:source:fix": "eslint src --ext .js --ext .html -c .eslintrc.json --fix",
     "test": "cypress run --component",
-    "test:open": "cypress open --component"
+    "test:open": "cypress open --component",
+    "test:e2e": "cypress run --e2e",
+    "test:e2e:open": "cypress open --e2e",
+    "mock-ollama": "node test/e2e/mock-ollama.js"
   },
   "keywords": [
     "bezwaarschriften"

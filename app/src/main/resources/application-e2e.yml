@@ -1,0 +1,7 @@
+# E2E test profiel: lagere clustering-drempels zodat clustering werkt met weinig bezwaren.
+# Gebruik samen met dev-profiel: -Dspring.profiles.active=dev,e2e
+bezwaarschriften:
+  clustering:
+    min-cluster-size: 2
+    min-samples: 1
+    cluster-selection-epsilon: 0.3
