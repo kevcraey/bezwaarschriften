@@ -3,6 +3,9 @@ package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /** Repository voor tekst-extractie taken. */
 public interface TekstExtractieTaakRepository extends JpaRepository<TekstExtractieTaak, Long> {
@@ -19,9 +22,23 @@ public interface TekstExtractieTaakRepository extends JpaRepository<TekstExtract
   List<TekstExtractieTaak> findByProjectNaamAndStatus(
       String projectNaam, TekstExtractieTaakStatus status);
 
-  void deleteByProjectNaam(String projectNaam);
+  @Modifying
+  @Query("DELETE FROM TekstExtractieTaak t WHERE t.projectNaam = :projectNaam")
+  void deleteByProjectNaam(@Param("projectNaam") String projectNaam);
 
-  void deleteByProjectNaamAndBestandsnaam(String projectNaam, String bestandsnaam);
+  @Modifying
+  @Query("DELETE FROM TekstExtractieTaak t "
+      + "WHERE t.projectNaam = :projectNaam "
+      + "AND t.bestandsnaam = :bestandsnaam")
+  void deleteByProjectNaamAndBestandsnaam(
+      @Param("projectNaam") String projectNaam,
+      @Param("bestandsnaam") String bestandsnaam);
 
-  void deleteByProjectNaamAndBestandsnaamIn(String projectNaam, List<String> bestandsnamen);
+  @Modifying
+  @Query("DELETE FROM TekstExtractieTaak t "
+      + "WHERE t.projectNaam = :projectNaam "
+      + "AND t.bestandsnaam IN :bestandsnamen")
+  void deleteByProjectNaamAndBestandsnaamIn(
+      @Param("projectNaam") String projectNaam,
+      @Param("bestandsnamen") List<String> bestandsnamen);
 }
