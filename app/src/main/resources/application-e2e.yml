@@ -1,6 +1,8 @@
 # E2E test profiel: lagere clustering-drempels zodat clustering werkt met weinig bezwaren.
 # Gebruik samen met dev-profiel: -Dspring.profiles.active=dev,e2e
 bezwaarschriften:
+  testdata:
+    pad: webapp/test/e2e/testdata
   clustering:
     min-cluster-size: 2
     min-samples: 1

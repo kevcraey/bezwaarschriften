@@ -1,0 +1,64 @@
+{
+  "passages": [
+    {
+      "id": 1,
+      "tekst": "Het stikstofdecreet legt onevenredige beperkingen op aan landbouwbedrijven zonder voldoende compensatie."
+    },
+    {
+      "id": 2,
+      "tekst": "De socio-economische impact op gezinsbedrijven is onvoldoende onderzocht."
+    },
+    {
+      "id": 3,
+      "tekst": "De emissiereductiedoelstellingen zijn niet haalbaar binnen het gestelde tijdskader."
+    },
+    {
+      "id": 4,
+      "tekst": "Er wordt onvoldoende ingezet op innovatieve oplossingen als alternatief voor bedrijfssluitingen."
+    },
+    {
+      "id": 5,
+      "tekst": "De vergunningszekerheid van bestaande bedrijven wordt ondermijnd."
+    },
+    {
+      "id": 6,
+      "tekst": "Het decreet houdt onvoldoende rekening met de cumulatieve effecten van reeds genomen maatregelen."
+    }
+  ],
+  "bezwaren": [
+    {
+      "passageId": 1,
+      "samenvatting": "Onevenredige beperkingen zonder compensatie",
+      "categorie": "Proportionaliteit"
+    },
+    {
+      "passageId": 2,
+      "samenvatting": "Onvoldoende socio-economische impactanalyse",
+      "categorie": "Onderbouwing"
+    },
+    {
+      "passageId": 3,
+      "samenvatting": "Onhaalbare emissiereductiedoelstellingen",
+      "categorie": "Haalbaarheid"
+    },
+    {
+      "passageId": 4,
+      "samenvatting": "Te weinig innovatie als alternatief",
+      "categorie": "Alternatieven"
+    },
+    {
+      "passageId": 5,
+      "samenvatting": "Ondermijning vergunningszekerheid",
+      "categorie": "Rechtszekerheid"
+    },
+    {
+      "passageId": 6,
+      "samenvatting": "Geen rekening met cumulatieve effecten",
+      "categorie": "Onderbouwing"
+    }
+  ],
+  "metadata": {
+    "aantalWoorden": 150,
+    "documentSamenvatting": "Bezwaar tegen het stikstofdecreet wegens onevenredige impact op landbouwbedrijven."
+  }
+}
