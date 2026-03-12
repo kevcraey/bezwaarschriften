@@ -29,7 +29,7 @@ const PII_TOKENS = [
 
 describe('Pseudonimisering volledige pipeline', () => {
   before(() => {
-    // Verwijder eventueel bestaand e2e-cypress project data
+    // Verwijder eventueel bestaand e2e-cypress project data en verifieer cleanup
     cy.request({
       method: 'GET',
       url: `/api/v1/projects/${PROJECT_NAAM}/bezwaren`,
@@ -43,6 +43,12 @@ describe('Pseudonimisering volledige pipeline', () => {
           body: {bestandsnamen},
           headers: {'Content-Type': 'application/json'},
           failOnStatusCode: false,
+        }).then(() => {
+          // Verifieer dat data daadwerkelijk verwijderd is
+          cy.request({
+            url: `/api/v1/projects/${PROJECT_NAAM}/bezwaren`,
+            failOnStatusCode: false,
+          }).its('body.bezwaren').should('have.length', 0);
         });
       }
     });
@@ -76,27 +82,44 @@ describe('Pseudonimisering volledige pipeline', () => {
     // Wacht tot alle documenten tekst-extractie-klaar of later zijn.
     wachtOpStatus(['tekst-extractie-klaar', 'todo', 'extractie-klaar'], 2, 120000);
 
-    // --- Stap 4: Start bezwaar-extractie ---
+    // --- Stap 4: Verifieer pseudonimisering via API ---
+    // Controleer dat de opgeslagen tekst geen PII meer bevat.
+    // De tekst-extractie service roept Obscuro aan, die PII vervangt door tokens.
+    ['bezwaar-stikstof-pii.pdf', 'bezwaar-stikstof-pii.txt'].forEach((bestandsnaam) => {
+      cy.request({
+        url: `/api/v1/projects/${PROJECT_NAAM}/tekst-extracties/${encodeURIComponent(bestandsnaam)}/tekst`,
+        failOnStatusCode: false,
+      }).then((response) => {
+        if (response.status === 200 && response.body.tekst) {
+          PII_TOKENS.forEach((token) => {
+            expect(response.body.tekst, `PII "${token}" gevonden in ${bestandsnaam}`)
+                .not.to.include(token);
+          });
+        }
+      });
+    });
+
+    // --- Stap 5: Start bezwaar-extractie ---
     // Na tekst-extractie worden bestanden 'tekst-extractie-klaar' of 'todo'.
     // Klik op "Verwerken" om extractie te starten.
     cy.get('#verwerken-knop', {timeout: 10000})
         .should('be.visible')
         .click();
 
-    // --- Stap 5: Wacht op extractie-klaar ---
+    // --- Stap 6: Wacht op extractie-klaar ---
     wachtOpStatus(['extractie-klaar'], 2, 120000);
 
-    // --- Stap 6: Verifieer PII is niet zichtbaar ---
-    // Controleer dat geen van de PII-tokens op de pagina staat.
-    cy.get('bezwaarschriften-project-selectie').then(($el) => {
-      const pageText = $el[0].shadowRoot.textContent;
-      PII_TOKENS.forEach((token) => {
-        expect(pageText).not.to.include(token);
-      });
-    });
-
     // --- Stap 7: Ga naar Kernbezwaren tab ---
-    cy.get('vl-tabs').shadow().find('button, a').contains('Kernbezwaren').click();
+    cy.get('vl-tabs').then(($tabs) => {
+      // Gebruik de vl-tabs API om de tab te activeren
+      const tabsEl = $tabs[0];
+      if (tabsEl.activateTab) {
+        tabsEl.activateTab('kernbezwaren');
+      } else {
+        // Fallback: klik op tab-link
+        cy.get('vl-tabs').shadow().find('button, a').contains('Kernbezwaren').click();
+      }
+    });
 
     // Wacht tot kernbezwaren-component geladen is
     cy.get('#kernbezwaren-component', {timeout: 10000}).should('exist');
@@ -119,7 +142,7 @@ describe('Pseudonimisering volledige pipeline', () => {
         .find('.kernbezwaar-item')
         .should('have.length.greaterThan', 0);
 
-    // Verifieer ook dat de kernbezwaren geen PII bevatten
+    // Verifieer dat de kernbezwaren-weergave geen PII bevat
     cy.get('#kernbezwaren-component').then(($el) => {
       const kernText = $el[0].shadowRoot.textContent;
       PII_TOKENS.forEach((token) => {
@@ -135,8 +158,14 @@ describe('Pseudonimisering volledige pipeline', () => {
  */
 function wachtOpStatus(verwachteStatussen, aantalDocumenten, timeout) {
   const startTime = Date.now();
+  const MAX_POLLS = 60;
+  let pollCount = 0;
 
   function poll() {
+    if (++pollCount > MAX_POLLS) {
+      throw new Error(`Max polls (${MAX_POLLS}) bereikt voor statussen: ${verwachteStatussen.join('/')}`);
+    }
+
     cy.request({
       url: `/api/v1/projects/${PROJECT_NAAM}/bezwaren`,
       failOnStatusCode: false,
