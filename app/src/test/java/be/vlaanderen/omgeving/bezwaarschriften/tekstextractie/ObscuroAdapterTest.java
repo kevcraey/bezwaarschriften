@@ -80,4 +80,17 @@ class ObscuroAdapterTest {
     assertThatThrownBy(() -> adapter.pseudonimiseer("test tekst"))
         .isInstanceOf(PseudonimiseringException.class);
   }
+
+  @Test
+  void gooitDuidelijkeFoutmeldingBijTekstTeLang() {
+    mockServer.enqueue(
+        new MockResponse()
+            .setResponseCode(422)
+            .setBody("{\"detail\":[{\"msg\":\"Tekst bevat maximaal 100000 tekens\"}]}")
+            .addHeader("Content-Type", "application/json"));
+
+    assertThatThrownBy(() -> adapter.pseudonimiseer("test tekst"))
+        .isInstanceOf(PseudonimiseringException.class)
+        .hasMessageContaining("Tekst te lang voor pseudonimisering");
+  }
 }

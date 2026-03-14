@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,13 +51,20 @@ class TekstExtractieServiceTest {
   @Mock
   private PseudonimiseringPoort pseudonimiseringPoort;
 
+  @Mock
+  private PseudonimiseringChunker chunker;
+
+  @Mock
+  private PseudonimiseringChunkRepository chunkRepository;
+
   private TekstExtractieService service;
 
   @BeforeEach
   void setUp() {
     service = new TekstExtractieService(
         repository, pdfExtractor, kwaliteitsControle, projectPoort,
-        pseudonimiseringPoort, bezwaarBestandRepository, notificatie, 2);
+        pseudonimiseringPoort, bezwaarBestandRepository, notificatie,
+        chunker, chunkRepository, 2);
   }
 
   @Test
@@ -201,6 +209,7 @@ class TekstExtractieServiceTest {
     when(pdfExtractor.extraheer(pad)).thenReturn(
         new TekstExtractieResultaat("Geextraheerde tekst", ExtractieMethode.DIGITAAL,
             "OK"));
+    when(chunker.chunk("Geextraheerde tekst")).thenReturn(List.of("Geextraheerde tekst"));
     when(pseudonimiseringPoort.pseudonimiseer("Geextraheerde tekst")).thenReturn(
         new PseudonimiseringResultaat("Geextraheerde tekst", "stub-mapping-id"));
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
@@ -224,6 +233,7 @@ class TekstExtractieServiceTest {
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.txt")).thenReturn(txtBestand);
     when(kwaliteitsControle.controleer(tekst))
         .thenReturn(TekstKwaliteitsControle.Resultaat.valide());
+    when(chunker.chunk(tekst)).thenReturn(List.of(tekst));
     when(pseudonimiseringPoort.pseudonimiseer(tekst)).thenReturn(
         new PseudonimiseringResultaat(tekst, "stub-mapping-id"));
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
@@ -489,6 +499,7 @@ class TekstExtractieServiceTest {
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad)).thenReturn(
         new TekstExtractieResultaat("Jan uit Gent", ExtractieMethode.DIGITAAL, "OK"));
+    when(chunker.chunk("Jan uit Gent")).thenReturn(List.of("Jan uit Gent"));
     when(pseudonimiseringPoort.pseudonimiseer("Jan uit Gent")).thenReturn(
         new PseudonimiseringResultaat("{persoon_1} uit {adres_1}", "mapping-uuid-123"));
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
@@ -498,7 +509,7 @@ class TekstExtractieServiceTest {
 
     // Gepseudonimiseerde tekst wordt opgeslagen, niet de originele
     verify(projectPoort).slaTekstOp("windmolens", "bezwaar.pdf", "{persoon_1} uit {adres_1}");
-    assertThat(taak.getPseudonimiseringMappingId()).isEqualTo("mapping-uuid-123");
+    verify(chunkRepository).save(any(PseudonimiseringChunk.class));
     assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
   }
 
@@ -512,6 +523,7 @@ class TekstExtractieServiceTest {
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.txt")).thenReturn(txtBestand);
     when(kwaliteitsControle.controleer(tekst))
         .thenReturn(TekstKwaliteitsControle.Resultaat.valide());
+    when(chunker.chunk(tekst)).thenReturn(List.of(tekst));
     when(pseudonimiseringPoort.pseudonimiseer(tekst)).thenReturn(
         new PseudonimiseringResultaat("{persoon_1} uit {adres_1}", "mapping-uuid-456"));
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
@@ -520,7 +532,7 @@ class TekstExtractieServiceTest {
     service.verwerkTaak(taak);
 
     verify(projectPoort).slaTekstOp("windmolens", "bezwaar.txt", "{persoon_1} uit {adres_1}");
-    assertThat(taak.getPseudonimiseringMappingId()).isEqualTo("mapping-uuid-456");
+    verify(chunkRepository).save(any(PseudonimiseringChunk.class));
   }
 
   @Test
@@ -530,6 +542,7 @@ class TekstExtractieServiceTest {
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad)).thenReturn(
         new TekstExtractieResultaat("tekst", ExtractieMethode.DIGITAAL, "OK"));
+    when(chunker.chunk("tekst")).thenReturn(List.of("tekst"));
     when(pseudonimiseringPoort.pseudonimiseer("tekst"))
         .thenThrow(new PseudonimiseringException("Obscuro onbereikbaar"));
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
@@ -539,6 +552,57 @@ class TekstExtractieServiceTest {
 
     assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
     assertThat(taak.getFoutmelding()).contains("Obscuro onbereikbaar");
+    verify(projectPoort, never()).slaTekstOp(anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void verwerkTaak_multiChunkSlaatMeerdereChunksOp() throws IOException {
+    var taak = maakTaak(1L, "windmolens", "groot.pdf", TekstExtractieTaakStatus.BEZIG);
+    var pad = Path.of("/tmp/groot.pdf");
+    when(projectPoort.geefBestandsPad("windmolens", "groot.pdf")).thenReturn(pad);
+    when(pdfExtractor.extraheer(pad)).thenReturn(
+        new TekstExtractieResultaat("deel1\n\ndeel2\n\ndeel3", ExtractieMethode.DIGITAAL, "OK"));
+    when(chunker.chunk("deel1\n\ndeel2\n\ndeel3"))
+        .thenReturn(List.of("deel1", "deel2", "deel3"));
+    when(pseudonimiseringPoort.pseudonimiseer("deel1")).thenReturn(
+        new PseudonimiseringResultaat("{p1}", "map-0"));
+    when(pseudonimiseringPoort.pseudonimiseer("deel2")).thenReturn(
+        new PseudonimiseringResultaat("{p2}", "map-1"));
+    when(pseudonimiseringPoort.pseudonimiseer("deel3")).thenReturn(
+        new PseudonimiseringResultaat("{p3}", "map-2"));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.verwerkTaak(taak);
+
+    // Chunks worden samengevoegd met dubbele newline
+    verify(projectPoort).slaTekstOp("windmolens", "groot.pdf", "{p1}\n\n{p2}\n\n{p3}");
+    // Eerdere chunks worden opgeruimd
+    verify(chunkRepository).deleteByTaakId(1L);
+    // 3 chunks opgeslagen
+    verify(chunkRepository, times(3)).save(any(PseudonimiseringChunk.class));
+    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
+  }
+
+  @Test
+  void verwerkTaak_partieleChunkFoutRolltTerug() throws IOException {
+    var taak = maakTaak(1L, "windmolens", "groot.pdf", TekstExtractieTaakStatus.BEZIG);
+    var pad = Path.of("/tmp/groot.pdf");
+    when(projectPoort.geefBestandsPad("windmolens", "groot.pdf")).thenReturn(pad);
+    when(pdfExtractor.extraheer(pad)).thenReturn(
+        new TekstExtractieResultaat("deel1\n\ndeel2", ExtractieMethode.DIGITAAL, "OK"));
+    when(chunker.chunk("deel1\n\ndeel2")).thenReturn(List.of("deel1", "deel2"));
+    when(pseudonimiseringPoort.pseudonimiseer("deel1")).thenReturn(
+        new PseudonimiseringResultaat("{p1}", "map-0"));
+    when(pseudonimiseringPoort.pseudonimiseer("deel2"))
+        .thenThrow(new PseudonimiseringException("Timeout bij chunk 2"));
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.verwerkTaak(taak);
+
+    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
+    assertThat(taak.getFoutmelding()).contains("Timeout bij chunk 2");
     verify(projectPoort, never()).slaTekstOp(anyString(), anyString(), anyString());
   }
 
