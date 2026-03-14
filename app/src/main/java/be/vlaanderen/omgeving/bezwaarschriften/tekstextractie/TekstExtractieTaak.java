@@ -46,9 +46,6 @@ public class TekstExtractieTaak {
   @Column(name = "afgerond_op")
   private Instant afgerondOp;
 
-  @Column(name = "pseudonimisering_mapping_id")
-  private String pseudonimiseringMappingId;
-
   @Version
   @Column(name = "versie", nullable = false)
   private int versie;
@@ -133,11 +130,4 @@ public class TekstExtractieTaak {
     this.versie = versie;
   }
 
-  public String getPseudonimiseringMappingId() {
-    return pseudonimiseringMappingId;
-  }
-
-  public void setPseudonimiseringMappingId(String pseudonimiseringMappingId) {
-    this.pseudonimiseringMappingId = pseudonimiseringMappingId;
-  }
 }
