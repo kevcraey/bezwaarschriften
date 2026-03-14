@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <!-- Nieuwe tabel voor chunk-gebaseerde pseudonimisering mapping -->
+  <changeSet id="20260314-1" author="bezwaarschriften">
+    <createTable tableName="pseudonimisering_chunk">
+      <column name="id" type="bigint" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="taak_id" type="bigint">
+        <constraints nullable="false"
+                     foreignKeyName="fk_pseudonimisering_chunk_taak"
+                     references="tekst_extractie_taak(id)"
+                     deleteCascade="true"/>
+      </column>
+      <column name="volgnummer" type="int">
+        <constraints nullable="false"/>
+      </column>
+      <column name="mapping_id" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addUniqueConstraint tableName="pseudonimisering_chunk"
+                         columnNames="taak_id, volgnummer"
+                         constraintName="uq_pseudonimisering_chunk_taak_volgnummer"/>
+  </changeSet>
+
+  <!-- Migreer bestaande mapping_id's naar de chunk-tabel -->
+  <changeSet id="20260314-2" author="bezwaarschriften">
+    <sql>
+      INSERT INTO pseudonimisering_chunk (taak_id, volgnummer, mapping_id)
+      SELECT id, 0, pseudonimisering_mapping_id
+      FROM tekst_extractie_taak
+      WHERE pseudonimisering_mapping_id IS NOT NULL
+    </sql>
+  </changeSet>
+
+  <!-- Verwijder het oude veld van tekst_extractie_taak -->
+  <changeSet id="20260314-3" author="bezwaarschriften">
+    <dropColumn tableName="tekst_extractie_taak" columnName="pseudonimisering_mapping_id"/>
+  </changeSet>
+
+</databaseChangeLog>
