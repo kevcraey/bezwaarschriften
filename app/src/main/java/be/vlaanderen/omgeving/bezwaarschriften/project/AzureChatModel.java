@@ -7,7 +7,11 @@ import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatRequestSystemMessage;
 import com.azure.ai.openai.models.ChatRequestUserMessage;
 import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.http.policy.HttpLogDetailLevel;
+import com.azure.core.http.policy.HttpLogOptions;
+import com.azure.core.util.HttpClientOptions;
 import java.lang.invoke.MethodHandles;
+import java.time.Duration;
 import java.util.List;
 import java.util.function.BiFunction;
 import org.slf4j.Logger;
@@ -55,9 +59,13 @@ public class AzureChatModel implements ChatModelPoort {
   }
 
   private static OpenAIClient buildClient(String endpoint, String apiKey) {
+    var httpClientOptions = new HttpClientOptions()
+        .setResponseTimeout(Duration.ofMinutes(5))
+        .setReadTimeout(Duration.ofMinutes(5));
     return new OpenAIClientBuilder()
         .credential(new AzureKeyCredential(apiKey))
         .endpoint(endpoint)
+        .clientOptions(httpClientOptions)
         .buildClient();
   }
 
