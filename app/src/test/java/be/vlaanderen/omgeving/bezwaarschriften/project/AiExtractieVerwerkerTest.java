@@ -79,6 +79,17 @@ class AiExtractieVerwerkerTest {
   }
 
   @Test
+  void laadtSystemPromptVanClasspath() {
+    var document = new Brondocument("Tekst.", "b.txt", "p", Instant.now());
+    when(ingestiePoort.leesBestand(any(Path.class))).thenReturn(document);
+    when(chatModel.chat(anyString(), anyString())).thenReturn(FIXTURE_JSON);
+
+    verwerker.verwerk("project", "b.txt", 0);
+
+    verify(chatModel).chat(contains("ervaren ambtenaar"), anyString());
+  }
+
+  @Test
   void gooitExceptieBijOngeldigeJson() {
     var document = new Brondocument("tekst", "b.txt", "p", Instant.now());
     when(ingestiePoort.leesBestand(any(Path.class))).thenReturn(document);

@@ -4,12 +4,16 @@ import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
 
 /**
  * Extractie-verwerker die een LLM (via {@link ChatModelPoort}) gebruikt om individuele
@@ -20,55 +24,12 @@ public class AiExtractieVerwerker implements ExtractieVerwerker {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private static final String SYSTEM_PROMPT = """
-      Je bent een ervaren ambtenaar bij het Departement Omgeving van de Vlaamse overheid.
-      Je analyseert bezwaarschriften die zijn ingediend tijdens een openbaar onderzoek.
-
-      Je taak is om uit het bezwaarschrift alle individuele bezwaren te identificeren.
-
-      ## Wat is een individueel bezwaar?
-
-      Een individueel bezwaar is een concreet punt van bezwaar dat zelfstandig beantwoord
-      kan worden door de vergunningverlenende overheid. Voorbeelden:
-      - "De geluidsoverlast door evenementen zal onze nachtrust verstoren" \
-      = een bezwaar (geluidshinder)
-      - "Het verkeer zal toenemen EN er zijn onvoldoende parkeerplaatsen" \
-      = TWEE bezwaren (verkeerslast + parkeertekort), ook al staan ze in dezelfde zin
-
-      Splits passages die meerdere bezwaren bevatten altijd op in afzonderlijke items.
-      Een passage kan dus leiden tot meerdere bezwaren.
-
-      ## Per bezwaar lever je:
-
-      1. **passage**: De letterlijke tekst uit het bezwaarschrift waaruit dit bezwaar blijkt.
-      2. **samenvatting**: Een zin die het bezwaar kernachtig beschrijft in je eigen woorden.
-      3. **categorie**: Een van: milieu, mobiliteit, ruimtelijke_ordening, procedure,
-         gezondheid, economisch, sociaal, overig.
-
-      Antwoord UITSLUITEND in het volgende JSON-formaat (geen extra tekst):
-      {
-        "passages": [{ "id": 1, "tekst": "..." }],
-        "bezwaren": [{ "passageId": 1, "samenvatting": "...", "categorie": "..." }],
-        "metadata": { "aantalWoorden": 0, "documentSamenvatting": "..." }
-      }
-      """;
-
-  private static final String USER_PROMPT_TEMPLATE = """
-      Context: Openbaar onderzoek voor het project "Herontwikkeling Gaverbeek Stadion"
-      in Waregem - bouw van een multifunctioneel stadion met parking, commerciele ruimtes
-      en publieke groenzones langs de Gaverbeek.
-
-      Analyseer het volgende bezwaarschrift en extraheer alle individuele bezwaren:
-
-      ---
-      %s
-      ---
-      """;
-
   private final ChatModelPoort chatModel;
   private final IngestiePoort ingestiePoort;
   private final Path inputFolder;
   private final ObjectMapper objectMapper;
+  private final String systemPrompt;
+  private final String userPromptTemplate;
 
   /**
    * Maakt een nieuwe AiExtractieVerwerker aan.
@@ -83,6 +44,8 @@ public class AiExtractieVerwerker implements ExtractieVerwerker {
     this.ingestiePoort = ingestiePoort;
     this.inputFolder = Path.of(inputFolderString);
     this.objectMapper = new ObjectMapper();
+    this.systemPrompt = laadPrompt("prompts/extractie-system.md");
+    this.userPromptTemplate = laadPrompt("prompts/extractie-user.md");
   }
 
   @Override
@@ -92,13 +55,22 @@ public class AiExtractieVerwerker implements ExtractieVerwerker {
         : bestandsnaam + ".txt";
     var pad = inputFolder.resolve(projectNaam).resolve("bezwaren-text").resolve(tekstBestandsnaam);
     var brondocument = ingestiePoort.leesBestand(pad);
-    var userPrompt = String.format(USER_PROMPT_TEMPLATE, brondocument.tekst());
+    var userPrompt = String.format(userPromptTemplate, brondocument.tekst());
 
     LOGGER.info("Start LLM-extractie voor '{}' (project '{}', poging {})",
         bestandsnaam, projectNaam, poging);
 
-    var response = chatModel.chat(SYSTEM_PROMPT, userPrompt);
+    var response = chatModel.chat(systemPrompt, userPrompt);
     return parseResponse(response);
+  }
+
+  private static String laadPrompt(String classpathPad) {
+    try {
+      var resource = new ClassPathResource(classpathPad);
+      return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Kan prompt niet laden: " + classpathPad, e);
+    }
   }
 
   private ExtractieResultaat parseResponse(String json) {
