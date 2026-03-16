@@ -12,7 +12,7 @@ public class ClusteringConfig {
 
   private int minClusterSize = 5;
   private int minSamples = 3;
-  private double clusterSelectionEpsilon = 0.0;
+  private double clusterSelectionEpsilon = 0.01;
   private boolean umapEnabled = true;
   private int umapNComponents = 5;
   private int umapNNeighbors = 15;
