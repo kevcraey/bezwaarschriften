@@ -12,4 +12,6 @@ public interface ExtractiePassageRepository
   List<ExtractiePassageEntiteit> findByTaakId(Long taakId);
 
   Optional<ExtractiePassageEntiteit> findTopByTaakIdOrderByPassageNrDesc(Long taakId);
+
+  void deleteByTaakId(Long taakId);
 }

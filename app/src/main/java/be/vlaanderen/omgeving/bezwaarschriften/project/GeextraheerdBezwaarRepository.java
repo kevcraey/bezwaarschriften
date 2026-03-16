@@ -2,8 +2,6 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -12,16 +10,13 @@ public interface GeextraheerdBezwaarRepository
 
   List<GeextraheerdBezwaarEntiteit> findByTaakId(Long taakId);
 
-  @Query("SELECT b FROM GeextraheerdBezwaarEntiteit b "
-      + "WHERE b.taakId IN ("
-      + "  SELECT t.id FROM ExtractieTaak t "
-      + "  WHERE t.projectNaam = :projectNaam AND t.status = 'KLAAR')")
-  List<GeextraheerdBezwaarEntiteit> findByProjectNaam(
-      @Param("projectNaam") String projectNaam);
+  List<GeextraheerdBezwaarEntiteit> findByProjectNaam(String projectNaam);
 
-  @Query("SELECT COUNT(b) FROM GeextraheerdBezwaarEntiteit b "
-      + "WHERE b.taakId IN ("
-      + "  SELECT t.id FROM ExtractieTaak t "
-      + "  WHERE t.projectNaam = :projectNaam AND t.status = 'KLAAR')")
-  int countByProjectNaam(@Param("projectNaam") String projectNaam);
+  int countByProjectNaam(String projectNaam);
+
+  List<GeextraheerdBezwaarEntiteit> findByProjectNaamAndBestandsnaam(
+      String projectNaam, String bestandsnaam);
+
+  void deleteByProjectNaamAndBestandsnaam(
+      String projectNaam, String bestandsnaam);
 }
