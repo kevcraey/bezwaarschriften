@@ -20,9 +20,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Zoekt bij verwerking naar een bijbehorend JSON-fixture bestand in de testdata-directory.
  * Gooit een {@link IllegalStateException} als er geen fixture gevonden wordt.
+ *
+ * <p>Actief in dev-profiel, tenzij azure of fixture profiel ook actief is —
+ * dan krijgen die voorrang met hun eigen {@link ExtractieVerwerker} bean.
  */
 @Component
-@Profile("dev")
+@Profile("dev & !azure & !fixture")
 public class MockExtractieVerwerker implements ExtractieVerwerker {
 
   private static final Logger LOGGER =

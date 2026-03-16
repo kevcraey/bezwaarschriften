@@ -1,0 +1,8 @@
+# Azure OpenAI profiel: echte LLM-calls voor bezwaarextractie.
+# Gebruik samen met dev-profiel: -Dspring-boot.run.profiles=dev,azure
+# Vereist: AZURE_OPENAI_KEY environment variable.
+bezwaarschriften:
+  azure-openai:
+    endpoint: https://kenzo-test-resource.cognitiveservices.azure.com/
+    deployment: gpt-5-nano
+    api-key: ${AZURE_OPENAI_KEY}
