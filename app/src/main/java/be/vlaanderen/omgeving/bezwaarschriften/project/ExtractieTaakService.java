@@ -103,9 +103,7 @@ public class ExtractieTaakService {
           }
 
           // Ruim ALLE bestaande taken + bezwaren + passages op voor dit bestand
-          var oudeTaken = repository.findByProjectNaam(projectNaam).stream()
-              .filter(t -> t.getBestandsnaam().equals(bestandsnaam))
-              .toList();
+          var oudeTaken = repository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
           if (!oudeTaken.isEmpty()) {
             bezwaarRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
             for (var oudeTaak : oudeTaken) {

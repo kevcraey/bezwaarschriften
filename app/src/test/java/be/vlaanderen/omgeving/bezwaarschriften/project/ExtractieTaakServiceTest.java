@@ -731,7 +731,7 @@ class ExtractieTaakServiceTest {
     // Maak twee oude taken voor hetzelfde bestand
     var oudeTaak1 = maakTaak(10L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
     var oudeTaak2 = maakTaak(11L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.FOUT);
-    when(repository.findByProjectNaam("windmolens"))
+    when(repository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt"))
         .thenReturn(List.of(oudeTaak1, oudeTaak2));
 
     when(repository.save(any(ExtractieTaak.class))).thenAnswer(i -> {
