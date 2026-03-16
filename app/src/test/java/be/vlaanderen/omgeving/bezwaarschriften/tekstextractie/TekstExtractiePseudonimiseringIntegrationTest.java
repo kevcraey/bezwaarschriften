@@ -64,6 +64,9 @@ class TekstExtractiePseudonimiseringIntegrationTest
   @Autowired
   private TekstExtractieTaakRepository repository;
 
+  @Autowired
+  private PseudonimiseringChunkRepository chunkRepository;
+
   @Test
   void volledigeHappyPath_pdfMetPiiWordtGepseudonimiseerd() throws Exception {
     // 1. Maak test-PDF aan met bekende PII
@@ -105,9 +108,10 @@ class TekstExtractiePseudonimiseringIntegrationTest
     // Status is KLAAR
     assertThat(bijgewerkt.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
 
-    // Mapping-ID is opgeslagen (niet null, niet leeg)
-    assertThat(bijgewerkt.getPseudonimiseringMappingId()).isNotNull();
-    assertThat(bijgewerkt.getPseudonimiseringMappingId()).isNotEmpty();
+    // Chunk mapping-ID's zijn opgeslagen
+    var chunks = chunkRepository.findByTaakIdOrderByVolgnummerAsc(bijgewerkt.getId());
+    assertThat(chunks).isNotEmpty();
+    assertThat(chunks.get(0).getMappingId()).isNotEmpty();
 
     // Extractiemethode is ingevuld
     assertThat(bijgewerkt.getExtractieMethode()).isEqualTo(ExtractieMethode.DIGITAAL);
@@ -142,7 +146,9 @@ class TekstExtractiePseudonimiseringIntegrationTest
             contentStream.newLineAtOffset(0, -15);
             regel = new StringBuilder();
           }
-          if (regel.length() > 0) regel.append(" ");
+          if (regel.length() > 0) {
+            regel.append(" ");
+          }
           regel.append(woord);
         }
         if (regel.length() > 0) {

@@ -55,8 +55,8 @@ public class ObscuroAdapter implements PseudonimiseringPoort {
       var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() != 200) {
-        throw new PseudonimiseringException(
-            "Obscuro retourneerde HTTP " + response.statusCode() + ": " + response.body());
+        var foutmelding = parseerObscuroFout(response.statusCode(), response.body());
+        throw new PseudonimiseringException(foutmelding);
       }
 
       var json = objectMapper.readTree(response.body());
@@ -77,5 +77,23 @@ public class ObscuroAdapter implements PseudonimiseringPoort {
     } catch (Exception e) {
       throw new PseudonimiseringException("Pseudonimisering mislukt: " + e.getMessage(), e);
     }
+  }
+
+  private String parseerObscuroFout(int statusCode, String body) {
+    if (statusCode == 422) {
+      try {
+        var json = objectMapper.readTree(body);
+        var detail = json.get("detail");
+        if (detail != null && detail.isArray() && detail.size() > 0) {
+          var msg = detail.get(0).get("msg").asText();
+          if (msg.contains("maximaal") && msg.contains("tekens")) {
+            return "Tekst te lang voor pseudonimisering: " + msg;
+          }
+        }
+      } catch (Exception e) {
+        LOGGER.debug("Kon Obscuro 422-response niet parsen: {}", e.getMessage());
+      }
+    }
+    return "Obscuro retourneerde HTTP " + statusCode + ": " + body;
   }
 }

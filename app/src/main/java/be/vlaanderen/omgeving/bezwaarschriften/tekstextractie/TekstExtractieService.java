@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,8 @@ public class TekstExtractieService {
   private final PseudonimiseringPoort pseudonimiseringPoort;
   private final BezwaarBestandRepository bezwaarBestandRepository;
   private final TekstExtractieNotificatie notificatie;
+  private final PseudonimiseringChunker chunker;
+  private final PseudonimiseringChunkRepository chunkRepository;
   private final int maxConcurrent;
 
   /**
@@ -46,6 +49,8 @@ public class TekstExtractieService {
    * @param pseudonimiseringPoort poort voor pseudonimisering van tekst
    * @param bezwaarBestandRepository repository voor bezwaarbestand-entiteiten
    * @param notificatie notificatie-interface voor statuswijzigingen
+   * @param chunker chunker voor opsplitsing van grote teksten
+   * @param chunkRepository repository voor pseudonimisering chunk mapping-ID's
    * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
    */
   public TekstExtractieService(
@@ -56,6 +61,8 @@ public class TekstExtractieService {
       PseudonimiseringPoort pseudonimiseringPoort,
       BezwaarBestandRepository bezwaarBestandRepository,
       TekstExtractieNotificatie notificatie,
+      PseudonimiseringChunker chunker,
+      PseudonimiseringChunkRepository chunkRepository,
       @Value("${bezwaarschriften.tekst-extractie.max-concurrent:2}") int maxConcurrent) {
     this.repository = repository;
     this.pdfExtractor = pdfExtractor;
@@ -64,6 +71,8 @@ public class TekstExtractieService {
     this.pseudonimiseringPoort = pseudonimiseringPoort;
     this.bezwaarBestandRepository = bezwaarBestandRepository;
     this.notificatie = notificatie;
+    this.chunker = chunker;
+    this.chunkRepository = chunkRepository;
     this.maxConcurrent = maxConcurrent;
   }
 
@@ -142,8 +151,7 @@ public class TekstExtractieService {
 
       if (bestandsnaam.endsWith(".pdf")) {
         var resultaat = pdfExtractor.extraheer(pad);
-        var pseudonimisering = pseudonimiseringPoort.pseudonimiseer(resultaat.tekst());
-        slaOpMetMapping(taak, pseudonimisering, resultaat.methode());
+        pseudonimiseerEnSlaOp(taak, resultaat.tekst(), resultaat.methode());
       } else if (bestandsnaam.endsWith(".txt")) {
         var tekst = Files.readString(pad);
         var controle = kwaliteitsControle.controleer(tekst);
@@ -152,8 +160,7 @@ public class TekstExtractieService {
               "Kwaliteitscontrole mislukt: " + controle.reden());
           return;
         }
-        var pseudonimisering = pseudonimiseringPoort.pseudonimiseer(tekst);
-        slaOpMetMapping(taak, pseudonimisering, ExtractieMethode.DIGITAAL);
+        pseudonimiseerEnSlaOp(taak, tekst, ExtractieMethode.DIGITAAL);
       } else {
         markeerMislukt(taak.getId(),
             "Niet-ondersteund bestandstype: " + taak.getBestandsnaam());
@@ -174,12 +181,22 @@ public class TekstExtractieService {
     }
   }
 
-  private void slaOpMetMapping(TekstExtractieTaak taak,
-      PseudonimiseringResultaat pseudonimisering, ExtractieMethode methode) {
-    taak.setPseudonimiseringMappingId(pseudonimisering.mappingId());
-    repository.save(taak);  // flush mappingId naar DB
-    projectPoort.slaTekstOp(taak.getProjectNaam(), taak.getBestandsnaam(),
-        pseudonimisering.gepseudonimiseerdeTekst());
+  private void pseudonimiseerEnSlaOp(TekstExtractieTaak taak, String tekst,
+      ExtractieMethode methode) {
+    // Ruim eventuele eerdere chunks op (idempotent bij retry)
+    chunkRepository.deleteByTaakId(taak.getId());
+
+    var chunks = chunker.chunk(tekst);
+    var gepseudonimiseerdeChunks = new ArrayList<String>();
+
+    for (int i = 0; i < chunks.size(); i++) {
+      var resultaat = pseudonimiseringPoort.pseudonimiseer(chunks.get(i));
+      gepseudonimiseerdeChunks.add(resultaat.gepseudonimiseerdeTekst());
+      chunkRepository.save(new PseudonimiseringChunk(taak, i, resultaat.mappingId()));
+    }
+
+    var samengevoegd = String.join("\n\n", gepseudonimiseerdeChunks);
+    projectPoort.slaTekstOp(taak.getProjectNaam(), taak.getBestandsnaam(), samengevoegd);
     markeerKlaar(taak.getId(), methode);
   }
 
