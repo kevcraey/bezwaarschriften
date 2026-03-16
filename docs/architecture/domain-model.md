@@ -1,6 +1,6 @@
 # Domeinmodel
 
-**Laatst bijgewerkt:** 2026-03-12
+**Laatst bijgewerkt:** 2026-03-16
 
 ---
 
@@ -116,7 +116,7 @@ erDiagram
 |---------|----------|-------|------------|
 | `project` | `BezwaarBestandEntiteit` | `bezwaar_bestand` | projectNaam, bestandsnaam, status |
 | `project` | `ExtractieTaak` | `extractie_taak` | projectNaam, bestandsnaam, status |
-| `project` | `GeextraheerdBezwaarEntiteit` | `geextraheerd_bezwaar` | bezwaarTekst, embedding |
+| `project` | `GeextraheerdBezwaarEntiteit` | `geextraheerd_bezwaar` | **projectNaam, bestandsnaam**, bezwaarTekst, embedding |
 | `project` | `ExtractiePassageEntiteit` | `extractie_passage` | passageTekst, start/eindPositie |
 | `tekstextractie` | `TekstExtractieTaak` | `tekst_extractie_taak` | status, extractieMethode, **pseudonimiseringMappingId** |
 | `domain` | `IndividueelBezwaar` | `individueel_bezwaar` | tekst, embedding |
