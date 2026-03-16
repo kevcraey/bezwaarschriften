@@ -101,6 +101,19 @@ public class ExtractieTaakService {
               && !tekstExtractieService.isTekstExtractieKlaar(projectNaam, bestandsnaam)) {
             throw new TekstExtractieNietVoltooidException(bestandsnaam);
           }
+
+          // Ruim ALLE bestaande taken + bezwaren + passages op voor dit bestand
+          var oudeTaken = repository.findByProjectNaam(projectNaam).stream()
+              .filter(t -> t.getBestandsnaam().equals(bestandsnaam))
+              .toList();
+          if (!oudeTaken.isEmpty()) {
+            bezwaarRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
+            for (var oudeTaak : oudeTaken) {
+              passageRepository.deleteByTaakId(oudeTaak.getId());
+            }
+            repository.deleteAll(oudeTaken);
+          }
+
           var taak = new ExtractieTaak();
           taak.setProjectNaam(projectNaam);
           taak.setBestandsnaam(bestandsnaam);
@@ -215,6 +228,8 @@ public class ExtractieTaakService {
       entiteit.setTaakId(taakId);
       entiteit.setPassageNr(bezwaar.passageId());
       entiteit.setSamenvatting(bezwaar.samenvatting());
+      entiteit.setProjectNaam(taak.getProjectNaam());
+      entiteit.setBestandsnaam(taak.getBestandsnaam());
       bezwaarEntiteiten.add(entiteit);
     }
 
@@ -477,6 +492,8 @@ public class ExtractieTaakService {
     bezwaarEntiteit.setSamenvatting(samenvatting);
     bezwaarEntiteit.setPassageGevonden(true);
     bezwaarEntiteit.setManueel(true);
+    bezwaarEntiteit.setProjectNaam(taak.getProjectNaam());
+    bezwaarEntiteit.setBestandsnaam(taak.getBestandsnaam());
 
     // Werk taak bij
     taak.setHeeftManueel(true);

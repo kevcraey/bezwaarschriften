@@ -727,6 +727,90 @@ class ExtractieTaakServiceTest {
   }
 
   @Test
+  void indienenRuimtOudeBezwarenEnTakenOpBijHerExtractie() {
+    // Maak twee oude taken voor hetzelfde bestand
+    var oudeTaak1 = maakTaak(10L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    var oudeTaak2 = maakTaak(11L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.FOUT);
+    when(repository.findByProjectNaam("windmolens"))
+        .thenReturn(List.of(oudeTaak1, oudeTaak2));
+
+    when(repository.save(any(ExtractieTaak.class))).thenAnswer(i -> {
+      var t = i.getArgument(0, ExtractieTaak.class);
+      t.setId(20L);
+      return t;
+    });
+
+    service.indienen("windmolens", List.of("bezwaar-001.txt"));
+
+    // Verifieer dat oude bezwaren en passages opgeruimd zijn
+    verify(bezwaarRepository).deleteByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt");
+    verify(passageRepository).deleteByTaakId(10L);
+    verify(passageRepository).deleteByTaakId(11L);
+    verify(repository).deleteAll(List.of(oudeTaak1, oudeTaak2));
+
+    // Verifieer dat er een nieuwe WACHTEND taak is aangemaakt
+    var captor = ArgumentCaptor.forClass(ExtractieTaak.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getStatus()).isEqualTo(ExtractieTaakStatus.WACHTEND);
+    assertThat(captor.getValue().getBestandsnaam()).isEqualTo("bezwaar-001.txt");
+  }
+
+  @Test
+  void markeerKlaarZetProjectNaamEnBestandsnaamOpBezwaren() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.BEZIG);
+    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    var resultaat = new ExtractieResultaat(100, 1,
+        List.of(new Passage(1, "Passage tekst")),
+        List.of(new GeextraheerdBezwaar(1, "Samenvatting", "milieu")),
+        "Docsamenvatting");
+
+    service.markeerKlaar(1L, resultaat);
+
+    var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
+    verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
+    var eersteBezwaar = bezwaarCaptor.getAllValues().get(0);
+    assertThat(eersteBezwaar.getProjectNaam()).isEqualTo("windmolens");
+    assertThat(eersteBezwaar.getBestandsnaam()).isEqualTo("bezwaar-001.txt");
+  }
+
+  @Test
+  void voegManueelBezwaarToeZetProjectNaamEnBestandsnaam() {
+    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", ExtractieTaakStatus.KLAAR);
+    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
+        "windmolens", "bezwaar-001.txt")).thenReturn(Optional.of(taak));
+
+    var pad = Path.of("/tmp/windmolens/bezwaren/bezwaar-001.txt");
+    when(projectPoort.geefTekstBestandsPad("windmolens", "bezwaar-001.txt")).thenReturn(pad);
+    when(ingestiePoort.leesBestand(pad)).thenReturn(
+        new Brondocument("Dit is de volledige documenttekst.",
+            "bezwaar-001.txt", pad.toString(), Instant.now()));
+    when(passageValidator.normaliseer("Dit is de volledige documenttekst."))
+        .thenReturn("dit is de volledige documenttekst.");
+    when(passageValidator.normaliseer("volledige documenttekst"))
+        .thenReturn("volledige documenttekst");
+    when(passageRepository.findTopByTaakIdOrderByPassageNrDesc(1L))
+        .thenReturn(Optional.empty());
+    when(passageRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(bezwaarRepository.save(any())).thenAnswer(i -> {
+      var b = i.getArgument(0, GeextraheerdBezwaarEntiteit.class);
+      b.setId(10L);
+      return b;
+    });
+    when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    service.voegManueelBezwaarToe(
+        "windmolens", "bezwaar-001.txt", "Samenvatting test", "volledige documenttekst");
+
+    var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
+    verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
+    var eersteBezwaar = bezwaarCaptor.getAllValues().get(0);
+    assertThat(eersteBezwaar.getProjectNaam()).isEqualTo("windmolens");
+    assertThat(eersteBezwaar.getBestandsnaam()).isEqualTo("bezwaar-001.txt");
+  }
+
+  @Test
   void indienenUpdatetBezwaarBestandNaarBezwaarExtractieWachtend() {
     when(repository.save(any())).thenAnswer(i -> {
       var t = i.getArgument(0, ExtractieTaak.class);
