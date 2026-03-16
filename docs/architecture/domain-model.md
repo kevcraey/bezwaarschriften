@@ -37,6 +37,7 @@ erDiagram
         Long id PK
         String projectNaam
         String bestandsnaam
+        Long taakId FK "traceerbaarheid"
         String bezwaarTekst
         float[] embedding
     }
@@ -97,9 +98,10 @@ erDiagram
 
     BezwaarBestandEntiteit ||--o| TekstExtractieTaak : "tekst-extractie"
     BezwaarBestandEntiteit ||--o| ExtractieTaak : "bezwaar-extractie"
-    ExtractieTaak ||--|{ GeextraheerdBezwaarEntiteit : "extraheert"
+    BezwaarBestandEntiteit ||--|{ GeextraheerdBezwaarEntiteit : "bevat bezwaren"
     ExtractieTaak ||--|{ ExtractiePassageEntiteit : "passages"
     GeextraheerdBezwaarEntiteit }|--|| ExtractiePassageEntiteit : "passage"
+    ExtractieTaak ||--o{ GeextraheerdBezwaarEntiteit : "traceerbaarheid"
     KernbezwaarEntiteit ||--|{ KernbezwaarReferentieEntiteit : "referenties"
     KernbezwaarReferentieEntiteit }|--|| GeextraheerdBezwaarEntiteit : "bezwaar"
     KernbezwaarEntiteit ||--o| KernbezwaarAntwoordEntiteit : "antwoord"
