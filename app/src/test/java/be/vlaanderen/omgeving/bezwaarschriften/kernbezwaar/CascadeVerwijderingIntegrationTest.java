@@ -424,6 +424,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     // Maak ook een bezwaar aan zodat passage_groep_lid een geldige bezwaar_id kan refereren
     var bezwaar = new GeextraheerdBezwaarEntiteit();
     bezwaar.setTaakId(taak.getId());
+    bezwaar.setProjectNaam(projectNaam);
+    bezwaar.setBestandsnaam(bestandsnaam);
     bezwaar.setPassageNr(1);
     bezwaar.setSamenvatting("Bezwaar voor " + bestandsnaam);
     bezwaar = bezwaarRepository.save(bezwaar);
@@ -435,6 +437,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   private GeextraheerdBezwaarEntiteit maakBezwaar(Long taakId, String samenvatting) {
     var bezwaar = new GeextraheerdBezwaarEntiteit();
     bezwaar.setTaakId(taakId);
+    bezwaar.setProjectNaam("testproject");
+    bezwaar.setBestandsnaam("test.txt");
     bezwaar.setPassageNr(1);
     bezwaar.setSamenvatting(samenvatting);
     return bezwaarRepository.save(bezwaar);

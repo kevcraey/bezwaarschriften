@@ -14,7 +14,10 @@
   </changeSet>
 
   <changeSet id="20260316-2" author="bezwaarschriften">
-    <comment>Backfill vanuit extractie_taak</comment>
+    <preConditions onFail="MARK_RAN">
+      <dbms type="postgresql"/>
+    </preConditions>
+    <comment>Backfill vanuit extractie_taak (PostgreSQL-specifieke UPDATE...FROM syntax)</comment>
     <sql>
       UPDATE geextraheerd_bezwaar b
       SET project_naam = t.project_naam,
