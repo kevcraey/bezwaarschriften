@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <changeSet id="20260316-1" author="bezwaarschriften">
+    <comment>Voeg project_naam en bestandsnaam toe aan geextraheerd_bezwaar (domeinmodel)</comment>
+    <addColumn tableName="geextraheerd_bezwaar">
+      <column name="project_naam" type="varchar(255)"/>
+      <column name="bestandsnaam" type="varchar(255)"/>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="20260316-2" author="bezwaarschriften">
+    <comment>Backfill vanuit extractie_taak</comment>
+    <sql>
+      UPDATE geextraheerd_bezwaar b
+      SET project_naam = t.project_naam,
+          bestandsnaam = t.bestandsnaam
+      FROM extractie_taak t
+      WHERE b.taak_id = t.id
+    </sql>
+  </changeSet>
+
+  <changeSet id="20260316-3" author="bezwaarschriften">
+    <comment>NOT NULL constraint na backfill</comment>
+    <addNotNullConstraint tableName="geextraheerd_bezwaar"
+        columnName="project_naam" columnDataType="varchar(255)"/>
+    <addNotNullConstraint tableName="geextraheerd_bezwaar"
+        columnName="bestandsnaam" columnDataType="varchar(255)"/>
+  </changeSet>
+
+  <changeSet id="20260316-4" author="bezwaarschriften">
+    <comment>Index voor domeinqueries</comment>
+    <createIndex tableName="geextraheerd_bezwaar"
+        indexName="idx_bezwaar_project_bestand">
+      <column name="project_naam"/>
+      <column name="bestandsnaam"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>
