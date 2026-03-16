@@ -36,8 +36,19 @@ public class PseudonimiseringChunk {
     this.mappingId = mappingId;
   }
 
-  public Long getId() { return id; }
-  public TekstExtractieTaak getTaak() { return taak; }
-  public int getVolgnummer() { return volgnummer; }
-  public String getMappingId() { return mappingId; }
+  public Long getId() {
+    return id;
+  }
+
+  public TekstExtractieTaak getTaak() {
+    return taak;
+  }
+
+  public int getVolgnummer() {
+    return volgnummer;
+  }
+
+  public String getMappingId() {
+    return mappingId;
+  }
 }

@@ -146,7 +146,9 @@ class TekstExtractiePseudonimiseringIntegrationTest
             contentStream.newLineAtOffset(0, -15);
             regel = new StringBuilder();
           }
-          if (regel.length() > 0) regel.append(" ");
+          if (regel.length() > 0) {
+            regel.append(" ");
+          }
           regel.append(woord);
         }
         if (regel.length() > 0) {
