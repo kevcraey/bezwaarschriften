@@ -15,8 +15,8 @@ describe('bezwaarschriften-tekst-panel', () => {
 
     cy.get('bezwaarschriften-tekst-panel')
         .shadow()
-        .find('.tekst-panel')
-        .should('not.have.class', 'open');
+        .find('vl-side-sheet#tekst-side-sheet')
+        .should('not.have.attr', 'open');
   });
 
   it('opent panel met bestandsnaam bij aanroep van open()', () => {
@@ -33,8 +33,8 @@ describe('bezwaarschriften-tekst-panel', () => {
 
     cy.get('bezwaarschriften-tekst-panel')
         .shadow()
-        .find('.tekst-panel')
-        .should('have.class', 'open');
+        .find('vl-side-sheet#tekst-side-sheet')
+        .should('have.attr', 'open');
 
     cy.get('bezwaarschriften-tekst-panel')
         .shadow()
@@ -43,7 +43,7 @@ describe('bezwaarschriften-tekst-panel', () => {
 
     cy.get('bezwaarschriften-tekst-panel')
         .shadow()
-        .find('.panel-body')
+        .find('.side-sheet-body')
         .should('contain.text', 'De aanvrager stelt dat...');
   });
 
@@ -61,8 +61,8 @@ describe('bezwaarschriften-tekst-panel', () => {
 
     cy.get('bezwaarschriften-tekst-panel')
         .shadow()
-        .find('.tekst-panel')
-        .should('have.class', 'open');
+        .find('vl-side-sheet#tekst-side-sheet')
+        .should('have.attr', 'open');
 
     cy.get('bezwaarschriften-tekst-panel')
         .its(0)
@@ -72,8 +72,8 @@ describe('bezwaarschriften-tekst-panel', () => {
 
     cy.get('bezwaarschriften-tekst-panel')
         .shadow()
-        .find('.tekst-panel')
-        .should('not.have.class', 'open');
+        .find('vl-side-sheet#tekst-side-sheet')
+        .should('not.have.attr', 'open');
   });
 
   it('toont foutmelding als API-call faalt', () => {

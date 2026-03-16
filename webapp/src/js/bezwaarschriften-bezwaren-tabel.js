@@ -90,11 +90,19 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         ${vlGlobalStyles}
         :host { display: block; transition: margin-right 0.2s ease; }
         :host(.side-sheet-open) { margin-right: 33.3%; }
+        #extractie-side-sheet {
+          --vl-spacing--medium: 0;
+          --vl-spacing--large: 0;
+          --vl-spacing--small: 0;
+          --vl-spacing--normal: 0;
+          --vl-page--max-width: 0;
+          --vl-page--min-width: 0;
+          --vl-page--max-width-wide: 100%;
+        }
         .side-sheet-wrapper {
           display: flex;
           flex-direction: column;
           height: calc(100vh - 43px);
-          margin: -1.5rem;
           padding: 0;
           overflow: hidden;
         }
