@@ -7,7 +7,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 /**
- * Embedding-adapter die via WebClient een Ollama of OpenAI embedding API aanroept.
+ * Embedding-adapter via WebClient naar Ollama/OpenAI.
+ *
+ * <p>Gebruikt batch-endpoints: Ollama {@code /api/embed}
+ * en OpenAI {@code /embeddings} met {@code input}-lijst.
+ * Eén HTTP-call per batch i.p.v. één per tekst.
  */
 @Component
 public class WebClientEmbeddingAdapter implements EmbeddingPoort {
@@ -32,38 +36,34 @@ public class WebClientEmbeddingAdapter implements EmbeddingPoort {
     if (teksten.isEmpty()) {
       return List.of();
     }
-    var resultaat = new ArrayList<float[]>();
-    for (var tekst : teksten) {
-      resultaat.add(genereerEmbedding(tekst));
-    }
-    return resultaat;
-  }
-
-  private float[] genereerEmbedding(String tekst) {
     if ("ollama".equals(config.getProvider())) {
-      return ollamaEmbedding(tekst);
+      return ollamaBatchEmbeddings(teksten);
     }
-    return openaiEmbedding(tekst);
+    return openaiBatchEmbeddings(teksten);
   }
 
   @SuppressWarnings("unchecked")
-  private float[] ollamaEmbedding(String tekst) {
-    var body = Map.of("model", config.getModel(), "prompt", tekst);
+  private List<float[]> ollamaBatchEmbeddings(List<String> teksten) {
+    var body = Map.of("model", config.getModel(), "input", teksten);
     var response = webClient.post()
-        .uri(config.getOllamaUrl() + "/api/embeddings")
+        .uri(config.getOllamaUrl() + "/api/embed")
         .bodyValue(body)
         .retrieve()
         .bodyToMono(Map.class)
         .block();
-    var embedding = (List<Number>) response.get("embedding");
-    return toFloatArray(embedding);
+    var embeddings = (List<List<Number>>) response.get("embeddings");
+    var resultaat = new ArrayList<float[]>(embeddings.size());
+    for (var embedding : embeddings) {
+      resultaat.add(toFloatArray(embedding));
+    }
+    return resultaat;
   }
 
   @SuppressWarnings("unchecked")
-  private float[] openaiEmbedding(String tekst) {
+  private List<float[]> openaiBatchEmbeddings(List<String> teksten) {
     var body = Map.of(
         "model", config.getModel(),
-        "input", tekst);
+        "input", teksten);
     var response = webClient.post()
         .uri(config.getOpenaiUrl() + "/embeddings")
         .header("Authorization", "Bearer " + config.getOpenaiKey())
@@ -72,8 +72,11 @@ public class WebClientEmbeddingAdapter implements EmbeddingPoort {
         .bodyToMono(Map.class)
         .block();
     var data = (List<Map<String, Object>>) response.get("data");
-    var embedding = (List<Number>) data.get(0).get("embedding");
-    return toFloatArray(embedding);
+    var resultaat = new ArrayList<float[]>(data.size());
+    for (var item : data) {
+      resultaat.add(toFloatArray((List<Number>) item.get("embedding")));
+    }
+    return resultaat;
   }
 
   private float[] toFloatArray(List<Number> numbers) {

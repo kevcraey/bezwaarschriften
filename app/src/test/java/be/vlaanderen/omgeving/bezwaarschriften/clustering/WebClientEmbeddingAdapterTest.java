@@ -37,12 +37,9 @@ class WebClientEmbeddingAdapterTest {
   }
 
   @Test
-  void genereertEmbeddingsViaOllama() {
+  void genereertEmbeddingsViaOllamaBatch() throws InterruptedException {
     mockServer.enqueue(new MockResponse()
-        .setBody("{\"embedding\":[0.1,0.2,0.3]}")
-        .addHeader("Content-Type", "application/json"));
-    mockServer.enqueue(new MockResponse()
-        .setBody("{\"embedding\":[0.4,0.5,0.6]}")
+        .setBody("{\"embeddings\":[[0.1,0.2,0.3],[0.4,0.5,0.6]]}")
         .addHeader("Content-Type", "application/json"));
 
     var resultaat = adapter.genereerEmbeddings(
@@ -51,6 +48,11 @@ class WebClientEmbeddingAdapterTest {
     assertThat(resultaat).hasSize(2);
     assertThat(resultaat.get(0)).containsExactly(0.1f, 0.2f, 0.3f);
     assertThat(resultaat.get(1)).containsExactly(0.4f, 0.5f, 0.6f);
+
+    // Verifieer dat er slechts 1 request is gedaan (batch)
+    assertThat(mockServer.getRequestCount()).isEqualTo(1);
+    var request = mockServer.takeRequest();
+    assertThat(request.getPath()).isEqualTo("/api/embed");
   }
 
   @Test
