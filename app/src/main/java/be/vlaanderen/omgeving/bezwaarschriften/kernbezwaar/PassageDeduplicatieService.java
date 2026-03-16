@@ -22,8 +22,7 @@ public class PassageDeduplicatieService {
 
   public List<DeduplicatieGroep> groepeer(
       List<GeextraheerdBezwaarEntiteit> bezwaren,
-      Map<Long, Map<Integer, String>> passageLookup,
-      Map<Long, String> bestandsnaamLookup) {
+      Map<Long, Map<Integer, String>> passageLookup) {
 
     if (bezwaren.isEmpty()) {
       return List.of();
@@ -34,27 +33,19 @@ public class PassageDeduplicatieService {
     for (var bezwaar : bezwaren) {
       var passageTekst = geefPassageTekst(bezwaar, passageLookup);
       var bigramInfo = berekenBigramInfo(passageTekst);
+      var bestandsnaam = bezwaar.getBestandsnaam();
       boolean gevonden = false;
 
       for (var groep : groepen) {
         if (berekenDiceCoefficient(bigramInfo, groep.bigramInfo) >= GELIJKENIS_DREMPEL) {
-          groep.voegToe(
-              bezwaar,
-              passageTekst,
-              bigramInfo,
-              bestandsnaamLookup.getOrDefault(bezwaar.getTaakId(), "onbekend"));
+          groep.voegToe(bezwaar, passageTekst, bigramInfo, bestandsnaam);
           gevonden = true;
           break;
         }
       }
 
       if (!gevonden) {
-        groepen.add(
-            new GroepBouwer(
-                passageTekst,
-                bigramInfo,
-                bezwaar,
-                bestandsnaamLookup.getOrDefault(bezwaar.getTaakId(), "onbekend")));
+        groepen.add(new GroepBouwer(passageTekst, bigramInfo, bezwaar, bestandsnaam));
       }
     }
 

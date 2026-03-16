@@ -110,7 +110,6 @@ public class KernbezwaarService {
         .distinct()
         .toList();
     final var passageLookup = bouwPassageLookup(taakIds);
-    final var bestandsnaamLookup = bouwBestandsnaamLookup(taakIds);
 
     // Verwijder bestaande kernbezwaar-data in eigen transactie
     transactionTemplate.executeWithoutResult(status ->
@@ -152,11 +151,9 @@ public class KernbezwaarService {
     }
 
     if (deduplicatieVoor) {
-      clusterMetDeduplicatieVooraf(projectNaam, taakId, bezwaren,
-          passageLookup, bestandsnaamLookup);
+      clusterMetDeduplicatieVooraf(projectNaam, taakId, bezwaren, passageLookup);
     } else {
-      clusterMetDeduplicatieAchteraf(projectNaam, taakId, bezwaren,
-          passageLookup, bestandsnaamLookup);
+      clusterMetDeduplicatieAchteraf(projectNaam, taakId, bezwaren, passageLookup);
     }
   }
 
@@ -166,12 +163,10 @@ public class KernbezwaarService {
    */
   private void clusterMetDeduplicatieVooraf(String projectNaam, Long taakId,
       List<GeextraheerdBezwaarEntiteit> bezwaren,
-      Map<Long, Map<Integer, String>> passageLookup,
-      Map<Long, String> bestandsnaamLookup) {
+      Map<Long, Map<Integer, String>> passageLookup) {
 
     // Groepeer bezwaren op passage-gelijkenis
-    var deduplicatieGroepen = deduplicatieService.groepeer(
-        bezwaren, passageLookup, bestandsnaamLookup);
+    var deduplicatieGroepen = deduplicatieService.groepeer(bezwaren, passageLookup);
 
     // HDBSCAN ontvangt alleen de representatieve bezwaren (1 per groep)
     var representatieven = deduplicatieGroepen.stream()
@@ -299,8 +294,7 @@ public class KernbezwaarService {
    */
   private void clusterMetDeduplicatieAchteraf(String projectNaam, Long taakId,
       List<GeextraheerdBezwaarEntiteit> bezwaren,
-      Map<Long, Map<Integer, String>> passageLookup,
-      Map<Long, String> bestandsnaamLookup) {
+      Map<Long, Map<Integer, String>> passageLookup) {
 
     // HDBSCAN-clustering op alle bezwaren (bestaand gedrag)
     var origineleInvoer = bezwaren.stream()
@@ -384,7 +378,7 @@ public class KernbezwaarService {
 
         // Groepeer bezwaren in dit cluster op passage-gelijkenis
         var deduplicatieGroepen = deduplicatieService.groepeer(
-            clusterBezwaren, passageLookup, bestandsnaamLookup);
+            clusterBezwaren, passageLookup);
 
         var passageGroepIds = persisteerPassageGroepen(
             taakId, projectNaam, deduplicatieGroepen, scores);
@@ -399,7 +393,7 @@ public class KernbezwaarService {
             .map(bezwaarById::get)
             .toList();
         var deduplicatieGroepen = deduplicatieService.groepeer(
-            noiseBezwaren, passageLookup, bestandsnaamLookup);
+            noiseBezwaren, passageLookup);
         var passageGroepIds = persisteerPassageGroepen(
             taakId, projectNaam, deduplicatieGroepen, Map.of());
         slaKernbezwaarOp(projectNaam, "Niet-geclusterde bezwaren",
@@ -808,12 +802,4 @@ public class KernbezwaarService {
     return lookup;
   }
 
-  private Map<Long, String> bouwBestandsnaamLookup(List<Long> taakIds) {
-    var lookup = new HashMap<Long, String>();
-    for (var taakId : taakIds) {
-      taakRepository.findById(taakId)
-          .ifPresent(taak -> lookup.put(taakId, taak.getBestandsnaam()));
-    }
-    return lookup;
-  }
 }
