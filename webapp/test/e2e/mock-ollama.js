@@ -1,7 +1,7 @@
 /**
  * Mock Ollama server voor E2E tests.
  *
- * Retourneert vaste 1024-dimensionale embeddings voor /api/embeddings.
+ * Retourneert vaste 1024-dimensionale embeddings voor /api/embed (batch).
  * Embeddings zijn subtiel verschillend per tekst zodat HDBSCAN kan clusteren.
  *
  * Start: node webapp/test/e2e/mock-ollama.js
@@ -34,15 +34,16 @@ function generateEmbedding(tekst) {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.method === 'POST' && req.url === '/api/embeddings') {
+  if (req.method === 'POST' && req.url === '/api/embed') {
     let body = '';
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
       try {
-        const {prompt} = JSON.parse(body);
-        const embedding = generateEmbedding(prompt || '');
+        const {input} = JSON.parse(body);
+        const texts = Array.isArray(input) ? input : [input];
+        const embeddings = texts.map((t) => generateEmbedding(t || ''));
         res.writeHead(200, {'Content-Type': 'application/json'});
-        res.end(JSON.stringify({embedding}));
+        res.end(JSON.stringify({embeddings}));
       } catch (e) {
         res.writeHead(400, {'Content-Type': 'application/json'});
         res.end(JSON.stringify({error: e.message}));
