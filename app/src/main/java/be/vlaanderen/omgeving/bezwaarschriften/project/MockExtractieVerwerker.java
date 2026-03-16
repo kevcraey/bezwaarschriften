@@ -12,7 +12,6 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -21,10 +20,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Zoekt bij verwerking naar een bijbehorend JSON-fixture bestand in de testdata-directory.
  * Gooit een {@link IllegalStateException} als er geen fixture gevonden wordt.
+ *
+ * <p>Actief in dev-profiel, tenzij azure of fixture profiel ook actief is —
+ * dan krijgen die voorrang met hun eigen {@link ExtractieVerwerker} bean.
  */
 @Component
-@Profile("dev")
-@ConditionalOnMissingBean(ExtractieVerwerker.class)
+@Profile("dev & !azure & !fixture")
 public class MockExtractieVerwerker implements ExtractieVerwerker {
 
   private static final Logger LOGGER =
