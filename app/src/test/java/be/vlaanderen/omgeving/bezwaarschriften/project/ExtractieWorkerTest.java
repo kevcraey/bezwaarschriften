@@ -101,6 +101,27 @@ class ExtractieWorkerTest {
   }
 
   @Test
+  void slaaDocumentOverDatAlInLopendeTakenZit() throws Exception {
+    var doc = maakDocument(3L, "windmolens", "bezwaar-003.txt");
+    when(service.pakOpVoorVerwerking()).thenReturn(List.of(doc));
+    when(verwerker.verwerk("windmolens", "bezwaar-003.txt", 0))
+        .thenAnswer(invocation -> {
+          Thread.sleep(5_000);
+          return new ExtractieResultaat(100, 1);
+        });
+
+    // Eerste poll: document wordt ingediend
+    worker.verwerkTaken();
+    Thread.sleep(200);
+
+    // Tweede poll: zelfde document wordt opnieuw aangeboden, maar moet overgeslagen worden
+    worker.verwerkTaken();
+
+    // Verwerk mag maar 1x aangeroepen zijn (niet 2x)
+    verify(verwerker, timeout(1000).times(1)).verwerk("windmolens", "bezwaar-003.txt", 0);
+  }
+
+  @Test
   void annuleerTaakRetourneertFalseVoorOnbekendeTaak() {
     boolean geannuleerd = worker.annuleerTaak(999L);
 

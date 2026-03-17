@@ -49,6 +49,9 @@ public class ExtractieWorker {
   public void verwerkTaken() {
     var documenten = service.pakOpVoorVerwerking();
     for (var doc : documenten) {
+      if (lopendeTaken.containsKey(doc.getId())) {
+        continue;
+      }
       var future = executor.submit(() -> verwerkDocument(doc));
       lopendeTaken.put(doc.getId(), future);
     }

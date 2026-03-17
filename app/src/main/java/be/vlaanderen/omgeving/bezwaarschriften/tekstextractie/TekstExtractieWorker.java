@@ -46,6 +46,9 @@ public class TekstExtractieWorker {
   public void verwerkTaken() {
     var documenten = service.pakOpVoorVerwerking();
     for (var document : documenten) {
+      if (lopendeTaken.containsKey(document.getId())) {
+        continue;
+      }
       var future = executor.submit(() -> verwerkDocument(document));
       lopendeTaken.put(document.getId(), future);
     }
