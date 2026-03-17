@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
 
   @Autowired
-  private PassageGroepRepository passageGroepRepository;
+  private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Autowired
   private PassageGroepLidRepository passageGroepLidRepository;
@@ -47,7 +47,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   void setUp() {
     referentieRepository.deleteAll();
     passageGroepLidRepository.deleteAll();
-    passageGroepRepository.deleteAll();
+    bezwaarGroepRepository.deleteAll();
     kernbezwaarRepository.deleteAll();
     clusteringTaakRepository.deleteAll();
     bezwaarRepository.deleteAll();
@@ -59,15 +59,15 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   void slaatPassageGroepOpEnVindtTerugViaClusteringTaakId() {
     var clusteringTaak = maakClusteringTaak("testproject");
 
-    var groep = new PassageGroepEntiteit();
+    var groep = new BezwaarGroep();
     groep.setClusteringTaakId(clusteringTaak.getId());
     groep.setPassage("Het geluid is onaanvaardbaar hoog en overschrijdt de normen.");
     groep.setSamenvatting("Geluidshinder overschrijdt normen");
     groep.setCategorie("IDENTIEK");
     groep.setScorePercentage(95);
-    passageGroepRepository.save(groep);
+    bezwaarGroepRepository.save(groep);
 
-    var gevonden = passageGroepRepository.findByClusteringTaakId(clusteringTaak.getId());
+    var gevonden = bezwaarGroepRepository.findByClusteringTaakId(clusteringTaak.getId());
     assertThat(gevonden).hasSize(1);
     assertThat(gevonden.get(0).getPassage())
         .isEqualTo("Het geluid is onaanvaardbaar hoog en overschrijdt de normen.");
@@ -130,7 +130,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
 
     clusteringTaakRepository.deleteById(clusteringTaak.getId());
 
-    assertThat(passageGroepRepository.findByClusteringTaakId(clusteringTaak.getId())).isEmpty();
+    assertThat(bezwaarGroepRepository.findByClusteringTaakId(clusteringTaak.getId())).isEmpty();
     assertThat(passageGroepLidRepository.findByPassageGroepId(groep.getId())).isEmpty();
   }
 
@@ -145,10 +145,10 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     maakPassageGroep(taak1.getId(), "Groep A2", "Samenvatting A2", "VERGELIJKBAAR");
     maakPassageGroep(taak2.getId(), "Groep B1", "Samenvatting B1", "IDENTIEK");
 
-    passageGroepRepository.deleteByClusteringTaakId(taak1.getId());
+    bezwaarGroepRepository.deleteByClusteringTaakId(taak1.getId());
 
-    assertThat(passageGroepRepository.findByClusteringTaakId(taak1.getId())).isEmpty();
-    assertThat(passageGroepRepository.findByClusteringTaakId(taak2.getId())).hasSize(1);
+    assertThat(bezwaarGroepRepository.findByClusteringTaakId(taak1.getId())).isEmpty();
+    assertThat(bezwaarGroepRepository.findByClusteringTaakId(taak2.getId())).hasSize(1);
   }
 
   @Test
@@ -222,14 +222,14 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     return bezwaarRepository.save(bezwaar);
   }
 
-  private PassageGroepEntiteit maakPassageGroep(Long clusteringTaakId, String passage,
+  private BezwaarGroep maakPassageGroep(Long clusteringTaakId, String passage,
       String samenvatting, String categorie) {
-    var groep = new PassageGroepEntiteit();
+    var groep = new BezwaarGroep();
     groep.setClusteringTaakId(clusteringTaakId);
     groep.setPassage(passage);
     groep.setSamenvatting(samenvatting);
     groep.setCategorie(categorie);
-    return passageGroepRepository.save(groep);
+    return bezwaarGroepRepository.save(groep);
   }
 
   private PassageGroepLidEntiteit maakPassageGroepLid(Long passageGroepId, Long bezwaarId,

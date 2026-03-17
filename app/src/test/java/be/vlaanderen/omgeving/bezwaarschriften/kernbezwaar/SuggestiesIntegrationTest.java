@@ -38,14 +38,14 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
   private ClusteringTaakRepository clusteringTaakRepository;
 
   @Autowired
-  private PassageGroepRepository passageGroepRepository;
+  private BezwaarGroepRepository bezwaarGroepRepository;
 
   @BeforeEach
   void setUp() {
     referentieRepository.deleteAll();
     antwoordRepository.deleteAll();
     kernbezwaarRepository.deleteAll();
-    passageGroepRepository.deleteAll();
+    bezwaarGroepRepository.deleteAll();
     clusteringTaakRepository.deleteAll();
     bezwaarRepository.deleteAll();
     documentRepository.deleteAll();
@@ -92,12 +92,12 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
     return clusteringTaakRepository.save(taak);
   }
 
-  private PassageGroepEntiteit maakPassageGroep(Long clusteringTaakId, String passage) {
-    var groep = new PassageGroepEntiteit();
+  private BezwaarGroep maakPassageGroep(Long clusteringTaakId, String passage) {
+    var groep = new BezwaarGroep();
     groep.setClusteringTaakId(clusteringTaakId);
     groep.setPassage(passage);
     groep.setSamenvatting(passage);
     groep.setCategorie("Test");
-    return passageGroepRepository.save(groep);
+    return bezwaarGroepRepository.save(groep);
   }
 }

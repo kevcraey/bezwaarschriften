@@ -13,9 +13,9 @@ import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarExtractieStatus;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.TekstExtractieStatus;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectService;
+import be.vlaanderen.omgeving.bezwaarschriften.project.TekstExtractieStatus;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +57,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   private ClusteringTaakRepository clusteringTaakRepository;
 
   @Autowired
-  private PassageGroepRepository passageGroepRepository;
+  private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Autowired
   private PassageGroepLidRepository passageGroepLidRepository;
@@ -85,7 +85,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     antwoordRepository.deleteAll();
     kernbezwaarRepository.deleteAll();
     passageGroepLidRepository.deleteAll();
-    passageGroepRepository.deleteAll();
+    bezwaarGroepRepository.deleteAll();
     clusteringTaakRepository.deleteAll();
     consolidatieTaakRepository.deleteAll();
     bezwaarRepository.deleteAll();
@@ -456,12 +456,12 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     var clusteringTaak = clusteringTaakRepository.findByProjectNaam(kern.getProjectNaam())
         .orElseGet(() -> maakClusteringTaak(kern.getProjectNaam()));
 
-    var groep = new PassageGroepEntiteit();
+    var groep = new BezwaarGroep();
     groep.setClusteringTaakId(clusteringTaak.getId());
     groep.setPassage(passage);
     groep.setSamenvatting(passage);
     groep.setCategorie("Test");
-    groep = passageGroepRepository.save(groep);
+    groep = bezwaarGroepRepository.save(groep);
 
     var bezwaarId = bezwaarIdPerBestandsnaam.get(bestandsnaam);
     var lid = new PassageGroepLidEntiteit();

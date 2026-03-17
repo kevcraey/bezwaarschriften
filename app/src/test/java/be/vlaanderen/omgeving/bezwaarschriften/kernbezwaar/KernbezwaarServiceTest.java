@@ -87,7 +87,7 @@ class KernbezwaarServiceTest {
   private PassageDeduplicatieService deduplicatieService;
 
   @Mock
-  private PassageGroepRepository passageGroepRepository;
+  private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Mock
   private PassageGroepLidRepository passageGroepLidRepository;
@@ -135,9 +135,9 @@ class KernbezwaarServiceTest {
     lenient().when(documentRepository.findByProjectNaam(any()))
         .thenReturn(List.of(doc));
 
-    // Standaard: passageGroepRepository.save geeft entiteit met incrementerend ID terug
-    lenient().when(passageGroepRepository.save(any())).thenAnswer(inv -> {
-      var e = (PassageGroepEntiteit) inv.getArgument(0);
+    // Standaard: bezwaarGroepRepository.save geeft entiteit met incrementerend ID terug
+    lenient().when(bezwaarGroepRepository.save(any())).thenAnswer(inv -> {
+      var e = (BezwaarGroep) inv.getArgument(0);
       e.setId(passageGroepIdCounter.getAndIncrement());
       return e;
     });
@@ -153,7 +153,7 @@ class KernbezwaarServiceTest {
         kernbezwaarRepository, referentieRepository,
         clusteringTaakService, clusteringTaakRepository,
         transactionManager, dimensieReductiePoort, clusteringConfig,
-        cms, deduplicatieService, passageGroepRepository,
+        cms, deduplicatieService, bezwaarGroepRepository,
         passageGroepLidRepository);
   }
 
@@ -265,7 +265,7 @@ class KernbezwaarServiceTest {
         .thenReturn(List.of(refEntiteit));
 
     var groep = maakPassageGroep(100L, "Verkeershinder passage", 85);
-    when(passageGroepRepository.findAllById(List.of(100L)))
+    when(bezwaarGroepRepository.findAllById(List.of(100L)))
         .thenReturn(List.of(groep));
     when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
         .thenReturn(List.of());
@@ -400,11 +400,11 @@ class KernbezwaarServiceTest {
     service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
 
     var inOrder = org.mockito.Mockito.inOrder(
-        passageGroepLidRepository, passageGroepRepository,
+        passageGroepLidRepository, bezwaarGroepRepository,
         referentieRepository, kernbezwaarRepository);
     inOrder.verify(passageGroepLidRepository)
         .deleteByBestandsnaamInAndProjectNaam(List.of("bezwaar-001.txt"), "windmolens");
-    inOrder.verify(passageGroepRepository).deleteZonderLeden();
+    inOrder.verify(bezwaarGroepRepository).deleteZonderLeden();
     inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
   }
@@ -416,11 +416,11 @@ class KernbezwaarServiceTest {
     service.ruimOpNaBestandenVerwijdering("testproject", bestandsnamen);
 
     var inOrder = org.mockito.Mockito.inOrder(
-        passageGroepLidRepository, passageGroepRepository,
+        passageGroepLidRepository, bezwaarGroepRepository,
         referentieRepository, kernbezwaarRepository);
     inOrder.verify(passageGroepLidRepository)
         .deleteByBestandsnaamInAndProjectNaam(bestandsnamen, "testproject");
-    inOrder.verify(passageGroepRepository).deleteZonderLeden();
+    inOrder.verify(bezwaarGroepRepository).deleteZonderLeden();
     inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("testproject");
   }
@@ -839,7 +839,7 @@ class KernbezwaarServiceTest {
     var groep100 = maakPassageGroep(100L, "passage A", 85);
     var groep101 = maakPassageGroep(101L, "passage B", 92);
     var groep102 = maakPassageGroep(102L, "passage C", 78);
-    when(passageGroepRepository.findAllById(anyList()))
+    when(bezwaarGroepRepository.findAllById(anyList()))
         .thenReturn(List.of(groep100, groep101, groep102));
     when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
         .thenReturn(List.of());
@@ -887,7 +887,7 @@ class KernbezwaarServiceTest {
     // Groep 100 heeft score, groep 101 heeft null score
     var groep100 = maakPassageGroep(100L, "passage A", 75);
     var groep101 = maakPassageGroep(101L, "passage B", null);
-    when(passageGroepRepository.findAllById(anyList()))
+    when(bezwaarGroepRepository.findAllById(anyList()))
         .thenReturn(List.of(groep100, groep101));
     when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
         .thenReturn(List.of());
@@ -940,8 +940,8 @@ class KernbezwaarServiceTest {
     service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: passage groep wordt opgeslagen met score
-    var groepCaptor = ArgumentCaptor.forClass(PassageGroepEntiteit.class);
-    verify(passageGroepRepository).save(groepCaptor.capture());
+    var groepCaptor = ArgumentCaptor.forClass(BezwaarGroep.class);
+    verify(bezwaarGroepRepository).save(groepCaptor.capture());
     assertThat(groepCaptor.getValue().getScorePercentage()).isEqualTo(100);
 
     // Assert: referentie verwijst naar passage groep
@@ -1023,7 +1023,7 @@ class KernbezwaarServiceTest {
     assertThat(invoer).hasSize(2);
 
     // Assert: 2 passage-groepen aangemaakt
-    verify(passageGroepRepository, times(2)).save(any());
+    verify(bezwaarGroepRepository, times(2)).save(any());
 
     // Assert: 2 referenties (1 per passage-groep) naar 1 kernbezwaar
     verify(referentieRepository, times(2)).save(any());
@@ -1113,7 +1113,7 @@ class KernbezwaarServiceTest {
     verify(deduplicatieService).groepeer(anyList(), anyMap());
 
     // Assert: 2 passage-groepen (geluidshinder gegroepeerd, verkeerslast apart)
-    verify(passageGroepRepository, times(2)).save(any());
+    verify(bezwaarGroepRepository, times(2)).save(any());
 
     // Assert: 2 referenties (1 per passage-groep)
     verify(referentieRepository, times(2)).save(any());
@@ -1138,7 +1138,7 @@ class KernbezwaarServiceTest {
         .thenReturn(List.of(refEntiteit));
 
     var groep = maakPassageGroep(100L, "Geluidshinder passage", 90);
-    when(passageGroepRepository.findAllById(List.of(100L)))
+    when(bezwaarGroepRepository.findAllById(List.of(100L)))
         .thenReturn(List.of(groep));
 
     // Passage groep met 2 leden (documenten)
@@ -1199,9 +1199,9 @@ class KernbezwaarServiceTest {
     return b;
   }
 
-  private PassageGroepEntiteit maakPassageGroep(Long id, String passage,
+  private BezwaarGroep maakPassageGroep(Long id, String passage,
       Integer scorePercentage) {
-    var g = new PassageGroepEntiteit();
+    var g = new BezwaarGroep();
     g.setId(id);
     g.setPassage(passage);
     g.setSamenvatting(passage);

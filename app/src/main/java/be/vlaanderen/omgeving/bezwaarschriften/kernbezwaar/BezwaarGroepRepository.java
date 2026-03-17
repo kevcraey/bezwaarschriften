@@ -5,14 +5,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
-public interface PassageGroepRepository extends JpaRepository<PassageGroepEntiteit, Long> {
+public interface BezwaarGroepRepository extends JpaRepository<BezwaarGroep, Long> {
 
-  List<PassageGroepEntiteit> findByClusteringTaakId(Long clusteringTaakId);
+  List<BezwaarGroep> findByClusteringTaakId(Long clusteringTaakId);
 
   void deleteByClusteringTaakId(Long clusteringTaakId);
 
   @Modifying(clearAutomatically = true)
-  @Query("DELETE FROM PassageGroepEntiteit g WHERE g.id NOT IN "
-      + "(SELECT DISTINCT l.passageGroepId FROM PassageGroepLidEntiteit l)")
+  @Query("DELETE FROM BezwaarGroep g WHERE g.id NOT IN "
+      + "(SELECT DISTINCT l.bezwaarGroepId FROM BezwaarGroepLid l)")
   void deleteZonderLeden();
 }

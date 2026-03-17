@@ -48,7 +48,7 @@ public class KernbezwaarService {
   private final ClusteringConfig clusteringConfig;
   private final CentroidMatchingService centroidMatchingService;
   private final PassageDeduplicatieService deduplicatieService;
-  private final PassageGroepRepository passageGroepRepository;
+  private final BezwaarGroepRepository bezwaarGroepRepository;
   private final PassageGroepLidRepository passageGroepLidRepository;
 
   /**
@@ -68,7 +68,7 @@ public class KernbezwaarService {
       ClusteringConfig clusteringConfig,
       CentroidMatchingService centroidMatchingService,
       PassageDeduplicatieService deduplicatieService,
-      PassageGroepRepository passageGroepRepository,
+      BezwaarGroepRepository bezwaarGroepRepository,
       PassageGroepLidRepository passageGroepLidRepository) {
     this.embeddingPoort = embeddingPoort;
     this.clusteringPoort = clusteringPoort;
@@ -84,7 +84,7 @@ public class KernbezwaarService {
     this.clusteringConfig = clusteringConfig;
     this.centroidMatchingService = centroidMatchingService;
     this.deduplicatieService = deduplicatieService;
-    this.passageGroepRepository = passageGroepRepository;
+    this.bezwaarGroepRepository = bezwaarGroepRepository;
     this.passageGroepLidRepository = passageGroepLidRepository;
   }
 
@@ -422,8 +422,8 @@ public class KernbezwaarService {
     var alleGroepIds = refEntiteiten.stream()
         .map(KernbezwaarReferentieEntiteit::getPassageGroepId)
         .distinct().toList();
-    var groepById = passageGroepRepository.findAllById(alleGroepIds).stream()
-        .collect(Collectors.toMap(PassageGroepEntiteit::getId, g -> g));
+    var groepById = bezwaarGroepRepository.findAllById(alleGroepIds).stream()
+        .collect(Collectors.toMap(BezwaarGroep::getId, g -> g));
 
     // Haal passage-groep leden op voor documentenlijst
     var alleLeden = passageGroepLidRepository.findByPassageGroepIdIn(alleGroepIds);
@@ -583,7 +583,7 @@ public class KernbezwaarService {
   public void ruimOpNaDocumentVerwijdering(String projectNaam, String bestandsnaam) {
     passageGroepLidRepository.deleteByBestandsnaamInAndProjectNaam(
         List.of(bestandsnaam), projectNaam);
-    passageGroepRepository.deleteZonderLeden();
+    bezwaarGroepRepository.deleteZonderLeden();
     referentieRepository.deleteMetVerwijderdePassageGroep();
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
   }
@@ -599,7 +599,7 @@ public class KernbezwaarService {
   public void ruimOpNaBestandenVerwijdering(String projectNaam, List<String> bestandsnamen) {
     passageGroepLidRepository.deleteByBestandsnaamInAndProjectNaam(
         bestandsnamen, projectNaam);
-    passageGroepRepository.deleteZonderLeden();
+    bezwaarGroepRepository.deleteZonderLeden();
     referentieRepository.deleteMetVerwijderdePassageGroep();
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
     // Als er geen kernbezwaren meer over zijn, ruim ook de clustering-taak op
@@ -690,7 +690,7 @@ public class KernbezwaarService {
       List<DeduplicatieGroep> groepen, Map<Long, Double> scores) {
     var groepIds = new ArrayList<Long>();
     for (var groep : groepen) {
-      var entiteit = new PassageGroepEntiteit();
+      var entiteit = new BezwaarGroep();
       if (taakId == null) {
         throw new IllegalArgumentException("taakId mag niet null zijn bij persisteren passage-groepen");
       }
@@ -704,7 +704,7 @@ public class KernbezwaarService {
       entiteit.setScorePercentage(
           score != null ? (int) Math.round(score * 100) : null);
 
-      entiteit = passageGroepRepository.save(entiteit);
+      entiteit = bezwaarGroepRepository.save(entiteit);
 
       for (var lid : groep.leden()) {
         var lidEntiteit = new PassageGroepLidEntiteit();

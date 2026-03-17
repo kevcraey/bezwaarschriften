@@ -24,7 +24,7 @@ class KernbezwaarPersistentieTest {
   private ClusteringTaakRepository clusteringTaakRepository;
 
   @Autowired
-  private PassageGroepRepository passageGroepRepository;
+  private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Autowired
   private TestEntityManager entityManager;
@@ -125,12 +125,12 @@ class KernbezwaarPersistentieTest {
     return clusteringTaakRepository.save(taak);
   }
 
-  private PassageGroepEntiteit maakPassageGroep(Long clusteringTaakId) {
-    var groep = new PassageGroepEntiteit();
+  private BezwaarGroep maakPassageGroep(Long clusteringTaakId) {
+    var groep = new BezwaarGroep();
     groep.setClusteringTaakId(clusteringTaakId);
     groep.setPassage("test passage");
     groep.setSamenvatting("test samenvatting");
     groep.setCategorie("Test");
-    return passageGroepRepository.save(groep);
+    return bezwaarGroepRepository.save(groep);
   }
 }
