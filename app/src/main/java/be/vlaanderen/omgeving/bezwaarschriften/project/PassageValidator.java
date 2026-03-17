@@ -3,7 +3,6 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,23 +18,23 @@ public class PassageValidator {
   public record ValidatieResultaat(int aantalNietGevonden) {}
 
   /**
-   * Valideert of geextraheerde passages daadwerkelijk voorkomen in de
+   * Valideert of de passage-tekst van elk bezwaar daadwerkelijk voorkomt in de
    * originele documenttekst. Zet {@code passageGevonden} op elke entiteit.
    */
   public ValidatieResultaat valideer(
       List<IndividueelBezwaar> bezwaren,
-      Map<Integer, String> passageMap,
       String documentTekst) {
 
     String genormaliseerdeDocument = normaliseer(documentTekst);
     int aantalNietGevonden = 0;
 
-    for (IndividueelBezwaar bezwaar : bezwaren) {
-      String passage = passageMap.get(bezwaar.getPassageNr());
+    for (int i = 0; i < bezwaren.size(); i++) {
+      IndividueelBezwaar bezwaar = bezwaren.get(i);
+      String passage = bezwaar.getPassageTekst();
 
-      if (passage == null) {
-        LOG.warn("Passage {} niet gevonden in passageMap voor bezwaar '{}'",
-            bezwaar.getPassageNr(), bezwaar.getSamenvatting());
+      if (passage == null || passage.isBlank()) {
+        LOG.warn("Passage ontbreekt voor bezwaar #{} '{}'",
+            i + 1, bezwaar.getSamenvatting());
         bezwaar.setPassageGevonden(false);
         aantalNietGevonden++;
         continue;
@@ -52,16 +51,16 @@ public class PassageValidator {
 
       if (genormaliseerdeDocument.contains(genormaliseerdePassage)) {
         bezwaar.setPassageGevonden(true);
-        LOG.debug("Passage {} exact gevonden", bezwaar.getPassageNr());
+        LOG.debug("Passage #{} exact gevonden", i + 1);
       } else if (fuzzyMatch(
           genormaliseerdePassage, genormaliseerdeDocument)) {
         bezwaar.setPassageGevonden(true);
-        LOG.debug("Passage {} fuzzy gevonden", bezwaar.getPassageNr());
+        LOG.debug("Passage #{} fuzzy gevonden", i + 1);
       } else {
         bezwaar.setPassageGevonden(false);
         aantalNietGevonden++;
-        LOG.warn("Passage {} NIET gevonden: '{}'",
-            bezwaar.getPassageNr(),
+        LOG.warn("Passage #{} NIET gevonden: '{}'",
+            i + 1,
             passage.length() > 80
                 ? passage.substring(0, 80) + "..." : passage);
       }
