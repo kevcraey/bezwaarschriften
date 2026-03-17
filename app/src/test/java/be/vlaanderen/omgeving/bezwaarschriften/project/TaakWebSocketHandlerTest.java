@@ -37,7 +37,7 @@ class TaakWebSocketHandlerTest {
 
     var taak = new ExtractieTaakDto(
         1L, "windmolens", "bezwaar-001.txt", "BEZIG",
-        null, null, false, false);
+        null, null, null, false, false, null, null);
 
     handler.taakGewijzigd(taak);
 
@@ -57,7 +57,7 @@ class TaakWebSocketHandlerTest {
 
     var taak = new ExtractieTaakDto(
         2L, "windmolens", "bezwaar-002.txt", "KLAAR",
-        500, null, false, false);
+        500, null, null, false, false, null, null);
 
     handler.taakGewijzigd(taak);
 
@@ -93,7 +93,7 @@ class TaakWebSocketHandlerTest {
 
     var taak = new TekstExtractieTaakDto(
         1L, "windmolens", "bezwaar-001.pdf", "BEZIG",
-        null);
+        null, null, null);
 
     handler.tekstExtractieTaakGewijzigd(taak);
 

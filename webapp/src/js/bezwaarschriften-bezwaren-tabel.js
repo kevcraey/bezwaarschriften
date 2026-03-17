@@ -365,6 +365,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           update.heeftPassagesDieNietInTekstVoorkomen = taak.heeftPassagesDieNietInTekstVoorkomen;
         }
         if (taak.heeftManueel !== undefined) update.heeftManueel = taak.heeftManueel;
+        if (taak.aantalBezwaren !== undefined) update.aantalBezwaren = taak.aantalBezwaren;
       }
       // Tekst-extractie update (van TekstExtractieTaakDto)
       if (taak.tekstExtractieStatus) {

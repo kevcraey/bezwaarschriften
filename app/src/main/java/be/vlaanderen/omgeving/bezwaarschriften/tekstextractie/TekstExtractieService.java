@@ -146,6 +146,21 @@ public class TekstExtractieService {
   }
 
   /**
+   * Registreert dat de daadwerkelijke verwerking gestart is voor een document.
+   *
+   * @param documentId id van het document
+   */
+  @Transactional
+  public void markeerVerwerkingGestart(Long documentId) {
+    var document = documentRepository.findById(documentId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Document niet gevonden: " + documentId));
+    document.markeerVerwerkingGestart();
+    documentRepository.save(document);
+    notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(document));
+  }
+
+  /**
    * Verwerkt een tekst-extractie voor een document.
    *
    * <p>Voor PDF-bestanden wordt {@link PdfTekstExtractor} gebruikt.

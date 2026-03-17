@@ -74,6 +74,7 @@ public class ExtractieWorker {
 
   private void verwerkDocument(BezwaarDocument doc) {
     try {
+      service.markeerVerwerkingGestart(doc.getId());
       var resultaat = verwerker.verwerk(
           doc.getProjectNaam(),
           doc.getBestandsnaam(),

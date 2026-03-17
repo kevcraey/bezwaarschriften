@@ -56,6 +56,7 @@ public class TekstExtractieWorker {
 
   private void verwerkDocument(BezwaarDocument document) {
     try {
+      service.markeerVerwerkingGestart(document.getId());
       service.verwerkTaak(document);
     } catch (Throwable e) {
       LOGGER.error("Fout bij verwerking van tekst-extractie document {}: {}",

@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.project;
 
+import java.time.Instant;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -49,6 +50,12 @@ public class BezwaarDocument {
 
   @Column(name = "foutmelding", columnDefinition = "text")
   private String foutmelding;
+
+  @Column(name = "extractie_ingediend_op")
+  private Instant extractieIngediendOp;
+
+  @Column(name = "extractie_gestart_op")
+  private Instant extractieGestartOp;
 
   @Version
   @Column(name = "versie", nullable = false)
@@ -142,6 +149,22 @@ public class BezwaarDocument {
     this.versie = versie;
   }
 
+  public Instant getExtractieIngediendOp() {
+    return extractieIngediendOp;
+  }
+
+  public void setExtractieIngediendOp(Instant extractieIngediendOp) {
+    this.extractieIngediendOp = extractieIngediendOp;
+  }
+
+  public Instant getExtractieGestartOp() {
+    return extractieGestartOp;
+  }
+
+  public void setExtractieGestartOp(Instant extractieGestartOp) {
+    this.extractieGestartOp = extractieGestartOp;
+  }
+
   // --- Domeinmethoden voor status-transities ---
 
   /**
@@ -150,6 +173,8 @@ public class BezwaarDocument {
   public void startTekstExtractie() {
     this.tekstExtractieStatus = TekstExtractieStatus.BEZIG;
     this.foutmelding = null;
+    this.extractieIngediendOp = Instant.now();
+    this.extractieGestartOp = null;
   }
 
   /**
@@ -187,6 +212,15 @@ public class BezwaarDocument {
   public void startBezwaarExtractie() {
     this.bezwaarExtractieStatus = BezwaarExtractieStatus.BEZIG;
     this.foutmelding = null;
+    this.extractieIngediendOp = Instant.now();
+    this.extractieGestartOp = null;
+  }
+
+  /**
+   * Registreert dat de verwerking (tekst- of bezwaar-extractie) daadwerkelijk gestart is.
+   */
+  public void markeerVerwerkingGestart() {
+    this.extractieGestartOp = Instant.now();
   }
 
   /**

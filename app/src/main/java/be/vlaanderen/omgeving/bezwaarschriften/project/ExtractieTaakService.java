@@ -133,6 +133,20 @@ public class ExtractieTaakService {
   }
 
   /**
+   * Registreert dat de daadwerkelijke verwerking gestart is voor een document.
+   *
+   * @param documentId id van het document
+   */
+  @Transactional
+  public void markeerVerwerkingGestart(Long documentId) {
+    var doc = documentRepository.findById(documentId)
+        .orElseThrow(() -> new IllegalArgumentException("Document niet gevonden: " + documentId));
+    doc.markeerVerwerkingGestart();
+    documentRepository.save(doc);
+    notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
+  }
+
+  /**
    * Markeert een document als succesvol afgerond (terugwaarts-compatibele variant zonder details).
    *
    * @param documentId id van het document
@@ -216,7 +230,7 @@ public class ExtractieTaakService {
 
     doc.voltooiBezwaarExtractie(passagesNietGevonden, false);
     documentRepository.save(doc);
-    notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
+    notificatie.taakGewijzigd(ExtractieTaakDto.van(doc, bezwaarEntiteiten.size()));
     LOGGER.info("Document {} afgerond: {} woorden, {} bezwaren opgeslagen",
         documentId, resultaat.aantalWoorden(), bezwaarEntiteiten.size());
   }
