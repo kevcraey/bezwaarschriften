@@ -1,6 +1,6 @@
 # Domeinmodel
 
-**Laatst bijgewerkt:** 2026-03-12
+**Laatst bijgewerkt:** 2026-03-16
 
 ---
 
@@ -37,6 +37,7 @@ erDiagram
         Long id PK
         String projectNaam
         String bestandsnaam
+        Long taakId FK "traceerbaarheid"
         String bezwaarTekst
         float[] embedding
     }
@@ -97,9 +98,10 @@ erDiagram
 
     BezwaarBestandEntiteit ||--o| TekstExtractieTaak : "tekst-extractie"
     BezwaarBestandEntiteit ||--o| ExtractieTaak : "bezwaar-extractie"
-    ExtractieTaak ||--|{ GeextraheerdBezwaarEntiteit : "extraheert"
+    BezwaarBestandEntiteit ||--|{ GeextraheerdBezwaarEntiteit : "bevat bezwaren"
     ExtractieTaak ||--|{ ExtractiePassageEntiteit : "passages"
     GeextraheerdBezwaarEntiteit }|--|| ExtractiePassageEntiteit : "passage"
+    ExtractieTaak ||--o{ GeextraheerdBezwaarEntiteit : "traceerbaarheid"
     KernbezwaarEntiteit ||--|{ KernbezwaarReferentieEntiteit : "referenties"
     KernbezwaarReferentieEntiteit }|--|| GeextraheerdBezwaarEntiteit : "bezwaar"
     KernbezwaarEntiteit ||--o| KernbezwaarAntwoordEntiteit : "antwoord"
@@ -116,7 +118,7 @@ erDiagram
 |---------|----------|-------|------------|
 | `project` | `BezwaarBestandEntiteit` | `bezwaar_bestand` | projectNaam, bestandsnaam, status |
 | `project` | `ExtractieTaak` | `extractie_taak` | projectNaam, bestandsnaam, status |
-| `project` | `GeextraheerdBezwaarEntiteit` | `geextraheerd_bezwaar` | bezwaarTekst, embedding |
+| `project` | `GeextraheerdBezwaarEntiteit` | `geextraheerd_bezwaar` | **projectNaam, bestandsnaam**, bezwaarTekst, embedding |
 | `project` | `ExtractiePassageEntiteit` | `extractie_passage` | passageTekst, start/eindPositie |
 | `tekstextractie` | `TekstExtractieTaak` | `tekst_extractie_taak` | status, extractieMethode, **pseudonimiseringMappingId** |
 | `domain` | `IndividueelBezwaar` | `individueel_bezwaar` | tekst, embedding |

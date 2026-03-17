@@ -19,6 +19,12 @@ public class GeextraheerdBezwaarEntiteit {
   @Column(name = "taak_id", nullable = false)
   private Long taakId;
 
+  @Column(name = "project_naam", nullable = false)
+  private String projectNaam;
+
+  @Column(name = "bestandsnaam", nullable = false)
+  private String bestandsnaam;
+
   @Column(name = "passage_nr", nullable = false)
   private int passageNr;
 
@@ -53,6 +59,22 @@ public class GeextraheerdBezwaarEntiteit {
 
   public void setTaakId(Long taakId) {
     this.taakId = taakId;
+  }
+
+  public String getProjectNaam() {
+    return projectNaam;
+  }
+
+  public void setProjectNaam(String projectNaam) {
+    this.projectNaam = projectNaam;
+  }
+
+  public String getBestandsnaam() {
+    return bestandsnaam;
+  }
+
+  public void setBestandsnaam(String bestandsnaam) {
+    this.bestandsnaam = bestandsnaam;
   }
 
   public int getPassageNr() {

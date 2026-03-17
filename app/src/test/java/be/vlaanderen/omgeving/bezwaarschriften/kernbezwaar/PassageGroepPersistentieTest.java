@@ -223,6 +223,8 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   private GeextraheerdBezwaarEntiteit maakBezwaar(Long taakId, String samenvatting) {
     var bezwaar = new GeextraheerdBezwaarEntiteit();
     bezwaar.setTaakId(taakId);
+    bezwaar.setProjectNaam("testproject");
+    bezwaar.setBestandsnaam("test.txt");
     bezwaar.setPassageNr(1);
     bezwaar.setSamenvatting(samenvatting);
     return bezwaarRepository.save(bezwaar);

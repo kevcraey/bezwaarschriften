@@ -20,16 +20,15 @@ class PassageDeduplicatieServiceTest {
 
   @Test
   void identiekeTekstenWordenGegroepeerd() {
-    var b1 = maakBezwaar(1L, 10L, 0, "samenvatting A");
-    var b2 = maakBezwaar(2L, 20L, 0, "samenvatting B");
+    var b1 = maakBezwaar(1L, 10L, 0, "samenvatting A", "bestand1.pdf");
+    var b2 = maakBezwaar(2L, 20L, 0, "samenvatting B", "bestand2.pdf");
 
     var passageLookup =
         Map.of(
             10L, Map.of(0, "De stikstofuitstoot is onvoldoende onderzocht."),
             20L, Map.of(0, "De stikstofuitstoot is onvoldoende onderzocht."));
-    var bestandsnaamLookup = Map.of(10L, "bestand1.pdf", 20L, "bestand2.pdf");
 
-    var groepen = service.groepeer(List.of(b1, b2), passageLookup, bestandsnaamLookup);
+    var groepen = service.groepeer(List.of(b1, b2), passageLookup);
 
     assertThat(groepen).hasSize(1);
     assertThat(groepen.get(0).leden()).hasSize(2);
@@ -39,16 +38,15 @@ class PassageDeduplicatieServiceTest {
 
   @Test
   void verschillendeTekstenWordenNietGegroepeerd() {
-    var b1 = maakBezwaar(1L, 10L, 0, "samenvatting A");
-    var b2 = maakBezwaar(2L, 20L, 0, "samenvatting B");
+    var b1 = maakBezwaar(1L, 10L, 0, "samenvatting A", "bestand1.pdf");
+    var b2 = maakBezwaar(2L, 20L, 0, "samenvatting B", "bestand2.pdf");
 
     var passageLookup =
         Map.of(
             10L, Map.of(0, "De stikstofuitstoot is onvoldoende onderzocht."),
             20L, Map.of(0, "Het verkeersmodel klopt niet met de realiteit."));
-    var bestandsnaamLookup = Map.of(10L, "bestand1.pdf", 20L, "bestand2.pdf");
 
-    var groepen = service.groepeer(List.of(b1, b2), passageLookup, bestandsnaamLookup);
+    var groepen = service.groepeer(List.of(b1, b2), passageLookup);
 
     assertThat(groepen).hasSize(2);
     assertThat(groepen.get(0).leden()).hasSize(1);
@@ -57,8 +55,8 @@ class PassageDeduplicatieServiceTest {
 
   @Test
   void binaIdentiekeTekstenWordenGegroepeerd() {
-    var b1 = maakBezwaar(1L, 10L, 0, "samenvatting A");
-    var b2 = maakBezwaar(2L, 20L, 0, "samenvatting B");
+    var b1 = maakBezwaar(1L, 10L, 0, "samenvatting A", "bestand1.pdf");
+    var b2 = maakBezwaar(2L, 20L, 0, "samenvatting B", "bestand2.pdf");
 
     // Verschil van 1 karakter in een lange tekst -> Dice >= 0.9
     var passageLookup =
@@ -71,7 +69,6 @@ class PassageDeduplicatieServiceTest {
                 Map.of(
                     0,
                     "De stikstofuitstoot is onvoldoende onderzocht in het milieueffectrapport."));
-    var bestandsnaamLookup = Map.of(10L, "bestand1.pdf", 20L, "bestand2.pdf");
 
     // Verifieer dat de Dice-coefficient inderdaad >= 0.9 is
     double dice =
@@ -80,7 +77,7 @@ class PassageDeduplicatieServiceTest {
             "De stikstofuitstoot is onvoldoende onderzocht in het milieueffectrapport.");
     assertThat(dice).isGreaterThanOrEqualTo(0.9);
 
-    var groepen = service.groepeer(List.of(b1, b2), passageLookup, bestandsnaamLookup);
+    var groepen = service.groepeer(List.of(b1, b2), passageLookup);
 
     assertThat(groepen).hasSize(1);
     assertThat(groepen.get(0).leden()).hasSize(2);
@@ -88,8 +85,8 @@ class PassageDeduplicatieServiceTest {
 
   @Test
   void langstePassageWordtRepresentatief() {
-    var b1 = maakBezwaar(1L, 10L, 0, "korte samenvatting");
-    var b2 = maakBezwaar(2L, 20L, 0, "langere samenvatting met meer detail");
+    var b1 = maakBezwaar(1L, 10L, 0, "korte samenvatting", "kort.pdf");
+    var b2 = maakBezwaar(2L, 20L, 0, "langere samenvatting met meer detail", "lang.pdf");
 
     var kortePassage =
         "De stikstofuitstoot is onvoldoende onderzocht in het milieueffectenrapport.";
@@ -103,9 +100,8 @@ class PassageDeduplicatieServiceTest {
     // Korte eerst, lange daarna -> lange wordt representatief
     var passageLookup =
         Map.of(10L, Map.of(0, kortePassage), 20L, Map.of(0, langePassage));
-    var bestandsnaamLookup = Map.of(10L, "kort.pdf", 20L, "lang.pdf");
 
-    var groepen = service.groepeer(List.of(b1, b2), passageLookup, bestandsnaamLookup);
+    var groepen = service.groepeer(List.of(b1, b2), passageLookup);
 
     assertThat(groepen).hasSize(1);
     assertThat(groepen.get(0).representatief().getId()).isEqualTo(2L);
@@ -115,7 +111,7 @@ class PassageDeduplicatieServiceTest {
 
   @Test
   void legeInvoerGeeftLegeOutput() {
-    var groepen = service.groepeer(List.of(), Map.of(), Map.of());
+    var groepen = service.groepeer(List.of(), Map.of());
 
     assertThat(groepen).isEmpty();
   }
@@ -146,14 +142,13 @@ class PassageDeduplicatieServiceTest {
 
   @Test
   void passageLookupFallbackNaarSamenvatting() {
-    var b1 = maakBezwaar(1L, 10L, 0, "dezelfde samenvatting als passage");
-    var b2 = maakBezwaar(2L, 20L, 0, "dezelfde samenvatting als passage");
+    var b1 = maakBezwaar(1L, 10L, 0, "dezelfde samenvatting als passage", "bestand1.pdf");
+    var b2 = maakBezwaar(2L, 20L, 0, "dezelfde samenvatting als passage", "bestand2.pdf");
 
     // Geen passage in lookup -> fallback naar samenvatting
     Map<Long, Map<Integer, String>> passageLookup = Map.of();
-    var bestandsnaamLookup = Map.of(10L, "bestand1.pdf", 20L, "bestand2.pdf");
 
-    var groepen = service.groepeer(List.of(b1, b2), passageLookup, bestandsnaamLookup);
+    var groepen = service.groepeer(List.of(b1, b2), passageLookup);
 
     assertThat(groepen).hasSize(1);
     assertThat(groepen.get(0).leden()).hasSize(2);
@@ -161,25 +156,25 @@ class PassageDeduplicatieServiceTest {
   }
 
   @Test
-  void bestandsnaamOnbekendAlsNietInLookup() {
-    var b1 = maakBezwaar(1L, 10L, 0, "een passage");
+  void bestandsnaamWordtOvergenomenVanEntiteit() {
+    var b1 = maakBezwaar(1L, 10L, 0, "een passage", "mijn-bestand.pdf");
 
     var passageLookup = Map.of(10L, Map.of(0, "een passage"));
-    Map<Long, String> bestandsnaamLookup = Map.of();
 
-    var groepen = service.groepeer(List.of(b1), passageLookup, bestandsnaamLookup);
+    var groepen = service.groepeer(List.of(b1), passageLookup);
 
     assertThat(groepen).hasSize(1);
-    assertThat(groepen.get(0).leden().get(0).bestandsnaam()).isEqualTo("onbekend");
+    assertThat(groepen.get(0).leden().get(0).bestandsnaam()).isEqualTo("mijn-bestand.pdf");
   }
 
   private GeextraheerdBezwaarEntiteit maakBezwaar(
-      Long id, Long taakId, int passageNr, String samenvatting) {
+      Long id, Long taakId, int passageNr, String samenvatting, String bestandsnaam) {
     var b = new GeextraheerdBezwaarEntiteit();
     b.setId(id);
     b.setTaakId(taakId);
     b.setPassageNr(passageNr);
     b.setSamenvatting(samenvatting);
+    b.setBestandsnaam(bestandsnaam);
     return b;
   }
 }
