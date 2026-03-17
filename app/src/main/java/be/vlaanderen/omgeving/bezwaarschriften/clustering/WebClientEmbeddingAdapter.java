@@ -3,7 +3,6 @@ package be.vlaanderen.omgeving.bezwaarschriften.clustering;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.springframework.http.codec.ClientCodecConfigurer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
