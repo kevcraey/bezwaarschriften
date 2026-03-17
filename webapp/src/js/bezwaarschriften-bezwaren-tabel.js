@@ -449,7 +449,11 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           veld.renderer = (td, rij) => {
             td.style.verticalAlign = 'middle';
             td.style.textAlign = 'center';
-            td.textContent = rij.aantalBezwaren != null ? rij.aantalBezwaren : '';
+            if (rij.bezwaarExtractieStatus === 'KLAAR') {
+              td.textContent = rij.aantalBezwaren != null ? rij.aantalBezwaren : '0';
+            } else {
+              td.textContent = '-';
+            }
           };
           break;
         case 'extractieMethode':
@@ -1051,19 +1055,20 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   _formatTijd(ms) {
     const totaalSeconden = Math.floor(ms / 1000);
-    const minuten = Math.floor(totaalSeconden / 60);
+    const uren = Math.floor(totaalSeconden / 3600);
+    const minuten = Math.floor((totaalSeconden % 3600) / 60);
     const seconden = totaalSeconden % 60;
-    return `${minuten}:${String(seconden).padStart(2, '0')}`;
+    if (uren > 0) {
+      return `${uren}h${String(minuten).padStart(2, '0')}m`;
+    }
+    if (minuten > 0) {
+      return `${minuten}m${String(seconden).padStart(2, '0')}s`;
+    }
+    return `${seconden}s`;
   }
 
   _formatTijdLeesbaar(ms) {
-    const totaalSeconden = Math.floor(ms / 1000);
-    const minuten = Math.floor(totaalSeconden / 60);
-    const seconden = totaalSeconden % 60;
-    if (minuten > 0) {
-      return `${minuten}m ${seconden}s`;
-    }
-    return `${seconden}s`;
+    return this._formatTijd(ms);
   }
 
   _configureerSelecteerAlles() {
