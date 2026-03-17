@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <!-- 1. Maak bezwaar_document tabel -->
+  <changeSet id="20260317-01" author="bezwaarschriften">
+    <comment>Maak BezwaarDocument tabel — de nieuwe aggregate root</comment>
+    <createTable tableName="bezwaar_document">
+      <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true"/></column>
+      <column name="project_naam" type="varchar(255)"><constraints nullable="false"/></column>
+      <column name="bestandsnaam" type="varchar(255)"><constraints nullable="false"/></column>
+      <column name="tekst_extractie_status" type="varchar(20)" defaultValue="GEEN"><constraints nullable="false"/></column>
+      <column name="bezwaar_extractie_status" type="varchar(20)" defaultValue="GEEN"><constraints nullable="false"/></column>
+      <column name="extractie_methode" type="varchar(20)"/>
+      <column name="aantal_woorden" type="int"/>
+      <column name="heeft_passages_die_niet_in_tekst_voorkomen" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="heeft_manueel" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="foutmelding" type="text"/>
+      <column name="versie" type="int" defaultValueNumeric="0"><constraints nullable="false"/></column>
+    </createTable>
+    <createIndex tableName="bezwaar_document" indexName="idx_bezwaar_document_project">
+      <column name="project_naam"/>
+    </createIndex>
+    <addUniqueConstraint tableName="bezwaar_document"
+        columnNames="project_naam, bestandsnaam"
+        constraintName="uk_bezwaar_document_project_bestand"/>
+  </changeSet>
+
+  <!-- 2. Migreer data vanuit bestaande tabellen (PostgreSQL only) -->
+  <changeSet id="20260317-02" author="bezwaarschriften">
+    <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
+    <comment>Migreer documenten vanuit bezwaar_bestand + taken</comment>
+    <sql>
+      INSERT INTO bezwaar_document (project_naam, bestandsnaam, tekst_extractie_status, bezwaar_extractie_status, extractie_methode, aantal_woorden, heeft_passages_die_niet_in_tekst_voorkomen, heeft_manueel, foutmelding, versie)
+      SELECT DISTINCT
+        bb.project_naam,
+        bb.bestandsnaam,
+        CASE
+          WHEN te.status = 'KLAAR' THEN 'KLAAR'
+          WHEN te.status = 'BEZIG' THEN 'BEZIG'
+          WHEN te.status = 'WACHTEND' THEN 'BEZIG'
+          WHEN te.status = 'MISLUKT' THEN 'FOUT'
+          WHEN te.status = 'OCR_NIET_BESCHIKBAAR' THEN 'FOUT'
+          WHEN te.status IS NULL THEN 'GEEN'
+          ELSE 'GEEN'
+        END,
+        CASE
+          WHEN et.status = 'KLAAR' THEN 'KLAAR'
+          WHEN et.status = 'BEZIG' THEN 'BEZIG'
+          WHEN et.status = 'WACHTEND' THEN 'BEZIG'
+          WHEN et.status = 'FOUT' THEN 'FOUT'
+          WHEN et.status IS NULL THEN 'GEEN'
+          ELSE 'GEEN'
+        END,
+        CASE WHEN te.extractie_methode IS NOT NULL THEN te.extractie_methode::text ELSE NULL END,
+        et.aantal_woorden,
+        COALESCE(et.heeft_passages_die_niet_in_tekst_voorkomen, false),
+        COALESCE(et.heeft_manueel, false),
+        COALESCE(et.foutmelding, te.foutmelding),
+        0
+      FROM bezwaar_bestand bb
+      LEFT JOIN LATERAL (
+        SELECT * FROM tekst_extractie_taak t
+        WHERE t.project_naam = bb.project_naam AND t.bestandsnaam = bb.bestandsnaam
+        ORDER BY t.aangemaakt_op DESC LIMIT 1
+      ) te ON true
+      LEFT JOIN LATERAL (
+        SELECT * FROM extractie_taak t
+        WHERE t.project_naam = bb.project_naam AND t.bestandsnaam = bb.bestandsnaam
+        ORDER BY t.aangemaakt_op DESC LIMIT 1
+      ) et ON true
+    </sql>
+  </changeSet>
+
+  <!-- 3. Hernoem geextraheerd_bezwaar → individueel_bezwaar -->
+  <changeSet id="20260317-03" author="bezwaarschriften">
+    <comment>Hernoem tabel geextraheerd_bezwaar naar individueel_bezwaar</comment>
+    <renameTable oldTableName="geextraheerd_bezwaar" newTableName="individueel_bezwaar"/>
+  </changeSet>
+
+  <!-- 4. Voeg document_id en passage_tekst toe aan individueel_bezwaar -->
+  <changeSet id="20260317-04" author="bezwaarschriften">
+    <comment>Voeg document_id en passage_tekst toe aan individueel_bezwaar</comment>
+    <addColumn tableName="individueel_bezwaar">
+      <column name="document_id" type="bigint"/>
+      <column name="passage_tekst" type="text"/>
+    </addColumn>
+  </changeSet>
+
+  <!-- 5. Backfill document_id en passage_tekst (PostgreSQL only) -->
+  <changeSet id="20260317-05" author="bezwaarschriften">
+    <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
+    <comment>Backfill document_id vanuit project_naam+bestandsnaam</comment>
+    <sql>
+      UPDATE individueel_bezwaar ib
+      SET document_id = bd.id
+      FROM bezwaar_document bd
+      WHERE ib.project_naam = bd.project_naam AND ib.bestandsnaam = bd.bestandsnaam
+    </sql>
+  </changeSet>
+
+  <changeSet id="20260317-06" author="bezwaarschriften">
+    <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
+    <comment>Backfill passage_tekst vanuit extractie_passage</comment>
+    <sql>
+      UPDATE individueel_bezwaar ib
+      SET passage_tekst = ep.tekst
+      FROM extractie_passage ep
+      WHERE ep.taak_id = ib.taak_id AND ep.passage_nr = ib.passage_nr
+    </sql>
+  </changeSet>
+
+  <!-- 6. NOT NULL constraints na backfill -->
+  <changeSet id="20260317-07" author="bezwaarschriften">
+    <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
+    <comment>NOT NULL constraint op document_id + FK</comment>
+    <addNotNullConstraint tableName="individueel_bezwaar"
+        columnName="document_id" columnDataType="bigint"/>
+    <addForeignKeyConstraint baseTableName="individueel_bezwaar"
+        baseColumnNames="document_id"
+        referencedTableName="bezwaar_document"
+        referencedColumnNames="id"
+        constraintName="fk_bezwaar_document"/>
+  </changeSet>
+
+  <!-- 7. Verwijder oude kolommen van individueel_bezwaar -->
+  <changeSet id="20260317-08" author="bezwaarschriften">
+    <comment>Verwijder oude kolommen: taak_id, passage_nr, project_naam, bestandsnaam</comment>
+    <dropIndex tableName="individueel_bezwaar" indexName="idx_bezwaar_project_bestand"/>
+    <dropColumn tableName="individueel_bezwaar" columnName="taak_id"/>
+    <dropColumn tableName="individueel_bezwaar" columnName="passage_nr"/>
+    <dropColumn tableName="individueel_bezwaar" columnName="project_naam"/>
+    <dropColumn tableName="individueel_bezwaar" columnName="bestandsnaam"/>
+    <createIndex tableName="individueel_bezwaar" indexName="idx_individueel_bezwaar_document">
+      <column name="document_id"/>
+    </createIndex>
+  </changeSet>
+
+  <!-- 8. Verwijder oude tabellen -->
+  <changeSet id="20260317-09" author="bezwaarschriften">
+    <comment>Verwijder extractie_passage tabel</comment>
+    <dropTable tableName="extractie_passage"/>
+  </changeSet>
+
+  <changeSet id="20260317-10" author="bezwaarschriften">
+    <comment>Verwijder extractie_taak tabel</comment>
+    <dropTable tableName="extractie_taak"/>
+  </changeSet>
+
+  <changeSet id="20260317-11" author="bezwaarschriften">
+    <comment>Verwijder tekst_extractie_taak tabel</comment>
+    <dropTable tableName="tekst_extractie_taak"/>
+  </changeSet>
+
+  <changeSet id="20260317-12" author="bezwaarschriften">
+    <comment>Verwijder bezwaar_bestand tabel</comment>
+    <dropTable tableName="bezwaar_bestand"/>
+  </changeSet>
+
+</databaseChangeLog>
