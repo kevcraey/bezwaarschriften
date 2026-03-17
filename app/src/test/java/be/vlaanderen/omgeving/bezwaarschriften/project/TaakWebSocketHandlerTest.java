@@ -36,7 +36,7 @@ class TaakWebSocketHandlerTest {
     handler.afterConnectionEstablished(session);
 
     var taak = new ExtractieTaakDto(
-        1L, "windmolens", "bezwaar-001.txt", "bezwaar-extractie-bezig",
+        1L, "windmolens", "bezwaar-001.txt", "BEZIG",
         null, null, false, false);
 
     handler.taakGewijzigd(taak);
@@ -45,7 +45,7 @@ class TaakWebSocketHandlerTest {
       String payload = ((TextMessage) msg).getPayload();
       return payload.contains("\"type\":\"taak-update\"")
           && payload.contains("\"bestandsnaam\":\"bezwaar-001.txt\"")
-          && payload.contains("\"status\":\"bezwaar-extractie-bezig\"");
+          && payload.contains("\"bezwaarExtractieStatus\":\"BEZIG\"");
     }));
   }
 
@@ -56,7 +56,7 @@ class TaakWebSocketHandlerTest {
     handler.afterConnectionClosed(session, null);
 
     var taak = new ExtractieTaakDto(
-        2L, "windmolens", "bezwaar-002.txt", "bezwaar-extractie-klaar",
+        2L, "windmolens", "bezwaar-002.txt", "KLAAR",
         500, null, false, false);
 
     handler.taakGewijzigd(taak);
@@ -92,7 +92,7 @@ class TaakWebSocketHandlerTest {
     handler.afterConnectionEstablished(session);
 
     var taak = new TekstExtractieTaakDto(
-        1L, "windmolens", "bezwaar-001.pdf", "tekst-extractie-wachtend",
+        1L, "windmolens", "bezwaar-001.pdf", "BEZIG",
         null);
 
     handler.tekstExtractieTaakGewijzigd(taak);
@@ -101,7 +101,7 @@ class TaakWebSocketHandlerTest {
       String payload = ((TextMessage) msg).getPayload();
       return payload.contains("\"type\":\"tekst-extractie-update\"")
           && payload.contains("\"bestandsnaam\":\"bezwaar-001.pdf\"")
-          && payload.contains("\"status\":\"tekst-extractie-wachtend\"");
+          && payload.contains("\"tekstExtractieStatus\":\"BEZIG\"");
     }));
   }
 }

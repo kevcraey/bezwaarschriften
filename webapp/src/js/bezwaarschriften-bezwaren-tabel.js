@@ -25,55 +25,75 @@ registerWebComponents([
   VlTooltipComponent,
 ]);
 
-const STATUS_LABELS = {
-  'todo': 'Tekst extractie nodig',
-  'bezwaar-extractie-wachtend': 'Bezwaar-extractie wachtend',
-  'bezwaar-extractie-bezig': 'Bezwaar-extractie bezig',
-  'bezwaar-extractie-klaar': 'Bezwaar-extractie klaar',
-  'bezwaar-extractie-fout': 'Bezwaar-extractie fout',
-  'niet ondersteund': 'Niet ondersteund',
-  'tekst-extractie-wachtend': 'Tekst extractie wachtend',
-  'tekst-extractie-bezig': 'Tekst extractie bezig',
-  'tekst-extractie-klaar': 'Te verwerken',
-  'tekst-extractie-mislukt': 'Tekst extractie mislukt',
-  'tekst-extractie-ocr-niet-beschikbaar': 'OCR niet beschikbaar',
+/**
+ * Bepaalt de weergavestatus van een bezwaar op basis van de twee status-velden.
+ *
+ * @param {object} bezwaar - Het bezwaarobject met tekstExtractieStatus en bezwaarExtractieStatus
+ * @return {{label: string, type: string, key: string}} Label, pill-type en sorteersleutel
+ */
+function bepaalWeergaveStatus(bezwaar) {
+  const tekst = bezwaar.tekstExtractieStatus || 'GEEN';
+  const extractie = bezwaar.bezwaarExtractieStatus || 'GEEN';
+
+  // Tekst-extractie fase
+  if (tekst === 'GEEN') return {label: 'Tekst extractie nodig', type: 'warning', key: 'tekst-geen'};
+  if (tekst === 'BEZIG') return {label: 'Tekst extractie bezig', type: 'warning', key: 'tekst-bezig'};
+  if (tekst === 'FOUT') return {label: 'Tekst extractie mislukt', type: 'error', key: 'tekst-fout'};
+  if (tekst === 'NIET_ONDERSTEUND') return {label: 'OCR niet beschikbaar', type: 'error', key: 'niet-ondersteund'};
+
+  // Tekst extractie = KLAAR, bekijk bezwaar-extractie
+  if (extractie === 'GEEN') return {label: 'Te verwerken', type: '', key: 'extractie-geen'};
+  if (extractie === 'BEZIG') return {label: 'Bezwaar-extractie bezig', type: 'warning', key: 'extractie-bezig'};
+  if (extractie === 'FOUT') return {label: 'Bezwaar-extractie fout', type: 'error', key: 'extractie-fout'};
+  return {label: 'Bezwaar-extractie klaar', type: 'success', key: 'extractie-klaar'};
+}
+
+/**
+ * Bepaalt of er tekst beschikbaar is voor preview (tekst-extractie minstens KLAAR).
+ *
+ * @param {object} bezwaar - Het bezwaarobject
+ * @return {boolean} True als tekst-extractie KLAAR is
+ */
+function heeftTekstBeschikbaar(bezwaar) {
+  return bezwaar.tekstExtractieStatus === 'KLAAR';
+}
+
+/**
+ * Bepaalt of het bezwaar annuleerbaar is (enkel tekst-extractie BEZIG).
+ * Bezwaar-extractie heeft geen annuleer-endpoint.
+ *
+ * @param {object} bezwaar - Het bezwaarobject
+ * @return {boolean} True als tekst-extractie BEZIG is
+ */
+function isActiefBezwaar(bezwaar) {
+  return (bezwaar.tekstExtractieStatus || 'GEEN') === 'BEZIG';
+}
+
+/**
+ * Bepaalt of een extractie bezig is (tekst of bezwaar).
+ *
+ * @param {object} bezwaar - Het bezwaarobject
+ * @return {boolean} True als een extractie bezig is
+ */
+function isExtractieBezig(bezwaar) {
+  const tekst = bezwaar.tekstExtractieStatus || 'GEEN';
+  const extractie = bezwaar.bezwaarExtractieStatus || 'GEEN';
+  return tekst === 'BEZIG' || (tekst === 'KLAAR' && extractie === 'BEZIG');
+}
+
+const STATUS_VOLGORDE = {
+  'tekst-geen': 0, 'tekst-bezig': 1, 'tekst-fout': 2, 'niet-ondersteund': 3,
+  'extractie-geen': 4, 'extractie-bezig': 5, 'extractie-fout': 6, 'extractie-klaar': 7,
 };
 
-const STATUS_PILL_TYPES = {
-  'todo': 'warning',
-  'bezwaar-extractie-wachtend': 'warning',
-  'bezwaar-extractie-bezig': 'warning',
-  'bezwaar-extractie-klaar': 'success',
-  'bezwaar-extractie-fout': 'error',
-  'niet ondersteund': '',
-  'tekst-extractie-wachtend': 'warning',
-  'tekst-extractie-bezig': 'warning',
-  'tekst-extractie-klaar': '',
-  'tekst-extractie-mislukt': 'error',
-  'tekst-extractie-ocr-niet-beschikbaar': 'error',
-};
-
-const STATUS_OPTIES = [
-  {value: 'todo', label: 'Tekst extractie nodig'},
-  {value: 'bezwaar-extractie-wachtend', label: 'Bezwaar-extractie wachtend'},
-  {value: 'bezwaar-extractie-bezig', label: 'Bezwaar-extractie bezig'},
-  {value: 'bezwaar-extractie-klaar', label: 'Bezwaar-extractie klaar'},
-  {value: 'bezwaar-extractie-fout', label: 'Bezwaar-extractie fout'},
-  {value: 'niet ondersteund', label: 'Niet ondersteund'},
-  {value: 'tekst-extractie-wachtend', label: 'Tekst extractie wachtend'},
-  {value: 'tekst-extractie-bezig', label: 'Tekst extractie bezig'},
-  {value: 'tekst-extractie-klaar', label: 'Tekst geëxtraheerd'},
-  {value: 'tekst-extractie-mislukt', label: 'Tekst extractie mislukt'},
-  {value: 'tekst-extractie-ocr-niet-beschikbaar', label: 'OCR niet beschikbaar'},
-];
-
-const TEKST_BESCHIKBAAR_STATUSSEN = new Set([
-  'tekst-extractie-klaar',
-  'bezwaar-extractie-wachtend',
-  'bezwaar-extractie-bezig',
-  'bezwaar-extractie-klaar',
-  'bezwaar-extractie-fout',
-]);
+function statusOpties(bezwaren) {
+  const aanwezig = new Set();
+  bezwaren.forEach((b) => {
+    const {key, label} = bepaalWeergaveStatus(b);
+    aanwezig.add(JSON.stringify({value: key, label}));
+  });
+  return Array.from(aanwezig).map((s) => JSON.parse(s));
+}
 
 const ITEMS_PER_PAGINA = 300;
 
@@ -326,23 +346,33 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   }
 
   werkBijMetTaakUpdate(taak) {
-    this.__takenData[taak.bestandsnaam] = {
-      id: taak.id,
-      aangemaaktOp: taak.aangemaaktOp,
-      verwerkingGestartOp: taak.verwerkingGestartOp,
-      afgerondOp: taak.afgerondOp,
-    };
-    this.__bronBezwaren = this.__bronBezwaren.map((b) =>
-      b.bestandsnaam === taak.bestandsnaam ? {
-        ...b,
-        status: taak.status,
-        aantalWoorden: taak.aantalWoorden,
-        aantalBezwaren: taak.aantalBezwaren,
-        heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
-        heeftManueel: taak.heeftManueel,
-        tekstExtractieFoutmelding: taak.foutmelding || null,
-      } : b,
-    );
+    if (taak.aangemaaktOp || taak.verwerkingGestartOp) {
+      this.__takenData[taak.bestandsnaam] = {
+        id: taak.id,
+        aangemaaktOp: taak.aangemaaktOp,
+        verwerkingGestartOp: taak.verwerkingGestartOp,
+        afgerondOp: taak.afgerondOp,
+      };
+    }
+    this.__bronBezwaren = this.__bronBezwaren.map((b) => {
+      if (b.bestandsnaam !== taak.bestandsnaam) return b;
+      const update = {...b};
+      // Bezwaar-extractie update (van ExtractieTaakDto)
+      if (taak.bezwaarExtractieStatus) {
+        update.bezwaarExtractieStatus = taak.bezwaarExtractieStatus;
+        if (taak.aantalWoorden !== undefined) update.aantalWoorden = taak.aantalWoorden;
+        if (taak.heeftPassagesDieNietInTekstVoorkomen !== undefined) {
+          update.heeftPassagesDieNietInTekstVoorkomen = taak.heeftPassagesDieNietInTekstVoorkomen;
+        }
+        if (taak.heeftManueel !== undefined) update.heeftManueel = taak.heeftManueel;
+      }
+      // Tekst-extractie update (van TekstExtractieTaakDto)
+      if (taak.tekstExtractieStatus) {
+        update.tekstExtractieStatus = taak.tekstExtractieStatus;
+      }
+      if (taak.foutmelding !== undefined) update.foutmelding = taak.foutmelding;
+      return update;
+    });
     this._herbereken();
   }
 
@@ -364,8 +394,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   _configureerStatusOpties() {
     const select = this.shadowRoot.querySelector('#filter-status');
     if (select) {
-      const aanwezigeStatussen = new Set(this.__bronBezwaren.map((b) => b.status));
-      const opties = STATUS_OPTIES.filter((o) => aanwezigeStatussen.has(o.value));
+      const opties = statusOpties(this.__bronBezwaren);
       customElements.whenDefined('vl-select-rich').then(() => {
         select.setOptions(opties);
       });
@@ -445,36 +474,39 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             td.style.textAlign = 'center';
             td.style.minWidth = '220px';
             td.dataset.bestandsnaam = rij.bestandsnaam;
+            const weergave = bepaalWeergaveStatus(rij);
             const pill = document.createElement('vl-pill');
-            const type = STATUS_PILL_TYPES[rij.status] || '';
-            if (type) pill.setAttribute('type', type);
-            if (rij.status === 'niet ondersteund') pill.setAttribute('disabled', '');
+            if (weergave.type) pill.setAttribute('type', weergave.type);
+            if (rij.tekstExtractieStatus === 'NIET_ONDERSTEUND') pill.setAttribute('disabled', '');
             pill.style.fontVariantNumeric = 'tabular-nums';
             pill.style.minWidth = '180px';
             pill.style.display = 'inline-block';
 
-            const isActief = rij.status === 'bezwaar-extractie-wachtend' || rij.status === 'bezwaar-extractie-bezig' ||
-                rij.status === 'tekst-extractie-wachtend' || rij.status === 'tekst-extractie-bezig';
-            if (isActief) {
+            const tekst = rij.tekstExtractieStatus || 'GEEN';
+            const extractie = rij.bezwaarExtractieStatus || 'GEEN';
+
+            if (isExtractieBezig(rij)) {
               const span = document.createElement('span');
               span.className = 'timer-tekst';
               span.textContent = this._formatStatusLabel(rij);
               pill.appendChild(span);
-              pill.appendChild(this._maakPillKnop('\u00d7', 'Annuleer verwerking', () => {
-                const taakData = this.__takenData[rij.bestandsnaam];
-                const isTekstExtractie = rij.status.startsWith('tekst-extractie-');
-                if (taakData && taakData.id) {
-                  this.dispatchEvent(new CustomEvent('annuleer-taak', {
-                    detail: {
-                      bestandsnaam: rij.bestandsnaam,
-                      taakId: taakData.id,
-                      type: isTekstExtractie ? 'tekst-extractie' : 'extractie',
-                    },
-                    bubbles: true, composed: true,
-                  }));
-                }
-              }));
-            } else if (rij.status === 'bezwaar-extractie-fout') {
+              // Annuleer-knop enkel voor tekst-extractie (bezwaar-extractie heeft geen annuleer-endpoint)
+              if (isActiefBezwaar(rij)) {
+                pill.appendChild(this._maakPillKnop('\u00d7', 'Annuleer verwerking', () => {
+                  const taakData = this.__takenData[rij.bestandsnaam];
+                  if (taakData && taakData.id) {
+                    this.dispatchEvent(new CustomEvent('annuleer-taak', {
+                      detail: {
+                        bestandsnaam: rij.bestandsnaam,
+                        taakId: taakData.id,
+                        type: 'tekst-extractie',
+                      },
+                      bubbles: true, composed: true,
+                    }));
+                  }
+                }));
+              }
+            } else if (extractie === 'FOUT') {
               pill.textContent = this._formatStatusLabel(rij);
               pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw proberen', () => {
                 this.dispatchEvent(new CustomEvent('herstart-taak', {
@@ -482,7 +514,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
                   bubbles: true, composed: true,
                 }));
               }));
-            } else if (rij.status === 'tekst-extractie-mislukt' || rij.status === 'tekst-extractie-ocr-niet-beschikbaar') {
+            } else if (tekst === 'FOUT') {
               pill.textContent = this._formatStatusLabel(rij);
               pill.appendChild(this._maakPillKnop('\u21bb', 'Opnieuw proberen', () => {
                 this.dispatchEvent(new CustomEvent('herstart-tekst-extractie', {
@@ -490,7 +522,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
                   bubbles: true, composed: true,
                 }));
               }));
-            } else if (rij.status === 'todo' || rij.status === 'tekst-extractie-klaar') {
+            } else if (tekst === 'GEEN' || (tekst === 'KLAAR' && extractie === 'GEEN')) {
               pill.textContent = this._formatStatusLabel(rij);
               pill.appendChild(this._maakPillKnop('\u25b6', 'Verwerking starten', () => {
                 this.dispatchEvent(new CustomEvent('herstart-taak', {
@@ -503,9 +535,9 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             }
 
             td.appendChild(pill);
-            if (rij.tekstExtractieFoutmelding) {
+            if (rij.foutmelding) {
               const fout = document.createElement('div');
-              fout.textContent = rij.tekstExtractieFoutmelding;
+              fout.textContent = rij.foutmelding;
               fout.style.fontSize = '0.75rem';
               fout.style.color = '#db3434';
               fout.style.marginTop = '0.25rem';
@@ -517,7 +549,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
           veld.renderer = (td, rij) => {
             td.style.verticalAlign = 'middle';
             td.style.whiteSpace = 'nowrap';
-            if (TEKST_BESCHIKBAAR_STATUSSEN.has(rij.status)) {
+            if (heeftTekstBeschikbaar(rij)) {
               const oogBtn = document.createElement('vl-button');
               oogBtn.setAttribute('icon', 'view-add');
               oogBtn.setAttribute('ghost', '');
@@ -532,7 +564,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               });
               td.appendChild(oogBtn);
             }
-            if (rij.status === 'bezwaar-extractie-klaar') {
+            if (rij.bezwaarExtractieStatus === 'KLAAR') {
               const zoekBtn = document.createElement('vl-button');
               zoekBtn.setAttribute('icon', 'search');
               zoekBtn.setAttribute('ghost', '');
@@ -892,7 +924,8 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       }
       if (filters.status) {
         const statussen = Array.isArray(filters.status) ? filters.status : [filters.status];
-        if (!statussen.includes(b.status)) return false;
+        const weergave = bepaalWeergaveStatus(b);
+        if (!statussen.includes(weergave.key)) return false;
       }
       return true;
     });
@@ -901,19 +934,13 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   _sorteerBezwaren(bezwaren, sorting) {
     if (!sorting || sorting.length === 0) return bezwaren;
 
-    const statusVolgorde = {
-      'tekst-extractie-wachtend': 0, 'tekst-extractie-bezig': 1,
-      'tekst-extractie-klaar': 2, 'tekst-extractie-mislukt': 3,
-      'tekst-extractie-ocr-niet-beschikbaar': 4,
-      'todo': 5, 'bezwaar-extractie-wachtend': 6, 'bezwaar-extractie-bezig': 7,
-      'bezwaar-extractie-klaar': 8, 'bezwaar-extractie-fout': 9, 'niet ondersteund': 10,
-    };
-
     return [...bezwaren].sort((a, b) => {
       for (const sort of sorting) {
         let cmp = 0;
         if (sort.name === 'status') {
-          cmp = (statusVolgorde[a.status] ?? 99) - (statusVolgorde[b.status] ?? 99);
+          const keyA = bepaalWeergaveStatus(a).key;
+          const keyB = bepaalWeergaveStatus(b).key;
+          cmp = (STATUS_VOLGORDE[keyA] ?? 99) - (STATUS_VOLGORDE[keyB] ?? 99);
         } else if (sort.name === 'aantalBezwaren') {
           cmp = (a.aantalBezwaren ?? 0) - (b.aantalBezwaren ?? 0);
         } else {
@@ -928,10 +955,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
   }
 
   _beheerTimer() {
-    const heeftActief = this.__bronBezwaren.some(
-        (b) => b.status === 'bezwaar-extractie-wachtend' || b.status === 'bezwaar-extractie-bezig' ||
-            b.status === 'tekst-extractie-wachtend' || b.status === 'tekst-extractie-bezig',
-    );
+    const heeftActief = this.__bronBezwaren.some((b) => isExtractieBezig(b));
     if (heeftActief && !this.__timerInterval) {
       this.__timerInterval = setInterval(() => this._updateTimers(), 1000);
     } else if (!heeftActief && this.__timerInterval) {
@@ -952,8 +976,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     if (!innerTable) return;
 
     this.__bronBezwaren.forEach((b) => {
-      if (b.status !== 'bezwaar-extractie-wachtend' && b.status !== 'bezwaar-extractie-bezig' &&
-          b.status !== 'tekst-extractie-wachtend' && b.status !== 'tekst-extractie-bezig') return;
+      if (!isExtractieBezig(b)) return;
       const cel = innerTable.querySelector(
           `.status-cel[data-bestandsnaam="${CSS.escape(b.bestandsnaam)}"]`,
       );
@@ -995,35 +1018,35 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
 
   _formatStatusLabel(b, nu) {
     nu = nu || Date.now();
+    const weergave = bepaalWeergaveStatus(b);
     const taakData = this.__takenData[b.bestandsnaam];
+    const extractie = b.bezwaarExtractieStatus || 'GEEN';
 
-    if ((b.status === 'bezwaar-extractie-wachtend' || b.status === 'tekst-extractie-wachtend') &&
-        taakData && taakData.aangemaaktOp) {
+    // Wachtend (tekst-extractie of bezwaar-extractie)
+    if (isExtractieBezig(b) && taakData && taakData.aangemaaktOp && !taakData.verwerkingGestartOp) {
       const wachtMs = nu - new Date(taakData.aangemaaktOp).getTime();
-      const label = b.status === 'tekst-extractie-wachtend' ? 'Tekst extractie wachtend' : 'Bezwaar-extractie wachtend';
-      return `${label} (${this._formatTijd(wachtMs)})`;
+      return `${weergave.label} (${this._formatTijd(wachtMs)})`;
     }
 
-    if ((b.status === 'bezwaar-extractie-bezig' || b.status === 'tekst-extractie-bezig') && taakData) {
-      const wachtMs = taakData.verwerkingGestartOp && taakData.aangemaaktOp ?
+    // Bezig (tekst-extractie of bezwaar-extractie)
+    if (isExtractieBezig(b) && taakData && taakData.verwerkingGestartOp) {
+      const wachtMs = taakData.aangemaaktOp ?
         new Date(taakData.verwerkingGestartOp).getTime() -
             new Date(taakData.aangemaaktOp).getTime() :
         0;
-      const verwerkMs = taakData.verwerkingGestartOp ?
-        nu - new Date(taakData.verwerkingGestartOp).getTime() :
-        0;
-      const label = b.status === 'tekst-extractie-bezig' ? 'Tekst extractie bezig' : 'Bezwaar-extractie bezig';
-      return `${label} (${this._formatTijd(wachtMs)} + ${this._formatTijd(verwerkMs)})`;
+      const verwerkMs = nu - new Date(taakData.verwerkingGestartOp).getTime();
+      return `${weergave.label} (${this._formatTijd(wachtMs)} + ${this._formatTijd(verwerkMs)})`;
     }
 
-    if (b.status === 'bezwaar-extractie-klaar' && taakData &&
+    // Bezwaar-extractie klaar met timing
+    if (extractie === 'KLAAR' && taakData &&
         taakData.verwerkingGestartOp && taakData.afgerondOp) {
       const verwerkMs = new Date(taakData.afgerondOp).getTime() -
           new Date(taakData.verwerkingGestartOp).getTime();
       return `Bezwaar-extractie klaar (${this._formatTijdLeesbaar(verwerkMs)})`;
     }
 
-    return STATUS_LABELS[b.status] || b.status;
+    return weergave.label;
   }
 
   _formatTijd(ms) {

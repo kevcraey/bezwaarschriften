@@ -104,9 +104,11 @@ class ProjectControllerTest {
     mockMvc.perform(get("/api/v1/projects/windmolens/bezwaren"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.bezwaren[0].bestandsnaam").value("bezwaar-001.txt"))
-        .andExpect(jsonPath("$.bezwaren[0].status").value("todo"))
+        .andExpect(jsonPath("$.bezwaren[0].tekstExtractieStatus").value("GEEN"))
+        .andExpect(jsonPath("$.bezwaren[0].bezwaarExtractieStatus").value("GEEN"))
         .andExpect(jsonPath("$.bezwaren[1].bestandsnaam").value("bijlage.pdf"))
-        .andExpect(jsonPath("$.bezwaren[1].status").value("niet ondersteund"));
+        .andExpect(jsonPath("$.bezwaren[1].tekstExtractieStatus").value("NIET_ONDERSTEUND"))
+        .andExpect(jsonPath("$.bezwaren[1].bezwaarExtractieStatus").value("GEEN"));
   }
 
   @Test
@@ -163,7 +165,8 @@ class ProjectControllerTest {
 
     mockMvc.perform(get("/api/v1/projects/windmolens/bezwaren"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.bezwaren[0].status").value("tekst-extractie-mislukt"))
+        .andExpect(jsonPath("$.bezwaren[0].tekstExtractieStatus").value("FOUT"))
+        .andExpect(jsonPath("$.bezwaren[0].bezwaarExtractieStatus").value("GEEN"))
         .andExpect(jsonPath("$.bezwaren[0].foutmelding")
             .value("Te weinig woorden: 28 (minimum 40)"));
   }

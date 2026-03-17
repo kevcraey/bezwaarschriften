@@ -383,7 +383,7 @@ class TekstExtractieServiceTest {
     var captor = ArgumentCaptor.forClass(TekstExtractieTaakDto.class);
     verify(notificatie).tekstExtractieTaakGewijzigd(captor.capture());
     var dto = captor.getValue();
-    assertThat(dto.status()).isEqualTo("tekst-extractie-bezig");
+    assertThat(dto.tekstExtractieStatus()).isEqualTo("BEZIG");
     assertThat(dto.projectNaam()).isEqualTo("windmolens");
     assertThat(dto.bestandsnaam()).isEqualTo("bezwaar.pdf");
   }
@@ -398,7 +398,7 @@ class TekstExtractieServiceTest {
 
     var captor = ArgumentCaptor.forClass(TekstExtractieTaakDto.class);
     verify(notificatie).tekstExtractieTaakGewijzigd(captor.capture());
-    assertThat(captor.getValue().status()).isEqualTo("tekst-extractie-klaar");
+    assertThat(captor.getValue().tekstExtractieStatus()).isEqualTo("KLAAR");
   }
 
   @Test
@@ -559,7 +559,7 @@ class TekstExtractieServiceTest {
 
     assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.BEZIG);
     assertThat(doc.getFoutmelding()).isNull();
-    assertThat(dto.status()).isEqualTo("tekst-extractie-bezig");
+    assertThat(dto.tekstExtractieStatus()).isEqualTo("BEZIG");
   }
 
   @Test

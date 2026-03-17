@@ -9,11 +9,11 @@ import be.vlaanderen.omgeving.bezwaarschriften.project.TekstExtractieStatus;
  * @param id unieke identifier van het document
  * @param projectNaam naam van het project
  * @param bestandsnaam naam van het bezwaarbestand
- * @param status huidige status (lowercase, met tekst-extractie- prefix)
+ * @param tekstExtractieStatus huidige status (enum naam)
  * @param foutmelding foutmelding bij mislukking, kan null zijn
  */
 public record TekstExtractieTaakDto(
-    Long id, String projectNaam, String bestandsnaam, String status,
+    Long id, String projectNaam, String bestandsnaam, String tekstExtractieStatus,
     String foutmelding) {
 
   /**
@@ -25,16 +25,7 @@ public record TekstExtractieTaakDto(
   static TekstExtractieTaakDto van(BezwaarDocument document) {
     return new TekstExtractieTaakDto(
         document.getId(), document.getProjectNaam(), document.getBestandsnaam(),
-        statusNaarString(document.getTekstExtractieStatus()),
+        document.getTekstExtractieStatus().name(),
         document.getFoutmelding());
-  }
-
-  private static String statusNaarString(TekstExtractieStatus status) {
-    return switch (status) {
-      case GEEN -> "tekst-extractie-geen";
-      case BEZIG -> "tekst-extractie-bezig";
-      case KLAAR -> "tekst-extractie-klaar";
-      case FOUT -> "tekst-extractie-fout";
-    };
   }
 }

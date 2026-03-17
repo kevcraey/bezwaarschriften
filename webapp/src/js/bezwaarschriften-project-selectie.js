@@ -175,10 +175,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this.__bezwaren = this.__bezwaren.map((b) =>
       b.bestandsnaam === taak.bestandsnaam ? {
         ...b,
-        status: taak.status,
-        aantalWoorden: taak.aantalWoorden,
-        aantalBezwaren: taak.aantalBezwaren,
-        heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
+        bezwaarExtractieStatus: taak.bezwaarExtractieStatus,
+        aantalWoorden: taak.aantalWoorden !== undefined ? taak.aantalWoorden : b.aantalWoorden,
+        heeftPassagesDieNietInTekstVoorkomen:
+            taak.heeftPassagesDieNietInTekstVoorkomen !== undefined ?
+              taak.heeftPassagesDieNietInTekstVoorkomen : b.heeftPassagesDieNietInTekstVoorkomen,
       } : b,
     );
     const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
@@ -187,11 +188,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     }
     this._werkDocumentenTabTitelBij();
     this._werkVerwerkenKnopBij();
-    if (taak.status === 'bezwaar-extractie-klaar') {
+    if (taak.bezwaarExtractieStatus === 'KLAAR') {
       const kernComp = this.shadowRoot.querySelector('#kernbezwaren-component');
       if (kernComp) {
         const totaalBezwaren = this.__bezwaren
-            .filter((b) => b.status === 'bezwaar-extractie-klaar')
+            .filter((b) => b.bezwaarExtractieStatus === 'KLAAR')
             .reduce((sum, b) => sum + (b.aantalBezwaren || 0), 0);
         kernComp.setAantalBezwaren(totaalBezwaren);
         kernComp.setExtractieKlaar(true);
@@ -206,7 +207,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     this.__bezwaren = this.__bezwaren.map((b) =>
       b.bestandsnaam === taak.bestandsnaam ? {
         ...b,
-        status: taak.status,
+        tekstExtractieStatus: taak.tekstExtractieStatus,
+        foutmelding: taak.foutmelding || null,
       } : b,
     );
     const tabel = this.shadowRoot.querySelector('#bezwaren-tabel');
@@ -227,10 +229,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               this.__bezwaren = this.__bezwaren.map((b) =>
                 b.bestandsnaam === taak.bestandsnaam ? {
                   ...b,
-                  status: taak.status,
-                  aantalWoorden: taak.aantalWoorden,
-                  aantalBezwaren: taak.aantalBezwaren,
-                  heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
+                  bezwaarExtractieStatus: taak.bezwaarExtractieStatus,
+                  aantalWoorden: taak.aantalWoorden !== undefined ? taak.aantalWoorden : b.aantalWoorden,
+                  heeftPassagesDieNietInTekstVoorkomen:
+                      taak.heeftPassagesDieNietInTekstVoorkomen !== undefined ?
+                        taak.heeftPassagesDieNietInTekstVoorkomen : b.heeftPassagesDieNietInTekstVoorkomen,
                 } : b,
               );
               tabel.werkBijMetTaakUpdate(taak);
@@ -264,7 +267,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (annuleerBevestigKnop) {
       annuleerBevestigKnop.addEventListener('vl-click', () => {
         if (this._teAnnulerenTaak) {
-          this._annuleerTaak(this._teAnnulerenTaak.taakId, this._teAnnulerenTaak.type);
+          this._annuleerTaak(this._teAnnulerenTaak.taakId);
         }
       });
     }
@@ -492,10 +495,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               this.__bezwaren = this.__bezwaren.map((b) =>
                 b.bestandsnaam === taak.bestandsnaam ? {
                   ...b,
-                  status: taak.status,
-                  aantalWoorden: taak.aantalWoorden,
-                  aantalBezwaren: taak.aantalBezwaren,
-                  heeftPassagesDieNietInTekstVoorkomen: taak.heeftPassagesDieNietInTekstVoorkomen,
+                  bezwaarExtractieStatus: taak.bezwaarExtractieStatus,
+                  aantalWoorden: taak.aantalWoorden !== undefined ? taak.aantalWoorden : b.aantalWoorden,
+                  heeftPassagesDieNietInTekstVoorkomen:
+                      taak.heeftPassagesDieNietInTekstVoorkomen !== undefined ?
+                        taak.heeftPassagesDieNietInTekstVoorkomen : b.heeftPassagesDieNietInTekstVoorkomen,
                 } : b,
               );
               tabel.werkBijMetTaakUpdate(taak);
@@ -532,7 +536,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
               this.__bezwaren = this.__bezwaren.map((b) =>
                 b.bestandsnaam === taak.bestandsnaam ? {
                   ...b,
-                  status: taak.status,
+                  tekstExtractieStatus: taak.tekstExtractieStatus,
+                  foutmelding: taak.foutmelding || null,
                 } : b,
               );
               tabel.werkBijMetTaakUpdate(taak);
@@ -570,7 +575,8 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _voegGeuploadeBezwarenToe(bestandsnamen) {
     const nieuweBezwaren = bestandsnamen.map((naam) => ({
       bestandsnaam: naam,
-      status: 'tekst-extractie-wachtend',
+      tekstExtractieStatus: 'BEZIG',
+      bezwaarExtractieStatus: 'GEEN',
       aantalWoorden: null,
       aantalBezwaren: null,
       heeftPassagesDieNietInTekstVoorkomen: false,
@@ -599,10 +605,11 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
     if (!pane || this.__bezwaren.length === 0) return;
 
     const totaal = this.__bezwaren.length;
-    const aantalKlaar = this.__bezwaren.filter((b) => b.status === 'bezwaar-extractie-klaar').length;
-    const aantalFout = this.__bezwaren.filter((b) => b.status === 'bezwaar-extractie-fout').length;
+    const aantalKlaar = this.__bezwaren.filter((b) => b.bezwaarExtractieStatus === 'KLAAR').length;
+    const aantalFout = this.__bezwaren.filter((b) =>
+      b.tekstExtractieStatus === 'FOUT' || b.bezwaarExtractieStatus === 'FOUT').length;
     const isBezig = this.__bezwaren.some(
-        (b) => b.status === 'bezwaar-extractie-wachtend' || b.status === 'bezwaar-extractie-bezig',
+        (b) => b.tekstExtractieStatus === 'BEZIG' || b.bezwaarExtractieStatus === 'BEZIG',
     );
     const allesKlaar = aantalKlaar === totaal;
 
@@ -651,7 +658,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
       verwerkenKnop.textContent = `Verwerken (${geselecteerd.length})`;
     } else {
       const aantalTeVerwerken = this.__bezwaren.filter(
-          (b) => b.status === 'bezwaar-extractie-fout' || b.status === 'todo' || b.status === 'tekst-extractie-klaar').length;
+          (b) => b.bezwaarExtractieStatus === 'FOUT' ||
+              (b.tekstExtractieStatus === 'KLAAR' && b.bezwaarExtractieStatus === 'GEEN') ||
+              (b.tekstExtractieStatus === 'GEEN')).length;
       verwerkenKnop.hidden = aantalTeVerwerken === 0;
       if (aantalTeVerwerken > 0) {
         verwerkenKnop.textContent = `Verwerken (${aantalTeVerwerken})`;
@@ -662,9 +671,9 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
   _werkKernbezwarenBij(projectNaam, bezwaren) {
     const kernComp = this.shadowRoot.querySelector('#kernbezwaren-component');
     if (!kernComp) return;
-    const aantalKlaar = bezwaren.filter((b) => b.status === 'bezwaar-extractie-klaar').length;
+    const aantalKlaar = bezwaren.filter((b) => b.bezwaarExtractieStatus === 'KLAAR').length;
     const totaalBezwaren = bezwaren
-        .filter((b) => b.status === 'bezwaar-extractie-klaar')
+        .filter((b) => b.bezwaarExtractieStatus === 'KLAAR')
         .reduce((sum, b) => sum + (b.aantalBezwaren || 0), 0);
     kernComp.setAantalBezwaren(totaalBezwaren);
     kernComp.setExtractieKlaar(aantalKlaar > 0);
@@ -756,15 +765,14 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         });
   }
 
-  _annuleerTaak(taakId, type) {
+  _annuleerTaak(taakId) {
     if (!this.__geselecteerdProject) return;
 
     this._zetBezig(true);
     this._verbergFout();
 
-    const pad = type === 'tekst-extractie' ?
-        `tekst-extracties/${taakId}` :
-        `extracties/${taakId}`;
+    // Enkel tekst-extractie is annuleerbaar; bezwaar-extractie heeft geen annuleer-endpoint
+    const pad = `tekst-extracties/${taakId}`;
 
     fetch(`/api/v1/projects/${encodeURIComponent(this.__geselecteerdProject)}/${pad}`, {
       method: 'DELETE',

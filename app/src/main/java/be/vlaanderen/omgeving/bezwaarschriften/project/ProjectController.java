@@ -186,33 +186,6 @@ public class ProjectController {
         : ResponseEntity.notFound().build();
   }
 
-  /**
-   * Leidt een gecombineerde status-string af uit de tekst-extractie en bezwaar-extractie
-   * statussen. De bezwaar-extractie status heeft voorrang als die actief is (niet GEEN).
-   */
-  private static String statusNaarString(BezwaarBestand b) {
-    var bezwaarStatus = b.bezwaarExtractieStatus();
-    var tekstStatus = b.tekstExtractieStatus();
-
-    // Bezwaar-extractie status heeft voorrang als die actief is
-    if (!"GEEN".equals(bezwaarStatus)) {
-      return switch (bezwaarStatus) {
-        case "BEZIG" -> "bezwaar-extractie-bezig";
-        case "KLAAR" -> "bezwaar-extractie-klaar";
-        case "FOUT" -> "bezwaar-extractie-fout";
-        default -> "bezwaar-extractie-wachtend";
-      };
-    }
-
-    return switch (tekstStatus) {
-      case "GEEN" -> "todo";
-      case "BEZIG" -> "tekst-extractie-bezig";
-      case "KLAAR" -> "tekst-extractie-klaar";
-      case "FOUT" -> "tekst-extractie-mislukt";
-      case "NIET_ONDERSTEUND" -> "niet ondersteund";
-      default -> "todo";
-    };
-  }
 
   /** DTO voor een enkel project in de response. */
   record ProjectDto(String naam, int aantalDocumenten) {}
@@ -228,7 +201,8 @@ public class ProjectController {
 
     static BezwarenResponse van(List<BezwaarBestand> bezwaren) {
       return new BezwarenResponse(bezwaren.stream()
-          .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b),
+          .map(b -> new BezwaarBestandDto(b.bestandsnaam(),
+              b.tekstExtractieStatus(), b.bezwaarExtractieStatus(),
               b.aantalWoorden(), b.aantalBezwaren(), b.heeftPassagesDieNietInTekstVoorkomen(),
               b.extractieMethode(), b.foutmelding()))
           .toList());
@@ -236,8 +210,10 @@ public class ProjectController {
   }
 
   /** DTO voor een enkel bezwaarbestand in de response. */
-  record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden,
-      Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen,
+  record BezwaarBestandDto(String bestandsnaam,
+      String tekstExtractieStatus, String bezwaarExtractieStatus,
+      Integer aantalWoorden, Integer aantalBezwaren,
+      boolean heeftPassagesDieNietInTekstVoorkomen,
       String extractieMethode, String foutmelding) {}
 
   /** Response DTO voor upload-resultaat. */

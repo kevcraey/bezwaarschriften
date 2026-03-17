@@ -14,7 +14,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-001.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 2, extractieMethode: 'DIGITAAL'},
+            {bestandsnaam: 'doc-001.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'KLAAR', aantalBezwaren: 2, extractieMethode: 'DIGITAAL'},
           ];
         });
 
@@ -33,7 +33,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'scan-001.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 1, extractieMethode: 'OCR'},
+            {bestandsnaam: 'scan-001.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'KLAAR', aantalBezwaren: 1, extractieMethode: 'OCR'},
           ];
         });
 
@@ -48,7 +48,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-002.pdf', status: 'todo', aantalBezwaren: null, extractieMethode: null},
+            {bestandsnaam: 'doc-002.pdf', tekstExtractieStatus: 'GEEN', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null, extractieMethode: null},
           ];
         });
 
@@ -63,7 +63,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-003.pdf', status: 'todo', aantalBezwaren: null},
+            {bestandsnaam: 'doc-003.pdf', tekstExtractieStatus: 'GEEN', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -74,20 +74,20 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
   // --- Status pills voor tekst-extractie ---
 
-  it('toont warning pill met label "Tekst extractie wachtend"', () => {
+  it('toont warning pill met label "Tekst extractie bezig"', () => {
     cy.get('bezwaarschriften-bezwaren-tabel')
         .its(0)
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-004.pdf', status: 'tekst-extractie-wachtend', aantalBezwaren: null},
+            {bestandsnaam: 'doc-004.pdf', tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('vl-pill[type="warning"]')
         .should('exist')
-        .and('contain.text', 'Tekst extractie wachtend');
+        .and('contain.text', 'Tekst extractie bezig');
   });
 
   it('toont error pill met label "Tekst extractie mislukt"', () => {
@@ -96,7 +96,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-005.pdf', status: 'tekst-extractie-mislukt', aantalBezwaren: null},
+            {bestandsnaam: 'doc-005.pdf', tekstExtractieStatus: 'FOUT', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -114,9 +114,9 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
           el.bezwaren = [
             {
               bestandsnaam: 'doc-fout.pdf',
-              status: 'tekst-extractie-mislukt',
+              tekstExtractieStatus: 'FOUT', bezwaarExtractieStatus: 'GEEN',
               aantalBezwaren: null,
-              tekstExtractieFoutmelding: 'Te weinig woorden: 28 (minimum 40)',
+              foutmelding: 'Te weinig woorden: 28 (minimum 40)',
             },
           ];
         });
@@ -134,7 +134,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-006.pdf', status: 'tekst-extractie-wachtend', aantalBezwaren: null},
+            {bestandsnaam: 'doc-006.pdf', tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -149,7 +149,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-007.pdf', status: 'tekst-extractie-bezig', aantalBezwaren: null},
+            {bestandsnaam: 'doc-007.pdf', tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -164,7 +164,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-008.pdf', status: 'tekst-extractie-klaar', aantalBezwaren: null},
+            {bestandsnaam: 'doc-008.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -179,7 +179,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-008b.pdf', status: 'todo', aantalBezwaren: null},
+            {bestandsnaam: 'doc-008b.pdf', tekstExtractieStatus: 'GEEN', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -194,7 +194,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-009.pdf', status: 'tekst-extractie-mislukt', aantalBezwaren: null},
+            {bestandsnaam: 'doc-009.pdf', tekstExtractieStatus: 'FOUT', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -209,7 +209,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-010.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 5},
+            {bestandsnaam: 'doc-010.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'KLAAR', aantalBezwaren: 5},
           ];
         });
 
@@ -226,7 +226,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-011.pdf', status: 'tekst-extractie-klaar', aantalBezwaren: null},
+            {bestandsnaam: 'doc-011.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -244,7 +244,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-012.pdf', status: 'tekst-extractie-klaar', aantalBezwaren: null},
+            {bestandsnaam: 'doc-012.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
           el.addEventListener('herstart-taak', cy.stub().as('herstartTaak'));
         });
@@ -266,9 +266,9 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'digitaal.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3, extractieMethode: 'DIGITAAL'},
-            {bestandsnaam: 'scan.pdf', status: 'tekst-extractie-klaar', aantalBezwaren: null, extractieMethode: 'OCR'},
-            {bestandsnaam: 'nieuw.pdf', status: 'tekst-extractie-wachtend', aantalBezwaren: null, extractieMethode: null},
+            {bestandsnaam: 'digitaal.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'KLAAR', aantalBezwaren: 3, extractieMethode: 'DIGITAAL'},
+            {bestandsnaam: 'scan.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null, extractieMethode: 'OCR'},
+            {bestandsnaam: 'nieuw.pdf', tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null, extractieMethode: null},
           ];
         });
 
@@ -289,7 +289,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
 
     cy.get('bezwaarschriften-bezwaren-tabel')
         .find('vl-pill[type="warning"]')
-        .should('contain.text', 'Tekst extractie wachtend');
+        .should('contain.text', 'Tekst extractie bezig');
   });
 
   // --- OCR niet beschikbaar ---
@@ -300,7 +300,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-013.pdf', status: 'tekst-extractie-ocr-niet-beschikbaar', aantalBezwaren: null},
+            {bestandsnaam: 'doc-013.pdf', tekstExtractieStatus: 'NIET_ONDERSTEUND', bezwaarExtractieStatus: 'GEEN', aantalBezwaren: null},
           ];
         });
 
@@ -320,7 +320,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
           el.bezwaren = [
             {
               bestandsnaam: 'doc-014.pdf',
-              status: 'tekst-extractie-bezig',
+              tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN',
               aantalBezwaren: null,
               tekstExtractieAangemaaktOp: '2026-03-09T10:00:00Z',
               tekstExtractieGestartOp: '2026-03-09T10:00:05Z',
@@ -351,7 +351,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
           el.bezwaren = [
             {
               bestandsnaam: 'doc-015.pdf',
-              status: 'tekst-extractie-wachtend',
+              tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN',
               aantalBezwaren: null,
               tekstExtractieAangemaaktOp: '2026-03-09T11:00:00Z',
               tekstExtractieTaakId: 43,
@@ -386,7 +386,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
           el.bezwaren = [
             {
               bestandsnaam: 'herlaad.pdf',
-              status: 'tekst-extractie-wachtend',
+              tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN',
               aantalBezwaren: null,
               tekstExtractieAangemaaktOp: oudeTimestamp,
               tekstExtractieTaakId: 99,
@@ -398,7 +398,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
           el.bezwaren = [
             {
               bestandsnaam: 'herlaad.pdf',
-              status: 'tekst-extractie-wachtend',
+              tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN',
               aantalBezwaren: null,
             },
           ];
@@ -420,7 +420,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-001.pdf', status: 'tekst-extractie-klaar'},
+            {bestandsnaam: 'doc-001.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'GEEN'},
           ];
         });
 
@@ -435,7 +435,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-001.pdf', status: 'bezwaar-extractie-klaar', aantalBezwaren: 3},
+            {bestandsnaam: 'doc-001.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'KLAAR', aantalBezwaren: 3},
           ];
         });
 
@@ -450,7 +450,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-001.pdf', status: 'bezwaar-extractie-wachtend'},
+            {bestandsnaam: 'doc-001.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'BEZIG'},
           ];
         });
 
@@ -465,7 +465,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-001.pdf', status: 'todo'},
+            {bestandsnaam: 'doc-001.pdf', tekstExtractieStatus: 'GEEN', bezwaarExtractieStatus: 'GEEN'},
           ];
         });
 
@@ -480,7 +480,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'doc-001.pdf', status: 'tekst-extractie-bezig',
+            {bestandsnaam: 'doc-001.pdf', tekstExtractieStatus: 'BEZIG', bezwaarExtractieStatus: 'GEEN',
              tekstExtractieAangemaaktOp: '2026-03-01T10:00:00Z',
              tekstExtractieVerwerkingGestartOp: '2026-03-01T10:01:00Z',
              tekstExtractieTaakId: 1},
@@ -498,7 +498,7 @@ describe('bezwaarschriften-bezwaren-tabel methode-kolom en tekst-extractie statu
         .then((el) => {
           el.projectNaam = 'testproject';
           el.bezwaren = [
-            {bestandsnaam: 'bezwaar-001.pdf', status: 'tekst-extractie-klaar'},
+            {bestandsnaam: 'bezwaar-001.pdf', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'GEEN'},
           ];
           el.addEventListener('toon-geextraheerde-tekst', cy.stub().as('toonTekst'));
         });
