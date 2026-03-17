@@ -10,7 +10,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageGroepLidRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarExtractieStatus;
@@ -41,7 +41,7 @@ class TekstExtractieServiceTest {
   private IndividueelBezwaarRepository bezwaarRepository;
 
   @Mock
-  private PassageGroepLidRepository passageGroepLidRepository;
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   @Mock
   private PdfTekstExtractor pdfExtractor;
@@ -69,7 +69,7 @@ class TekstExtractieServiceTest {
   @BeforeEach
   void setUp() {
     service = new TekstExtractieService(
-        documentRepository, bezwaarRepository, passageGroepLidRepository,
+        documentRepository, bezwaarRepository, bezwaarGroepLidRepository,
         pdfExtractor, kwaliteitsControle, projectPoort,
         pseudonimiseringPoort, notificatie,
         chunker, chunkRepository, 2);
@@ -131,7 +131,7 @@ class TekstExtractieServiceTest {
 
     var resultaat = service.indienen("windmolens", "bezwaar.pdf");
 
-    verify(passageGroepLidRepository).deleteByBezwaarIdIn(List.of(10L, 11L));
+    verify(bezwaarGroepLidRepository).deleteByBezwaarIdIn(List.of(10L, 11L));
     verify(bezwaarRepository).deleteByDocumentId(1L);
     assertThat(resultaat.getBezwaarExtractieStatus()).isEqualTo(BezwaarExtractieStatus.GEEN);
     assertThat(resultaat.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.BEZIG);

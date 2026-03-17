@@ -49,7 +49,7 @@ public class KernbezwaarService {
   private final CentroidMatchingService centroidMatchingService;
   private final PassageDeduplicatieService deduplicatieService;
   private final BezwaarGroepRepository bezwaarGroepRepository;
-  private final PassageGroepLidRepository passageGroepLidRepository;
+  private final BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   /**
    * Constructor met alle benodigde afhankelijkheden.
@@ -69,7 +69,7 @@ public class KernbezwaarService {
       CentroidMatchingService centroidMatchingService,
       PassageDeduplicatieService deduplicatieService,
       BezwaarGroepRepository bezwaarGroepRepository,
-      PassageGroepLidRepository passageGroepLidRepository) {
+      BezwaarGroepLidRepository bezwaarGroepLidRepository) {
     this.embeddingPoort = embeddingPoort;
     this.clusteringPoort = clusteringPoort;
     this.bezwaarRepository = bezwaarRepository;
@@ -85,7 +85,7 @@ public class KernbezwaarService {
     this.centroidMatchingService = centroidMatchingService;
     this.deduplicatieService = deduplicatieService;
     this.bezwaarGroepRepository = bezwaarGroepRepository;
-    this.passageGroepLidRepository = passageGroepLidRepository;
+    this.bezwaarGroepLidRepository = bezwaarGroepLidRepository;
   }
 
   /**
@@ -425,10 +425,15 @@ public class KernbezwaarService {
     var groepById = bezwaarGroepRepository.findAllById(alleGroepIds).stream()
         .collect(Collectors.toMap(BezwaarGroep::getId, g -> g));
 
-    // Haal passage-groep leden op voor documentenlijst
-    var alleLeden = passageGroepLidRepository.findByPassageGroepIdIn(alleGroepIds);
+    // Haal bezwaar-groep leden op voor documentenlijst
+    var alleLeden = bezwaarGroepLidRepository.findByBezwaarGroepIdIn(alleGroepIds);
     var ledenPerGroep = alleLeden.stream()
-        .collect(Collectors.groupingBy(PassageGroepLidEntiteit::getPassageGroepId));
+        .collect(Collectors.groupingBy(BezwaarGroepLid::getBezwaarGroepId));
+
+    // Bouw bestandsnaam-lookup per bezwaar-ID via taak
+    var alleBezwaarIds = alleLeden.stream()
+        .map(BezwaarGroepLid::getBezwaarId).distinct().toList();
+    var bestandsnaamPerBezwaarId = bouwBestandsnaamPerBezwaarId(alleBezwaarIds);
 
     var kernen = kernEntiteiten.stream()
         .map(ke -> {
@@ -441,7 +446,9 @@ public class KernbezwaarService {
                     groep.getId(), groep.getPassage(),
                     ledenVoorGroep.stream()
                         .map(l -> new PassageGroepDocument(
-                            l.getBezwaarId(), l.getBestandsnaam()))
+                            l.getBezwaarId(),
+                            bestandsnaamPerBezwaarId.getOrDefault(
+                                l.getBezwaarId(), "onbekend")))
                         .toList()) : null;
                 return new IndividueelBezwaarReferentie(
                     re.getId(),
@@ -493,9 +500,9 @@ public class KernbezwaarService {
     var alleGroepIds = refEntiteiten.stream()
         .map(KernbezwaarReferentieEntiteit::getPassageGroepId)
         .distinct().toList();
-    var alleLeden = passageGroepLidRepository.findByPassageGroepIdIn(alleGroepIds);
+    var alleLeden = bezwaarGroepLidRepository.findByBezwaarGroepIdIn(alleGroepIds);
     var ledenPerGroep = alleLeden.stream()
-        .collect(Collectors.groupingBy(PassageGroepLidEntiteit::getPassageGroepId));
+        .collect(Collectors.groupingBy(BezwaarGroepLid::getBezwaarGroepId));
 
     var centroids = new HashMap<Long, float[]>();
     for (var kernId : kernIds) {
@@ -503,7 +510,7 @@ public class KernbezwaarService {
       var bezwaarIds = refs.stream()
           .flatMap(r -> ledenPerGroep
               .getOrDefault(r.getPassageGroepId(), List.of()).stream())
-          .map(PassageGroepLidEntiteit::getBezwaarId)
+          .map(BezwaarGroepLid::getBezwaarId)
           .distinct().toList();
 
       var bezwaren = bezwaarRepository.findAllById(bezwaarIds);
@@ -576,13 +583,15 @@ public class KernbezwaarService {
 
   /**
    * Ruimt kernbezwaar-data op na verwijdering van een document.
-   * Verwijdert passage_groep_lid records voor het bestand, daarna lege passage_groepen,
+   * Verwijdert bezwaar_groep_lid records via bezwaarIds, daarna lege bezwaar_groepen,
    * orphaned referenties en lege kernbezwaren.
    */
   @Transactional
   public void ruimOpNaDocumentVerwijdering(String projectNaam, String bestandsnaam) {
-    passageGroepLidRepository.deleteByBestandsnaamInAndProjectNaam(
-        List.of(bestandsnaam), projectNaam);
+    var bezwaarIds = vindBezwaarIdsVoorBestandsnamen(projectNaam, List.of(bestandsnaam));
+    if (!bezwaarIds.isEmpty()) {
+      bezwaarGroepLidRepository.deleteByBezwaarIdIn(bezwaarIds);
+    }
     bezwaarGroepRepository.deleteZonderLeden();
     referentieRepository.deleteMetVerwijderdePassageGroep();
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
@@ -590,15 +599,18 @@ public class KernbezwaarService {
 
   /**
    * Ruimt kernbezwaar-data op na verwijdering van meerdere bestanden.
-   * Verwijdert referenties voor alle bestanden, daarna lege kernbezwaren.
+   * Verwijdert bezwaar_groep_lid records via bezwaarIds, daarna lege bezwaar_groepen,
+   * orphaned referenties en lege kernbezwaren.
    *
    * @param projectNaam naam van het project
    * @param bestandsnamen lijst van bestandsnamen die verwijderd worden
    */
   @Transactional
   public void ruimOpNaBestandenVerwijdering(String projectNaam, List<String> bestandsnamen) {
-    passageGroepLidRepository.deleteByBestandsnaamInAndProjectNaam(
-        bestandsnamen, projectNaam);
+    var bezwaarIds = vindBezwaarIdsVoorBestandsnamen(projectNaam, bestandsnamen);
+    if (!bezwaarIds.isEmpty()) {
+      bezwaarGroepLidRepository.deleteByBezwaarIdIn(bezwaarIds);
+    }
     bezwaarGroepRepository.deleteZonderLeden();
     referentieRepository.deleteMetVerwijderdePassageGroep();
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
@@ -606,6 +618,35 @@ public class KernbezwaarService {
     if (kernbezwaarRepository.countByProjectNaam(projectNaam) == 0) {
       clusteringTaakRepository.deleteByProjectNaam(projectNaam);
     }
+  }
+
+  /**
+   * Vindt alle bezwaar-IDs voor een lijst van bestandsnamen in een project.
+   * Zoekt via bezwaar_document -> individueel_bezwaar.
+   */
+  private List<Long> vindBezwaarIdsVoorBestandsnamen(String projectNaam,
+      List<String> bestandsnamen) {
+    return bestandsnamen.stream()
+        .flatMap(naam -> documentRepository
+            .findByProjectNaamAndBestandsnaam(projectNaam, naam).stream())
+        .flatMap(doc -> bezwaarRepository.findByDocumentId(doc.getId()).stream())
+        .map(IndividueelBezwaar::getId)
+        .toList();
+  }
+
+  /**
+   * Bouwt een lookup van bezwaar-ID naar bestandsnaam via document.
+   */
+  private Map<Long, String> bouwBestandsnaamPerBezwaarId(List<Long> bezwaarIds) {
+    var bezwaren = bezwaarRepository.findAllById(bezwaarIds);
+    var documentIds = bezwaren.stream()
+        .map(IndividueelBezwaar::getDocumentId).distinct().toList();
+    var documentNaamById = documentRepository.findAllById(documentIds).stream()
+        .collect(Collectors.toMap(BezwaarDocument::getId, BezwaarDocument::getBestandsnaam));
+    return bezwaren.stream()
+        .collect(Collectors.toMap(
+            IndividueelBezwaar::getId,
+            b -> documentNaamById.getOrDefault(b.getDocumentId(), "onbekend")));
   }
 
   /**
@@ -707,11 +748,10 @@ public class KernbezwaarService {
       entiteit = bezwaarGroepRepository.save(entiteit);
 
       for (var lid : groep.leden()) {
-        var lidEntiteit = new PassageGroepLidEntiteit();
-        lidEntiteit.setPassageGroepId(entiteit.getId());
+        var lidEntiteit = new BezwaarGroepLid();
+        lidEntiteit.setBezwaarGroepId(entiteit.getId());
         lidEntiteit.setBezwaarId(lid.bezwaarId());
-        lidEntiteit.setBestandsnaam(lid.bestandsnaam());
-        passageGroepLidRepository.save(lidEntiteit);
+        bezwaarGroepLidRepository.save(lidEntiteit);
       }
       groepIds.add(entiteit.getId());
     }

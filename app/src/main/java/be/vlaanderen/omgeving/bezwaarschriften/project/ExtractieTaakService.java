@@ -2,7 +2,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
-import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageGroepLidRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,7 +31,7 @@ public class ExtractieTaakService {
   private final IngestiePoort ingestiePoort;
   private final PassageValidator passageValidator;
   private final EmbeddingPoort embeddingPoort;
-  private final PassageGroepLidRepository passageGroepLidRepository;
+  private final BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   /**
    * Maakt een nieuwe ExtractieTaakService aan.
@@ -43,7 +43,7 @@ public class ExtractieTaakService {
    * @param ingestiePoort poort voor het inlezen van brondocumenten
    * @param passageValidator validator voor passage-verificatie
    * @param embeddingPoort poort voor het genereren van embeddings
-   * @param passageGroepLidRepository repository voor passage-groep-leden (FK cleanup)
+   * @param bezwaarGroepLidRepository repository voor passage-groep-leden (FK cleanup)
    */
   public ExtractieTaakService(
       BezwaarDocumentRepository documentRepository,
@@ -53,7 +53,7 @@ public class ExtractieTaakService {
       IngestiePoort ingestiePoort,
       PassageValidator passageValidator,
       EmbeddingPoort embeddingPoort,
-      PassageGroepLidRepository passageGroepLidRepository) {
+      BezwaarGroepLidRepository bezwaarGroepLidRepository) {
     this.documentRepository = documentRepository;
     this.notificatie = notificatie;
     this.bezwaarRepository = bezwaarRepository;
@@ -61,7 +61,7 @@ public class ExtractieTaakService {
     this.ingestiePoort = ingestiePoort;
     this.passageValidator = passageValidator;
     this.embeddingPoort = embeddingPoort;
-    this.passageGroepLidRepository = passageGroepLidRepository;
+    this.bezwaarGroepLidRepository = bezwaarGroepLidRepository;
   }
 
   /**
@@ -96,7 +96,7 @@ public class ExtractieTaakService {
             var bezwaarIds = bestaandeBezwaren.stream()
                 .map(IndividueelBezwaar::getId)
                 .toList();
-            passageGroepLidRepository.deleteByBezwaarIdIn(bezwaarIds);
+            bezwaarGroepLidRepository.deleteByBezwaarIdIn(bezwaarIds);
             bezwaarRepository.deleteByDocumentId(doc.getId());
           }
 
@@ -364,7 +364,7 @@ public class ExtractieTaakService {
     boolean wasAiBezwaar = !bezwaar.isManueel();
 
     // Verwijder FK-relaties, dan bezwaar
-    passageGroepLidRepository.deleteByBezwaarIdIn(List.of(bezwaarId));
+    bezwaarGroepLidRepository.deleteByBezwaarIdIn(List.of(bezwaarId));
     bezwaarRepository.delete(bezwaar);
 
     var overigeBezwaren = bezwaarRepository.findByDocumentId(doc.getId());

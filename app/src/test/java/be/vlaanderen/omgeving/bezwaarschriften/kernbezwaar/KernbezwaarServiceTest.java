@@ -90,7 +90,7 @@ class KernbezwaarServiceTest {
   private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Mock
-  private PassageGroepLidRepository passageGroepLidRepository;
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   @Spy
   private ClusteringConfig clusteringConfig = new ClusteringConfig();
@@ -154,7 +154,7 @@ class KernbezwaarServiceTest {
         clusteringTaakService, clusteringTaakRepository,
         transactionManager, dimensieReductiePoort, clusteringConfig,
         cms, deduplicatieService, bezwaarGroepRepository,
-        passageGroepLidRepository);
+        bezwaarGroepLidRepository);
   }
 
   @Test
@@ -267,7 +267,7 @@ class KernbezwaarServiceTest {
     var groep = maakPassageGroep(100L, "Verkeershinder passage", 85);
     when(bezwaarGroepRepository.findAllById(List.of(100L)))
         .thenReturn(List.of(groep));
-    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(List.of(100L)))
         .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -396,30 +396,55 @@ class KernbezwaarServiceTest {
   }
 
   @Test
-  void ruimOpNaDocumentVerwijdering_cascadeVerwijderingViaPassageGroepModel() {
+  void ruimOpNaDocumentVerwijdering_cascadeVerwijderingViaBezwaarIds() {
+    // Arrange: document -> bezwaar -> bezwaar_groep_lid
+    var doc = new BezwaarDocument();
+    doc.setId(500L);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt"))
+        .thenReturn(Optional.of(doc));
+    var bezwaar = new IndividueelBezwaar();
+    bezwaar.setId(1L);
+    bezwaar.setDocumentId(500L);
+    when(bezwaarRepository.findByDocumentId(500L)).thenReturn(List.of(bezwaar));
+
     service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
 
     var inOrder = org.mockito.Mockito.inOrder(
-        passageGroepLidRepository, bezwaarGroepRepository,
+        bezwaarGroepLidRepository, bezwaarGroepRepository,
         referentieRepository, kernbezwaarRepository);
-    inOrder.verify(passageGroepLidRepository)
-        .deleteByBestandsnaamInAndProjectNaam(List.of("bezwaar-001.txt"), "windmolens");
+    inOrder.verify(bezwaarGroepLidRepository).deleteByBezwaarIdIn(List.of(1L));
     inOrder.verify(bezwaarGroepRepository).deleteZonderLeden();
     inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
   }
 
   @Test
-  void ruimOpNaBestandenVerwijdering_cascadeVerwijderingViaPassageGroepModel() {
-    var bestandsnamen = List.of("doc-a.txt", "doc-b.txt");
+  void ruimOpNaBestandenVerwijdering_cascadeVerwijderingViaBezwaarIds() {
+    // Arrange: documenten -> bezwaren
+    var docA = new BezwaarDocument();
+    docA.setId(500L);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("testproject", "doc-a.txt"))
+        .thenReturn(Optional.of(docA));
+    var bezwaarA = new IndividueelBezwaar();
+    bezwaarA.setId(1L);
+    bezwaarA.setDocumentId(500L);
+    when(bezwaarRepository.findByDocumentId(500L)).thenReturn(List.of(bezwaarA));
 
-    service.ruimOpNaBestandenVerwijdering("testproject", bestandsnamen);
+    var docB = new BezwaarDocument();
+    docB.setId(501L);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("testproject", "doc-b.txt"))
+        .thenReturn(Optional.of(docB));
+    var bezwaarB = new IndividueelBezwaar();
+    bezwaarB.setId(2L);
+    bezwaarB.setDocumentId(501L);
+    when(bezwaarRepository.findByDocumentId(501L)).thenReturn(List.of(bezwaarB));
+
+    service.ruimOpNaBestandenVerwijdering("testproject", List.of("doc-a.txt", "doc-b.txt"));
 
     var inOrder = org.mockito.Mockito.inOrder(
-        passageGroepLidRepository, bezwaarGroepRepository,
+        bezwaarGroepLidRepository, bezwaarGroepRepository,
         referentieRepository, kernbezwaarRepository);
-    inOrder.verify(passageGroepLidRepository)
-        .deleteByBestandsnaamInAndProjectNaam(bestandsnamen, "testproject");
+    inOrder.verify(bezwaarGroepLidRepository).deleteByBezwaarIdIn(List.of(1L, 2L));
     inOrder.verify(bezwaarGroepRepository).deleteZonderLeden();
     inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("testproject");
@@ -841,7 +866,7 @@ class KernbezwaarServiceTest {
     var groep102 = maakPassageGroep(102L, "passage C", 78);
     when(bezwaarGroepRepository.findAllById(anyList()))
         .thenReturn(List.of(groep100, groep101, groep102));
-    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(anyList()))
         .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -889,7 +914,7 @@ class KernbezwaarServiceTest {
     var groep101 = maakPassageGroep(101L, "passage B", null);
     when(bezwaarGroepRepository.findAllById(anyList()))
         .thenReturn(List.of(groep100, groep101));
-    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(anyList()))
         .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -1030,7 +1055,7 @@ class KernbezwaarServiceTest {
 
     // Assert: 1 passage-groep lid met 2 leden (geluidshinder)
     // en 1 passage-groep lid met 1 lid (verkeerslast)
-    verify(passageGroepLidRepository, times(3)).save(any());
+    verify(bezwaarGroepLidRepository, times(3)).save(any());
   }
 
   @Test
@@ -1141,17 +1166,34 @@ class KernbezwaarServiceTest {
     when(bezwaarGroepRepository.findAllById(List.of(100L)))
         .thenReturn(List.of(groep));
 
-    // Passage groep met 2 leden (documenten)
-    var lid1 = new PassageGroepLidEntiteit();
-    lid1.setPassageGroepId(100L);
+    // Bezwaar groep met 2 leden (documenten)
+    var lid1 = new BezwaarGroepLid();
+    lid1.setBezwaarGroepId(100L);
     lid1.setBezwaarId(1L);
-    lid1.setBestandsnaam("bezwaar1.pdf");
-    var lid2 = new PassageGroepLidEntiteit();
-    lid2.setPassageGroepId(100L);
+    var lid2 = new BezwaarGroepLid();
+    lid2.setBezwaarGroepId(100L);
     lid2.setBezwaarId(2L);
-    lid2.setBestandsnaam("bezwaar2.pdf");
-    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(List.of(100L)))
         .thenReturn(List.of(lid1, lid2));
+
+    // Bezwaar -> document -> bestandsnaam lookup
+    var bezwaar1 = new IndividueelBezwaar();
+    bezwaar1.setId(1L);
+    bezwaar1.setDocumentId(500L);
+    var bezwaar2 = new IndividueelBezwaar();
+    bezwaar2.setId(2L);
+    bezwaar2.setDocumentId(501L);
+    when(bezwaarRepository.findAllById(anyList()))
+        .thenReturn(List.of(bezwaar1, bezwaar2));
+
+    var doc1 = new BezwaarDocument();
+    doc1.setId(500L);
+    doc1.setBestandsnaam("bezwaar1.pdf");
+    var doc2 = new BezwaarDocument();
+    doc2.setId(501L);
+    doc2.setBestandsnaam("bezwaar2.pdf");
+    when(documentRepository.findAllById(anyList()))
+        .thenReturn(List.of(doc1, doc2));
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of());

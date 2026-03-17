@@ -1,7 +1,12 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakService;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,16 +26,22 @@ public class KernbezwaarController {
   private final KernbezwaarService kernbezwaarService;
   private final KernbezwaarReferentieRepository referentieRepository;
   private final ConsolidatieTaakService consolidatieTaakService;
-  private final PassageGroepLidRepository passageGroepLidRepository;
+  private final BezwaarGroepLidRepository bezwaarGroepLidRepository;
+  private final IndividueelBezwaarRepository bezwaarRepository;
+  private final BezwaarDocumentRepository documentRepository;
 
   public KernbezwaarController(KernbezwaarService kernbezwaarService,
       KernbezwaarReferentieRepository referentieRepository,
       ConsolidatieTaakService consolidatieTaakService,
-      PassageGroepLidRepository passageGroepLidRepository) {
+      BezwaarGroepLidRepository bezwaarGroepLidRepository,
+      IndividueelBezwaarRepository bezwaarRepository,
+      BezwaarDocumentRepository documentRepository) {
     this.kernbezwaarService = kernbezwaarService;
     this.referentieRepository = referentieRepository;
     this.consolidatieTaakService = consolidatieTaakService;
-    this.passageGroepLidRepository = passageGroepLidRepository;
+    this.bezwaarGroepLidRepository = bezwaarGroepLidRepository;
+    this.bezwaarRepository = bezwaarRepository;
+    this.documentRepository = documentRepository;
   }
 
   /**
@@ -57,14 +68,18 @@ public class KernbezwaarController {
       @PathVariable Long id,
       @RequestBody AntwoordRequest request,
       @RequestParam(defaultValue = "false") boolean bevestigd) {
-    // Haal bestandsnamen op via passage_groep_lid
+    // Haal bestandsnamen op via bezwaar_groep_lid -> bezwaar -> document
     var refs = referentieRepository.findByKernbezwaarIdIn(List.of(id));
     var groepIds = refs.stream()
         .map(KernbezwaarReferentieEntiteit::getPassageGroepId).toList();
-    var leden = passageGroepLidRepository.findByPassageGroepIdIn(groepIds);
-    var bestandsnamen = leden.stream()
-        .map(PassageGroepLidEntiteit::getBestandsnaam)
-        .distinct().toList();
+    var leden = bezwaarGroepLidRepository.findByBezwaarGroepIdIn(groepIds);
+    var bezwaarIds = leden.stream()
+        .map(BezwaarGroepLid::getBezwaarId).distinct().toList();
+    var bezwaren = bezwaarRepository.findAllById(bezwaarIds);
+    var documentIds = bezwaren.stream()
+        .map(IndividueelBezwaar::getDocumentId).distinct().toList();
+    var bestandsnamen = documentRepository.findAllById(documentIds).stream()
+        .map(BezwaarDocument::getBestandsnaam).distinct().toList();
     var getroffen = consolidatieTaakService.vindKlareBestandsnamen(naam, bestandsnamen);
 
     if (!getroffen.isEmpty() && !bevestigd) {

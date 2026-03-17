@@ -60,7 +60,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Autowired
-  private PassageGroepLidRepository passageGroepLidRepository;
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   @Autowired
   private ConsolidatieTaakRepository consolidatieTaakRepository;
@@ -84,7 +84,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     referentieRepository.deleteAll();
     antwoordRepository.deleteAll();
     kernbezwaarRepository.deleteAll();
-    passageGroepLidRepository.deleteAll();
+    bezwaarGroepLidRepository.deleteAll();
     bezwaarGroepRepository.deleteAll();
     clusteringTaakRepository.deleteAll();
     consolidatieTaakRepository.deleteAll();
@@ -117,11 +117,13 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
     var overgeblevenRefs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(overgeblevenRefs).hasSize(1);
-    // Controleer dat de overgebleven referentie naar doc-b wijst via passage_groep_lid
+    // Controleer dat de overgebleven referentie naar doc-b wijst via bezwaar_groep_lid -> bezwaar -> document
     var groepId = overgeblevenRefs.get(0).getPassageGroepId();
-    var leden = passageGroepLidRepository.findByPassageGroepId(groepId);
+    var leden = bezwaarGroepLidRepository.findByBezwaarGroepId(groepId);
     assertThat(leden).hasSize(1);
-    assertThat(leden.get(0).getBestandsnaam()).isEqualTo("doc-b.txt");
+    var overgeblevenBezwaar = bezwaarRepository.findById(leden.get(0).getBezwaarId()).orElseThrow();
+    var overgeblevenDoc = documentRepository.findById(overgeblevenBezwaar.getDocumentId()).orElseThrow();
+    assertThat(overgeblevenDoc.getBestandsnaam()).isEqualTo("doc-b.txt");
   }
 
   // --- Scenario 2: Document verwijderd, niet-gedeeld kernbezwaar verdwijnt ---
@@ -229,11 +231,13 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
     var k1Refs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(k1Refs).hasSize(1);
-    // Controleer dat de overgebleven referentie naar doc-b wijst via passage_groep_lid
+    // Controleer dat de overgebleven referentie naar doc-b wijst via bezwaar_groep_lid -> bezwaar -> document
     var groepId = k1Refs.get(0).getPassageGroepId();
-    var leden = passageGroepLidRepository.findByPassageGroepId(groepId);
+    var leden = bezwaarGroepLidRepository.findByBezwaarGroepId(groepId);
     assertThat(leden).hasSize(1);
-    assertThat(leden.get(0).getBestandsnaam()).isEqualTo("doc-b.txt");
+    var overgeblevenBezwaar = bezwaarRepository.findById(leden.get(0).getBezwaarId()).orElseThrow();
+    var overgeblevenDoc = documentRepository.findById(overgeblevenBezwaar.getDocumentId()).orElseThrow();
+    assertThat(overgeblevenDoc.getBestandsnaam()).isEqualTo("doc-b.txt");
 
     // Assert: K2 is verwijderd samen met antwoord (DB cascade)
     assertThat(kernbezwaarRepository.findById(k2.getId())).isEmpty();
@@ -403,11 +407,13 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(kernbezwaarRepository.findById(k1.getId())).isPresent();
     var k1Refs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(k1Refs).hasSize(1);
-    // Controleer dat de overgebleven referentie naar doc-c wijst via passage_groep_lid
+    // Controleer dat de overgebleven referentie naar doc-c wijst via bezwaar_groep_lid -> bezwaar -> document
     var groepId = k1Refs.get(0).getPassageGroepId();
-    var leden = passageGroepLidRepository.findByPassageGroepId(groepId);
+    var leden = bezwaarGroepLidRepository.findByBezwaarGroepId(groepId);
     assertThat(leden).hasSize(1);
-    assertThat(leden.get(0).getBestandsnaam()).isEqualTo("doc-c.txt");
+    var overgeblevenBezwaar = bezwaarRepository.findById(leden.get(0).getBezwaarId()).orElseThrow();
+    var overgeblevenDoc = documentRepository.findById(overgeblevenBezwaar.getDocumentId()).orElseThrow();
+    assertThat(overgeblevenDoc.getBestandsnaam()).isEqualTo("doc-c.txt");
 
     // Assert: K2 is verwijderd (alle referenties waren naar doc-a en doc-b)
     assertThat(kernbezwaarRepository.findById(k2.getId())).isEmpty();
@@ -464,11 +470,10 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     groep = bezwaarGroepRepository.save(groep);
 
     var bezwaarId = bezwaarIdPerBestandsnaam.get(bestandsnaam);
-    var lid = new PassageGroepLidEntiteit();
-    lid.setPassageGroepId(groep.getId());
+    var lid = new BezwaarGroepLid();
+    lid.setBezwaarGroepId(groep.getId());
     lid.setBezwaarId(bezwaarId);
-    lid.setBestandsnaam(bestandsnaam);
-    passageGroepLidRepository.save(lid);
+    bezwaarGroepLidRepository.save(lid);
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kernbezwaarId);

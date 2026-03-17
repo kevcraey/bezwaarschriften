@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.Brondocument;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
-import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageGroepLidRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -48,7 +48,7 @@ class ExtractieTaakServiceTest {
   private EmbeddingPoort embeddingPoort;
 
   @Mock
-  private PassageGroepLidRepository passageGroepLidRepository;
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   private ExtractieTaakService service;
 
@@ -56,7 +56,7 @@ class ExtractieTaakServiceTest {
   void setUp() {
     service = new ExtractieTaakService(documentRepository, notificatie,
         bezwaarRepository, projectPoort, ingestiePoort,
-        passageValidator, embeddingPoort, passageGroepLidRepository);
+        passageValidator, embeddingPoort, bezwaarGroepLidRepository);
     lenient().when(embeddingPoort.genereerEmbeddings(any())).thenAnswer(inv -> {
       List<String> teksten = inv.getArgument(0);
       return teksten.stream().map(t -> new float[]{0.1f}).toList();
@@ -106,7 +106,7 @@ class ExtractieTaakServiceTest {
 
     service.indienen("windmolens", List.of("bezwaar-001.txt"));
 
-    verify(passageGroepLidRepository).deleteByBezwaarIdIn(List.of(10L, 11L));
+    verify(bezwaarGroepLidRepository).deleteByBezwaarIdIn(List.of(10L, 11L));
     verify(bezwaarRepository).deleteByDocumentId(1L);
   }
 
@@ -440,7 +440,7 @@ class ExtractieTaakServiceTest {
 
     service.verwijderBezwaar("windmolens", "bezwaar-001.txt", 10L);
 
-    verify(passageGroepLidRepository).deleteByBezwaarIdIn(List.of(10L));
+    verify(bezwaarGroepLidRepository).deleteByBezwaarIdIn(List.of(10L));
     verify(bezwaarRepository).delete(bezwaar);
     assertThat(doc.isHeeftManueel()).isTrue();
     verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));

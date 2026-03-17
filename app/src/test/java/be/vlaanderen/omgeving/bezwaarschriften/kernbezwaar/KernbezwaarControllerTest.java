@@ -6,6 +6,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakService;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +32,13 @@ class KernbezwaarControllerTest {
   private ConsolidatieTaakService consolidatieTaakService;
 
   @Mock
-  private PassageGroepLidRepository passageGroepLidRepository;
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
+
+  @Mock
+  private IndividueelBezwaarRepository bezwaarRepository;
+
+  @Mock
+  private BezwaarDocumentRepository documentRepository;
 
   private KernbezwaarController controller;
 
@@ -36,7 +46,7 @@ class KernbezwaarControllerTest {
   void setUp() {
     controller = new KernbezwaarController(
         kernbezwaarService, referentieRepository, consolidatieTaakService,
-        passageGroepLidRepository);
+        bezwaarGroepLidRepository, bezwaarRepository, documentRepository);
   }
 
   @Test
@@ -74,13 +84,25 @@ class KernbezwaarControllerTest {
     when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
         .thenReturn(List.of(ref));
 
-    // Passage groep lid met bestandsnaam
-    var lid = new PassageGroepLidEntiteit();
-    lid.setPassageGroepId(100L);
+    // Bezwaar groep lid
+    var lid = new BezwaarGroepLid();
+    lid.setBezwaarGroepId(100L);
     lid.setBezwaarId(1L);
-    lid.setBestandsnaam("bezwaar.pdf");
-    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(List.of(100L)))
         .thenReturn(List.of(lid));
+
+    // Bezwaar -> document -> bestandsnaam
+    var bezwaar = new IndividueelBezwaar();
+    bezwaar.setId(1L);
+    bezwaar.setDocumentId(500L);
+    when(bezwaarRepository.findAllById(List.of(1L)))
+        .thenReturn(List.of(bezwaar));
+
+    var document = new BezwaarDocument();
+    document.setId(500L);
+    document.setBestandsnaam("bezwaar.pdf");
+    when(documentRepository.findAllById(List.of(500L)))
+        .thenReturn(List.of(document));
 
     when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
         List.of("bezwaar.pdf"))).thenReturn(List.of());
@@ -101,12 +123,23 @@ class KernbezwaarControllerTest {
     when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
         .thenReturn(List.of(ref));
 
-    var lid = new PassageGroepLidEntiteit();
-    lid.setPassageGroepId(100L);
+    var lid = new BezwaarGroepLid();
+    lid.setBezwaarGroepId(100L);
     lid.setBezwaarId(1L);
-    lid.setBestandsnaam("bezwaar-001.txt");
-    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(List.of(100L)))
         .thenReturn(List.of(lid));
+
+    var bezwaar = new IndividueelBezwaar();
+    bezwaar.setId(1L);
+    bezwaar.setDocumentId(500L);
+    when(bezwaarRepository.findAllById(List.of(1L)))
+        .thenReturn(List.of(bezwaar));
+
+    var document = new BezwaarDocument();
+    document.setId(500L);
+    document.setBestandsnaam("bezwaar-001.txt");
+    when(documentRepository.findAllById(List.of(500L)))
+        .thenReturn(List.of(document));
 
     when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
         List.of("bezwaar-001.txt"))).thenReturn(List.of("bezwaar-001.txt"));
@@ -127,12 +160,23 @@ class KernbezwaarControllerTest {
     when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
         .thenReturn(List.of(ref));
 
-    var lid = new PassageGroepLidEntiteit();
-    lid.setPassageGroepId(100L);
+    var lid = new BezwaarGroepLid();
+    lid.setBezwaarGroepId(100L);
     lid.setBezwaarId(1L);
-    lid.setBestandsnaam("bezwaar-001.txt");
-    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(List.of(100L)))
         .thenReturn(List.of(lid));
+
+    var bezwaar = new IndividueelBezwaar();
+    bezwaar.setId(1L);
+    bezwaar.setDocumentId(500L);
+    when(bezwaarRepository.findAllById(List.of(1L)))
+        .thenReturn(List.of(bezwaar));
+
+    var document = new BezwaarDocument();
+    document.setId(500L);
+    document.setBestandsnaam("bezwaar-001.txt");
+    when(documentRepository.findAllById(List.of(500L)))
+        .thenReturn(List.of(document));
 
     when(consolidatieTaakService.vindKlareBestandsnamen("windmolens",
         List.of("bezwaar-001.txt"))).thenReturn(List.of("bezwaar-001.txt"));

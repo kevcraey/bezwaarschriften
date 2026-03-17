@@ -1,6 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 
-import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageGroepLidRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarExtractieStatus;
@@ -36,7 +36,7 @@ public class TekstExtractieService {
 
   private final BezwaarDocumentRepository documentRepository;
   private final IndividueelBezwaarRepository bezwaarRepository;
-  private final PassageGroepLidRepository passageGroepLidRepository;
+  private final BezwaarGroepLidRepository bezwaarGroepLidRepository;
   private final PdfTekstExtractor pdfExtractor;
   private final TekstKwaliteitsControle kwaliteitsControle;
   private final ProjectPoort projectPoort;
@@ -51,7 +51,7 @@ public class TekstExtractieService {
    *
    * @param documentRepository repository voor bezwaardocumenten
    * @param bezwaarRepository repository voor individuele bezwaren
-   * @param passageGroepLidRepository repository voor passage-groepleden (FK cleanup)
+   * @param bezwaarGroepLidRepository repository voor passage-groepleden (FK cleanup)
    * @param pdfExtractor extractor voor PDF-bestanden
    * @param kwaliteitsControle kwaliteitscontrole voor geextraheerde tekst
    * @param projectPoort poort voor projectbestanden
@@ -64,7 +64,7 @@ public class TekstExtractieService {
   public TekstExtractieService(
       BezwaarDocumentRepository documentRepository,
       IndividueelBezwaarRepository bezwaarRepository,
-      PassageGroepLidRepository passageGroepLidRepository,
+      BezwaarGroepLidRepository bezwaarGroepLidRepository,
       PdfTekstExtractor pdfExtractor,
       TekstKwaliteitsControle kwaliteitsControle,
       ProjectPoort projectPoort,
@@ -75,7 +75,7 @@ public class TekstExtractieService {
       @Value("${bezwaarschriften.tekst-extractie.max-concurrent:2}") int maxConcurrent) {
     this.documentRepository = documentRepository;
     this.bezwaarRepository = bezwaarRepository;
-    this.passageGroepLidRepository = passageGroepLidRepository;
+    this.bezwaarGroepLidRepository = bezwaarGroepLidRepository;
     this.pdfExtractor = pdfExtractor;
     this.kwaliteitsControle = kwaliteitsControle;
     this.projectPoort = projectPoort;
@@ -112,7 +112,7 @@ public class TekstExtractieService {
       var bezwaren = bezwaarRepository.findByDocumentId(document.getId());
       if (!bezwaren.isEmpty()) {
         var bezwaarIds = bezwaren.stream().map(IndividueelBezwaar::getId).toList();
-        passageGroepLidRepository.deleteByBezwaarIdIn(bezwaarIds);
+        bezwaarGroepLidRepository.deleteByBezwaarIdIn(bezwaarIds);
         bezwaarRepository.deleteByDocumentId(document.getId());
         document.setBezwaarExtractieStatus(BezwaarExtractieStatus.GEEN);
         LOGGER.info("Her-extractie: {} bezwaren opgeruimd voor document {}/{}",

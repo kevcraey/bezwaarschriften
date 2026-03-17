@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Integratietest voor de passage_groep en passage_groep_lid tabellen.
+ * Integratietest voor de bezwaar_groep en bezwaar_groep_lid tabellen.
  * Valideert dat de JPA-entiteiten correct samenwerken met de database
  * via Testcontainers.
  */
@@ -26,7 +26,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Autowired
-  private PassageGroepLidRepository passageGroepLidRepository;
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   @Autowired
   private ClusteringTaakRepository clusteringTaakRepository;
@@ -46,7 +46,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   @BeforeEach
   void setUp() {
     referentieRepository.deleteAll();
-    passageGroepLidRepository.deleteAll();
+    bezwaarGroepLidRepository.deleteAll();
     bezwaarGroepRepository.deleteAll();
     kernbezwaarRepository.deleteAll();
     clusteringTaakRepository.deleteAll();
@@ -55,8 +55,8 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   }
 
   @Test
-  @DisplayName("Slaat PassageGroep op en vindt terug via clusteringTaakId")
-  void slaatPassageGroepOpEnVindtTerugViaClusteringTaakId() {
+  @DisplayName("Slaat BezwaarGroep op en vindt terug via clusteringTaakId")
+  void slaatBezwaarGroepOpEnVindtTerugViaClusteringTaakId() {
     var clusteringTaak = maakClusteringTaak("testproject");
 
     var groep = new BezwaarGroep();
@@ -77,61 +77,59 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   }
 
   @Test
-  @DisplayName("Slaat PassageGroepLid op en vindt terug via passageGroepId")
-  void slaatPassageGroepLidOpEnVindtTerugViaPassageGroepId() {
+  @DisplayName("Slaat BezwaarGroepLid op en vindt terug via bezwaarGroepId")
+  void slaatBezwaarGroepLidOpEnVindtTerugViaBezwaarGroepId() {
     var clusteringTaak = maakClusteringTaak("testproject");
     var document = maakDocument("testproject", "doc-a.pdf");
-    var groep = maakPassageGroep(clusteringTaak.getId(), "Geluidshinder passage",
+    var groep = maakBezwaarGroep(clusteringTaak.getId(), "Geluidshinder passage",
         "Geluidshinder", "VERGELIJKBAAR");
 
     final var bezwaar = maakBezwaar(document.getId(), "Bezwaar over geluid");
-    var lid = new PassageGroepLidEntiteit();
-    lid.setPassageGroepId(groep.getId());
+    var lid = new BezwaarGroepLid();
+    lid.setBezwaarGroepId(groep.getId());
     lid.setBezwaarId(bezwaar.getId());
-    lid.setBestandsnaam("doc-a.pdf");
-    passageGroepLidRepository.save(lid);
+    bezwaarGroepLidRepository.save(lid);
 
-    var leden = passageGroepLidRepository.findByPassageGroepId(groep.getId());
+    var leden = bezwaarGroepLidRepository.findByBezwaarGroepId(groep.getId());
     assertThat(leden).hasSize(1);
     assertThat(leden.get(0).getBezwaarId()).isEqualTo(bezwaar.getId());
-    assertThat(leden.get(0).getBestandsnaam()).isEqualTo("doc-a.pdf");
   }
 
   @Test
-  @DisplayName("findByPassageGroepIdIn retourneert leden van meerdere groepen")
-  void findByPassageGroepIdInRetourneertLedenVanMeerdereGroepen() {
+  @DisplayName("findByBezwaarGroepIdIn retourneert leden van meerdere groepen")
+  void findByBezwaarGroepIdInRetourneertLedenVanMeerdereGroepen() {
     var clusteringTaak = maakClusteringTaak("testproject");
     var document = maakDocument("testproject", "doc-a.pdf");
     var bezwaar1 = maakBezwaar(document.getId(), "Bezwaar 1");
     var bezwaar2 = maakBezwaar(document.getId(), "Bezwaar 2");
 
-    var groep1 = maakPassageGroep(clusteringTaak.getId(), "Passage 1", "Samenvatting 1",
+    var groep1 = maakBezwaarGroep(clusteringTaak.getId(), "Passage 1", "Samenvatting 1",
         "IDENTIEK");
-    var groep2 = maakPassageGroep(clusteringTaak.getId(), "Passage 2", "Samenvatting 2",
+    var groep2 = maakBezwaarGroep(clusteringTaak.getId(), "Passage 2", "Samenvatting 2",
         "VERGELIJKBAAR");
 
-    maakPassageGroepLid(groep1.getId(), bezwaar1.getId(), "doc-a.pdf");
-    maakPassageGroepLid(groep2.getId(), bezwaar2.getId(), "doc-a.pdf");
+    maakBezwaarGroepLid(groep1.getId(), bezwaar1.getId());
+    maakBezwaarGroepLid(groep2.getId(), bezwaar2.getId());
 
-    var leden = passageGroepLidRepository.findByPassageGroepIdIn(
+    var leden = bezwaarGroepLidRepository.findByBezwaarGroepIdIn(
         List.of(groep1.getId(), groep2.getId()));
     assertThat(leden).hasSize(2);
   }
 
   @Test
-  @DisplayName("Cascade delete: verwijdering van clustering_taak verwijdert passage_groepen")
-  void cascadeDeleteVerwijdertPassageGroepenBijClusteringTaakVerwijdering() {
+  @DisplayName("Cascade delete: verwijdering van clustering_taak verwijdert bezwaar_groepen")
+  void cascadeDeleteVerwijdertBezwaarGroepenBijClusteringTaakVerwijdering() {
     var clusteringTaak = maakClusteringTaak("testproject");
     var document = maakDocument("testproject", "doc-a.pdf");
     var bezwaar = maakBezwaar(document.getId(), "Bezwaar");
 
-    var groep = maakPassageGroep(clusteringTaak.getId(), "Passage", "Samenvatting", "IDENTIEK");
-    maakPassageGroepLid(groep.getId(), bezwaar.getId(), "doc-a.pdf");
+    var groep = maakBezwaarGroep(clusteringTaak.getId(), "Passage", "Samenvatting", "IDENTIEK");
+    maakBezwaarGroepLid(groep.getId(), bezwaar.getId());
 
     clusteringTaakRepository.deleteById(clusteringTaak.getId());
 
     assertThat(bezwaarGroepRepository.findByClusteringTaakId(clusteringTaak.getId())).isEmpty();
-    assertThat(passageGroepLidRepository.findByPassageGroepId(groep.getId())).isEmpty();
+    assertThat(bezwaarGroepLidRepository.findByBezwaarGroepId(groep.getId())).isEmpty();
   }
 
   @Test
@@ -141,9 +139,9 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     var taak1 = maakClusteringTaak("project-a");
     var taak2 = maakClusteringTaak("project-b");
 
-    maakPassageGroep(taak1.getId(), "Groep A1", "Samenvatting A1", "IDENTIEK");
-    maakPassageGroep(taak1.getId(), "Groep A2", "Samenvatting A2", "VERGELIJKBAAR");
-    maakPassageGroep(taak2.getId(), "Groep B1", "Samenvatting B1", "IDENTIEK");
+    maakBezwaarGroep(taak1.getId(), "Groep A1", "Samenvatting A1", "IDENTIEK");
+    maakBezwaarGroep(taak1.getId(), "Groep A2", "Samenvatting A2", "VERGELIJKBAAR");
+    maakBezwaarGroep(taak2.getId(), "Groep B1", "Samenvatting B1", "IDENTIEK");
 
     bezwaarGroepRepository.deleteByClusteringTaakId(taak1.getId());
 
@@ -160,7 +158,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     kern.setSamenvatting("Geluidshinder");
     kern = kernbezwaarRepository.save(kern);
 
-    final var groep = maakPassageGroep(clusteringTaak.getId(), "Passage", "Samenvatting",
+    final var groep = maakBezwaarGroep(clusteringTaak.getId(), "Passage", "Samenvatting",
         "IDENTIEK");
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
@@ -222,7 +220,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     return bezwaarRepository.save(bezwaar);
   }
 
-  private BezwaarGroep maakPassageGroep(Long clusteringTaakId, String passage,
+  private BezwaarGroep maakBezwaarGroep(Long clusteringTaakId, String passage,
       String samenvatting, String categorie) {
     var groep = new BezwaarGroep();
     groep.setClusteringTaakId(clusteringTaakId);
@@ -232,12 +230,10 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     return bezwaarGroepRepository.save(groep);
   }
 
-  private PassageGroepLidEntiteit maakPassageGroepLid(Long passageGroepId, Long bezwaarId,
-      String bestandsnaam) {
-    var lid = new PassageGroepLidEntiteit();
-    lid.setPassageGroepId(passageGroepId);
+  private BezwaarGroepLid maakBezwaarGroepLid(Long bezwaarGroepId, Long bezwaarId) {
+    var lid = new BezwaarGroepLid();
+    lid.setBezwaarGroepId(bezwaarGroepId);
     lid.setBezwaarId(bezwaarId);
-    lid.setBestandsnaam(bestandsnaam);
-    return passageGroepLidRepository.save(lid);
+    return bezwaarGroepLidRepository.save(lid);
   }
 }

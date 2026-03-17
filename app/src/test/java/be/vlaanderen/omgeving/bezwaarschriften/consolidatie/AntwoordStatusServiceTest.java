@@ -9,8 +9,12 @@ import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarReferentieEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarReferentieRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageGroepLidEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageGroepLidRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLid;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,34 +35,54 @@ class AntwoordStatusServiceTest {
   private KernbezwaarRepository kernbezwaarRepository;
 
   @Mock
-  private PassageGroepLidRepository passageGroepLidRepository;
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
+
+  @Mock
+  private IndividueelBezwaarRepository bezwaarRepository;
+
+  @Mock
+  private BezwaarDocumentRepository documentRepository;
 
   private AntwoordStatusService service;
 
   @BeforeEach
   void setUp() {
     service = new AntwoordStatusService(referentieRepository, antwoordRepository,
-        kernbezwaarRepository, passageGroepLidRepository);
+        kernbezwaarRepository, bezwaarGroepLidRepository, bezwaarRepository, documentRepository);
   }
 
   @Test
   void berekentAntwoordStatusPerDocument() {
     // Referenties met passage-groep IDs
-    var ref1 = maakRef(1L, 10L); // groep 1 → bezwaar-001.txt, kern 10
-    var ref2 = maakRef(2L, 20L); // groep 2 → bezwaar-001.txt, kern 20
-    var ref3 = maakRef(3L, 10L); // groep 3 → bezwaar-002.txt, kern 10
-    var ref4 = maakRef(4L, 30L); // groep 4 → bezwaar-002.txt, kern 30
+    var ref1 = maakRef(1L, 10L); // groep 1 -> bezwaar-001.txt, kern 10
+    var ref2 = maakRef(2L, 20L); // groep 2 -> bezwaar-001.txt, kern 20
+    var ref3 = maakRef(3L, 10L); // groep 3 -> bezwaar-002.txt, kern 10
+    var ref4 = maakRef(4L, 30L); // groep 4 -> bezwaar-002.txt, kern 30
 
     when(referentieRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(ref1, ref2, ref3, ref4));
 
-    // Passage groep leden: koppelen groep-ID aan bestandsnaam
-    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
+    // Bezwaar groep leden: koppelen groep-ID aan bezwaar-ID
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(anyList()))
         .thenReturn(List.of(
-            maakLid(1L, "bezwaar-001.txt"),
-            maakLid(2L, "bezwaar-001.txt"),
-            maakLid(3L, "bezwaar-002.txt"),
-            maakLid(4L, "bezwaar-002.txt")));
+            maakLid(1L, 100L),
+            maakLid(2L, 200L),
+            maakLid(3L, 300L),
+            maakLid(4L, 400L)));
+
+    // Bezwaren -> document-IDs
+    when(bezwaarRepository.findAllById(anyList()))
+        .thenReturn(List.of(
+            maakBezwaar(100L, 500L),
+            maakBezwaar(200L, 500L),
+            maakBezwaar(300L, 501L),
+            maakBezwaar(400L, 501L)));
+
+    // Documenten -> bestandsnamen
+    when(documentRepository.findAllById(anyList()))
+        .thenReturn(List.of(
+            maakDocument(500L, "bezwaar-001.txt"),
+            maakDocument(501L, "bezwaar-002.txt")));
 
     when(antwoordRepository.findKernbezwaarIdsMetAntwoord(anyList()))
         .thenReturn(List.of(10L, 20L));
@@ -98,8 +122,12 @@ class AntwoordStatusServiceTest {
     var ref1 = maakRef(1L, 10L);
     when(referentieRepository.findByProjectNaam("p"))
         .thenReturn(List.of(ref1));
-    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
-        .thenReturn(List.of(maakLid(1L, "bezwaar-001.txt")));
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(anyList()))
+        .thenReturn(List.of(maakLid(1L, 100L)));
+    when(bezwaarRepository.findAllById(anyList()))
+        .thenReturn(List.of(maakBezwaar(100L, 500L)));
+    when(documentRepository.findAllById(anyList()))
+        .thenReturn(List.of(maakDocument(500L, "bezwaar-001.txt")));
     when(antwoordRepository.findKernbezwaarIdsMetAntwoord(anyList()))
         .thenReturn(List.of(10L));
     when(kernbezwaarRepository.findAllById(anyList()))
@@ -115,8 +143,12 @@ class AntwoordStatusServiceTest {
     var ref1 = maakRef(1L, 10L);
     when(referentieRepository.findByProjectNaam("p"))
         .thenReturn(List.of(ref1));
-    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
-        .thenReturn(List.of(maakLid(1L, "bezwaar-001.txt")));
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(anyList()))
+        .thenReturn(List.of(maakLid(1L, 100L)));
+    when(bezwaarRepository.findAllById(anyList()))
+        .thenReturn(List.of(maakBezwaar(100L, 500L)));
+    when(documentRepository.findAllById(anyList()))
+        .thenReturn(List.of(maakDocument(500L, "bezwaar-001.txt")));
     when(antwoordRepository.findKernbezwaarIdsMetAntwoord(anyList()))
         .thenReturn(List.of());
     when(kernbezwaarRepository.findAllById(anyList()))
@@ -134,12 +166,25 @@ class AntwoordStatusServiceTest {
     return ref;
   }
 
-  private PassageGroepLidEntiteit maakLid(Long passageGroepId, String bestandsnaam) {
-    var lid = new PassageGroepLidEntiteit();
-    lid.setPassageGroepId(passageGroepId);
-    lid.setBezwaarId(passageGroepId * 100); // unique bezwaarId
-    lid.setBestandsnaam(bestandsnaam);
+  private BezwaarGroepLid maakLid(Long bezwaarGroepId, Long bezwaarId) {
+    var lid = new BezwaarGroepLid();
+    lid.setBezwaarGroepId(bezwaarGroepId);
+    lid.setBezwaarId(bezwaarId);
     return lid;
+  }
+
+  private IndividueelBezwaar maakBezwaar(Long id, Long documentId) {
+    var bezwaar = new IndividueelBezwaar();
+    bezwaar.setId(id);
+    bezwaar.setDocumentId(documentId);
+    return bezwaar;
+  }
+
+  private BezwaarDocument maakDocument(Long id, String bestandsnaam) {
+    var doc = new BezwaarDocument();
+    doc.setId(id);
+    doc.setBestandsnaam(bestandsnaam);
+    return doc;
   }
 
   private KernbezwaarEntiteit maakKernbezwaar(Long id, String samenvatting) {
