@@ -330,6 +330,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       id: taak.id,
       aangemaaktOp: taak.aangemaaktOp,
       verwerkingGestartOp: taak.verwerkingGestartOp,
+      afgerondOp: taak.afgerondOp,
     };
     this.__bronBezwaren = this.__bronBezwaren.map((b) =>
       b.bestandsnaam === taak.bestandsnaam ? {
@@ -1015,6 +1016,13 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
       return `${label} (${this._formatTijd(wachtMs)} + ${this._formatTijd(verwerkMs)})`;
     }
 
+    if (b.status === 'bezwaar-extractie-klaar' && taakData &&
+        taakData.verwerkingGestartOp && taakData.afgerondOp) {
+      const verwerkMs = new Date(taakData.afgerondOp).getTime() -
+          new Date(taakData.verwerkingGestartOp).getTime();
+      return `Bezwaar-extractie klaar (${this._formatTijdLeesbaar(verwerkMs)})`;
+    }
+
     return STATUS_LABELS[b.status] || b.status;
   }
 
@@ -1023,6 +1031,16 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const minuten = Math.floor(totaalSeconden / 60);
     const seconden = totaalSeconden % 60;
     return `${minuten}:${String(seconden).padStart(2, '0')}`;
+  }
+
+  _formatTijdLeesbaar(ms) {
+    const totaalSeconden = Math.floor(ms / 1000);
+    const minuten = Math.floor(totaalSeconden / 60);
+    const seconden = totaalSeconden % 60;
+    if (minuten > 0) {
+      return `${minuten}m ${seconden}s`;
+    }
+    return `${seconden}s`;
   }
 
   _configureerSelecteerAlles() {

@@ -3,7 +3,9 @@ package be.vlaanderen.omgeving.bezwaarschriften.clustering;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.codec.ClientCodecConfigurer;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 /**
@@ -27,7 +29,11 @@ public class WebClientEmbeddingAdapter implements EmbeddingPoort {
    */
   public WebClientEmbeddingAdapter(WebClient.Builder webClientBuilder,
       EmbeddingConfig config) {
-    this.webClient = webClientBuilder.build();
+    this.webClient = webClientBuilder
+        .exchangeStrategies(ExchangeStrategies.builder()
+            .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+            .build())
+        .build();
     this.config = config;
   }
 

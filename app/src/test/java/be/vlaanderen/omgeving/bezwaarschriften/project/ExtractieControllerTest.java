@@ -45,9 +45,9 @@ class ExtractieControllerTest {
     when(extractieTaakService.indienen("windmolens", List.of("a.txt", "b.txt")))
         .thenReturn(List.of(
             new ExtractieTaakDto(1L, "windmolens", "a.txt", "bezwaar-extractie-wachtend",
-                0, "2026-02-28T10:00:00Z", null, null, null, null, false, false),
+                0, "2026-02-28T10:00:00Z", null, null, null, null, false, false, null),
             new ExtractieTaakDto(2L, "windmolens", "b.txt", "bezwaar-extractie-wachtend",
-                0, "2026-02-28T10:00:00Z", null, null, null, null, false, false)
+                0, "2026-02-28T10:00:00Z", null, null, null, null, false, false, null)
         ));
 
     mockMvc.perform(post("/api/v1/projects/windmolens/extracties")
@@ -67,7 +67,7 @@ class ExtractieControllerTest {
         .thenReturn(List.of(
             new ExtractieTaakDto(1L, "windmolens", "bezwaar-001.txt", "bezwaar-extractie-klaar",
                 0, "2026-02-28T10:00:00Z", "2026-02-28T10:01:00Z",
-                150, 3, null, false, false)
+                150, 3, null, false, false, "2026-02-28T10:03:00Z")
         ));
 
     mockMvc.perform(get("/api/v1/projects/windmolens/extracties"))
