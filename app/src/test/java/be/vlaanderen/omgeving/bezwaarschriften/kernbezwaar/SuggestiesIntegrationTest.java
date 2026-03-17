@@ -3,9 +3,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import be.vlaanderen.omgeving.bezwaarschriften.BaseBezwaarschriftenIntegrationTest;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaak;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakStatus;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.time.Instant;
@@ -22,7 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
 
   @Autowired
-  private ExtractieTaakRepository extractieTaakRepository;
+  private BezwaarDocumentRepository documentRepository;
 
   @Autowired
   private IndividueelBezwaarRepository bezwaarRepository;
@@ -50,7 +48,7 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
     passageGroepRepository.deleteAll();
     clusteringTaakRepository.deleteAll();
     bezwaarRepository.deleteAll();
-    extractieTaakRepository.deleteAll();
+    documentRepository.deleteAll();
   }
 
   @Test

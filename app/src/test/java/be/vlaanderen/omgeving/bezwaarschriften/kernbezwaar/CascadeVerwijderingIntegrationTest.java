@@ -11,9 +11,6 @@ import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakStat
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarExtractieStatus;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaak;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakStatus;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.TekstExtractieStatus;
@@ -43,9 +40,6 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
 
   @Autowired
   private ProjectService projectService;
-
-  @Autowired
-  private ExtractieTaakRepository extractieTaakRepository;
 
   @Autowired
   private IndividueelBezwaarRepository bezwaarRepository;
@@ -95,7 +89,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     clusteringTaakRepository.deleteAll();
     consolidatieTaakRepository.deleteAll();
     bezwaarRepository.deleteAll();
-    extractieTaakRepository.deleteAll();
+    documentRepository.deleteAll();
     documentRepository.deleteAll();
     bezwaarIdPerBestandsnaam.clear();
     documentIdPerBestandsnaam.clear();
@@ -107,8 +101,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   @DisplayName("Gedeeld kernbezwaar behoudt referentie naar ander document na verwijdering")
   void gedeeldKernbezwaarBlijftBestaanNaDocumentVerwijdering() {
     // Arrange: 2 documenten in "testproject"
-    maakExtractieTaak("testproject", "doc-a.txt");
-    maakExtractieTaak("testproject", "doc-b.txt");
+    maakDocument("testproject", "doc-a.txt");
+    maakDocument("testproject", "doc-b.txt");
     maakBezwaar(documentIdPerBestandsnaam.get("doc-a.txt"), "Bezwaar over geluid doc A");
     maakBezwaar(documentIdPerBestandsnaam.get("doc-b.txt"), "Bezwaar over geluid doc B");
 
@@ -136,8 +130,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   @DisplayName("Niet-gedeeld kernbezwaar en antwoord worden verwijderd met document")
   void nietGedeeldKernbezwaarVerdwijntBijDocumentVerwijdering() {
     // Arrange: 2 documenten, K2 heeft enkel referenties naar doc-a
-    maakExtractieTaak("testproject", "doc-a.txt");
-    maakExtractieTaak("testproject", "doc-b.txt");
+    maakDocument("testproject", "doc-a.txt");
+    maakDocument("testproject", "doc-b.txt");
 
     var k2 = maakKernbezwaar("testproject", "Fijnstof is problematisch");
     maakReferentie(k2.getId(), "doc-a.txt", "passage over fijnstof in doc A");
@@ -158,8 +152,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   @DisplayName("Projectverwijdering ruimt alle gerelateerde data op")
   void projectVerwijderingRuimtAllesOp() {
     // Arrange: "testproject" met volledige datastructuur
-    maakExtractieTaak("testproject", "doc-a.txt");
-    maakExtractieTaak("testproject", "doc-b.txt");
+    maakDocument("testproject", "doc-a.txt");
+    maakDocument("testproject", "doc-b.txt");
     maakBezwaar(documentIdPerBestandsnaam.get("doc-a.txt"), "Bezwaar A");
     maakBezwaar(documentIdPerBestandsnaam.get("doc-b.txt"), "Bezwaar B");
 
@@ -172,7 +166,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     var consolidatieTaak = maakConsolidatieTaak("testproject", "doc-a.txt");
 
     // Arrange: "anderproject" met eigen data
-    maakExtractieTaak("anderproject", "ander-doc.txt");
+    maakDocument("anderproject", "ander-doc.txt");
     maakBezwaar(documentIdPerBestandsnaam.get("ander-doc.txt"), "Bezwaar ander");
 
     var anderClustering = maakClusteringTaak("anderproject");
@@ -186,7 +180,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     projectService.verwijderProject("testproject");
 
     // Assert: alle data van "testproject" is weg
-    assertThat(extractieTaakRepository.findByProjectNaam("testproject")).isEmpty();
+    assertThat(documentRepository.findByProjectNaam("testproject")).isEmpty();
     assertThat(kernbezwaarRepository.findByProjectNaam("testproject")).isEmpty();
     assertThat(kernbezwaarRepository.findById(k1.getId())).isEmpty();
     assertThat(referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()))).isEmpty();
@@ -195,7 +189,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     assertThat(consolidatieTaakRepository.findByProjectNaam("testproject")).isEmpty();
 
     // Assert: "anderproject" data is onaangetast
-    assertThat(extractieTaakRepository.findByProjectNaam("anderproject")).hasSize(1);
+    assertThat(documentRepository.findByProjectNaam("anderproject")).hasSize(1);
     assertThat(kernbezwaarRepository.findByProjectNaam("anderproject")).hasSize(1);
     assertThat(kernbezwaarRepository.findById(anderKern.getId())).isPresent();
     assertThat(referentieRepository.findByKernbezwaarIdIn(List.of(anderKern.getId())))
@@ -211,8 +205,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   @DisplayName("Documentverwijdering behandelt gedeelde en niet-gedeelde kernbezwaren correct")
   void gecombineerdScenarioDocumentVerwijdering() {
     // Arrange: 2 documenten, mix van gedeelde en niet-gedeelde kernbezwaren
-    maakExtractieTaak("testproject", "doc-a.txt");
-    maakExtractieTaak("testproject", "doc-b.txt");
+    maakDocument("testproject", "doc-a.txt");
+    maakDocument("testproject", "doc-b.txt");
 
     // K1: gedeeld kernbezwaar (referenties naar beide documenten)
     var k1 = maakKernbezwaar("testproject", "Geluidshinder gedeeld");
@@ -255,8 +249,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   @DisplayName("Na documentverwijdering telt het totaal referenties enkel bezwaren uit het overblijvende document")
   void totaalAantalReferentiesKloptNaDocumentVerwijdering() {
     // Arrange: doc-a met 10 bezwaren, doc-b met 15 bezwaren
-    maakExtractieTaak("testproject", "doc-a.txt");
-    maakExtractieTaak("testproject", "doc-b.txt");
+    maakDocument("testproject", "doc-a.txt");
+    maakDocument("testproject", "doc-b.txt");
 
     for (int i = 0; i < 10; i++) {
       maakBezwaar(documentIdPerBestandsnaam.get("doc-a.txt"), "Bezwaar A-" + i);
@@ -325,9 +319,9 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   @DisplayName("Bulk verwijdering van alle documenten ruimt alles op")
   void bulkVerwijderingRuimtAlleKernbezwarenOp() {
     // Arrange: 3 documenten
-    maakExtractieTaak("testproject", "doc-a.txt");
-    maakExtractieTaak("testproject", "doc-b.txt");
-    maakExtractieTaak("testproject", "doc-c.txt");
+    maakDocument("testproject", "doc-a.txt");
+    maakDocument("testproject", "doc-b.txt");
+    maakDocument("testproject", "doc-c.txt");
 
     var k1 = maakKernbezwaar("testproject", "Geluidshinder gedeeld");
     maakReferentie(k1.getId(), "doc-a.txt", "geluid passage A");
@@ -352,8 +346,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     // Assert: alle 3 bestanden verwijderd
     assertThat(aantalVerwijderd).isEqualTo(3);
 
-    // Assert: alle extractie-taken weg
-    assertThat(extractieTaakRepository.findByProjectNaam("testproject")).isEmpty();
+    // Assert: alle documenten weg
+    assertThat(documentRepository.findByProjectNaam("testproject")).isEmpty();
 
     // Assert: alle kernbezwaren weg
     assertThat(kernbezwaarRepository.findById(k1.getId())).isEmpty();
@@ -377,9 +371,9 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   @DisplayName("Bulk verwijdering behoudt kernbezwaren die nog referenties hebben naar overblijvende documenten")
   void bulkVerwijderingBehoudtKernbezwarenMetOverblijvendeReferenties() {
     // Arrange: 3 documenten
-    maakExtractieTaak("testproject", "doc-a.txt");
-    maakExtractieTaak("testproject", "doc-b.txt");
-    maakExtractieTaak("testproject", "doc-c.txt");
+    maakDocument("testproject", "doc-a.txt");
+    maakDocument("testproject", "doc-b.txt");
+    maakDocument("testproject", "doc-c.txt");
 
     // K1: gedeeld over alle 3 docs
     var k1 = maakKernbezwaar("testproject", "Geluidshinder gedeeld over 3 docs");
@@ -400,9 +394,9 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     // Assert: 2 bestanden verwijderd
     assertThat(aantalVerwijderd).isEqualTo(2);
 
-    // Assert: extractie-taken van doc-a en doc-b weg, doc-c blijft
-    assertThat(extractieTaakRepository.findByProjectNaam("testproject")).hasSize(1);
-    assertThat(extractieTaakRepository.findByProjectNaam("testproject").get(0).getBestandsnaam())
+    // Assert: documenten van doc-a en doc-b weg, doc-c blijft
+    assertThat(documentRepository.findByProjectNaam("testproject")).hasSize(1);
+    assertThat(documentRepository.findByProjectNaam("testproject").get(0).getBestandsnaam())
         .isEqualTo("doc-c.txt");
 
     // Assert: K1 bestaat nog met enkel de doc-c referentie
@@ -423,17 +417,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
 
   // --- Helper methoden voor testdata-aanmaak ---
 
-  private ExtractieTaak maakExtractieTaak(String projectNaam, String bestandsnaam) {
-    var taak = new ExtractieTaak();
-    taak.setProjectNaam(projectNaam);
-    taak.setBestandsnaam(bestandsnaam);
-    taak.setStatus(ExtractieTaakStatus.KLAAR);
-    taak.setAantalPogingen(1);
-    taak.setMaxPogingen(3);
-    taak.setAangemaaktOp(Instant.now());
-    taak = extractieTaakRepository.save(taak);
-
-    // Maak een BezwaarDocument aan zodat IndividueelBezwaar een geldige documentId kan refereren
+  private BezwaarDocument maakDocument(String projectNaam, String bestandsnaam) {
     var document = new BezwaarDocument();
     document.setProjectNaam(projectNaam);
     document.setBestandsnaam(bestandsnaam);
@@ -449,7 +433,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     bezwaar = bezwaarRepository.save(bezwaar);
     bezwaarIdPerBestandsnaam.put(bestandsnaam, bezwaar.getId());
 
-    return taak;
+    return document;
   }
 
   private IndividueelBezwaar maakBezwaar(Long documentId, String samenvatting) {
