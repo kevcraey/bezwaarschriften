@@ -80,7 +80,7 @@ class KernbezwaarControllerTest {
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setId(1L);
     ref.setKernbezwaarId(42L);
-    ref.setPassageGroepId(100L);
+    ref.setBezwaarGroepId(100L);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
         .thenReturn(List.of(ref));
 
@@ -119,7 +119,7 @@ class KernbezwaarControllerTest {
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setId(1L);
     ref.setKernbezwaarId(42L);
-    ref.setPassageGroepId(100L);
+    ref.setBezwaarGroepId(100L);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
         .thenReturn(List.of(ref));
 
@@ -156,7 +156,7 @@ class KernbezwaarControllerTest {
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setId(1L);
     ref.setKernbezwaarId(42L);
-    ref.setPassageGroepId(100L);
+    ref.setBezwaarGroepId(100L);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(42L)))
         .thenReturn(List.of(ref));
 

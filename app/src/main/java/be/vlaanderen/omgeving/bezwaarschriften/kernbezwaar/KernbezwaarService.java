@@ -420,7 +420,7 @@ public class KernbezwaarService {
 
     // Haal passage-groep data op via de referenties
     var alleGroepIds = refEntiteiten.stream()
-        .map(KernbezwaarReferentieEntiteit::getPassageGroepId)
+        .map(KernbezwaarReferentieEntiteit::getBezwaarGroepId)
         .distinct().toList();
     var groepById = bezwaarGroepRepository.findAllById(alleGroepIds).stream()
         .collect(Collectors.toMap(BezwaarGroep::getId, g -> g));
@@ -439,9 +439,9 @@ public class KernbezwaarService {
         .map(ke -> {
           var refs = refPerKern.getOrDefault(ke.getId(), List.of()).stream()
               .map(re -> {
-                var groep = groepById.get(re.getPassageGroepId());
+                var groep = groepById.get(re.getBezwaarGroepId());
                 var ledenVoorGroep = ledenPerGroep
-                    .getOrDefault(re.getPassageGroepId(), List.of());
+                    .getOrDefault(re.getBezwaarGroepId(), List.of());
                 var passageGroepDto = groep != null ? new PassageGroepDto(
                     groep.getId(), groep.getPassage(),
                     ledenVoorGroep.stream()
@@ -498,7 +498,7 @@ public class KernbezwaarService {
         .collect(Collectors.groupingBy(KernbezwaarReferentieEntiteit::getKernbezwaarId));
 
     var alleGroepIds = refEntiteiten.stream()
-        .map(KernbezwaarReferentieEntiteit::getPassageGroepId)
+        .map(KernbezwaarReferentieEntiteit::getBezwaarGroepId)
         .distinct().toList();
     var alleLeden = bezwaarGroepLidRepository.findByBezwaarGroepIdIn(alleGroepIds);
     var ledenPerGroep = alleLeden.stream()
@@ -509,7 +509,7 @@ public class KernbezwaarService {
       var refs = refsPerKern.getOrDefault(kernId, List.of());
       var bezwaarIds = refs.stream()
           .flatMap(r -> ledenPerGroep
-              .getOrDefault(r.getPassageGroepId(), List.of()).stream())
+              .getOrDefault(r.getBezwaarGroepId(), List.of()).stream())
           .map(BezwaarGroepLid::getBezwaarId)
           .distinct().toList();
 
@@ -716,7 +716,7 @@ public class KernbezwaarService {
     for (var groepId : passageGroepIds) {
       var refEntiteit = new KernbezwaarReferentieEntiteit();
       refEntiteit.setKernbezwaarId(kernEntiteit.getId());
-      refEntiteit.setPassageGroepId(groepId);
+      refEntiteit.setBezwaarGroepId(groepId);
       refEntiteit.setToewijzingsmethode(
           groepIdMethoden.getOrDefault(groepId, ToewijzingsMethode.HDBSCAN));
       referentieRepository.save(refEntiteit);

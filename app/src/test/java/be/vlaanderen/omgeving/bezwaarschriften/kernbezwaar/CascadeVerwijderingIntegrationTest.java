@@ -118,7 +118,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     var overgeblevenRefs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(overgeblevenRefs).hasSize(1);
     // Controleer dat de overgebleven referentie naar doc-b wijst via bezwaar_groep_lid -> bezwaar -> document
-    var groepId = overgeblevenRefs.get(0).getPassageGroepId();
+    var groepId = overgeblevenRefs.get(0).getBezwaarGroepId();
     var leden = bezwaarGroepLidRepository.findByBezwaarGroepId(groepId);
     assertThat(leden).hasSize(1);
     var overgeblevenBezwaar = bezwaarRepository.findById(leden.get(0).getBezwaarId()).orElseThrow();
@@ -232,7 +232,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     var k1Refs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(k1Refs).hasSize(1);
     // Controleer dat de overgebleven referentie naar doc-b wijst via bezwaar_groep_lid -> bezwaar -> document
-    var groepId = k1Refs.get(0).getPassageGroepId();
+    var groepId = k1Refs.get(0).getBezwaarGroepId();
     var leden = bezwaarGroepLidRepository.findByBezwaarGroepId(groepId);
     assertThat(leden).hasSize(1);
     var overgeblevenBezwaar = bezwaarRepository.findById(leden.get(0).getBezwaarId()).orElseThrow();
@@ -408,7 +408,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     var k1Refs = referentieRepository.findByKernbezwaarIdIn(List.of(k1.getId()));
     assertThat(k1Refs).hasSize(1);
     // Controleer dat de overgebleven referentie naar doc-c wijst via bezwaar_groep_lid -> bezwaar -> document
-    var groepId = k1Refs.get(0).getPassageGroepId();
+    var groepId = k1Refs.get(0).getBezwaarGroepId();
     var leden = bezwaarGroepLidRepository.findByBezwaarGroepId(groepId);
     assertThat(leden).hasSize(1);
     var overgeblevenBezwaar = bezwaarRepository.findById(leden.get(0).getBezwaarId()).orElseThrow();
@@ -477,7 +477,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kernbezwaarId);
-    ref.setPassageGroepId(groep.getId());
+    ref.setBezwaarGroepId(groep.getId());
     return referentieRepository.save(ref);
   }
 

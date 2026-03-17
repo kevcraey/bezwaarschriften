@@ -53,7 +53,7 @@ public class AntwoordStatusService {
 
     // Haal bezwaar-groep leden op
     var groepIds = referenties.stream()
-        .map(KernbezwaarReferentieEntiteit::getPassageGroepId)
+        .map(KernbezwaarReferentieEntiteit::getBezwaarGroepId)
         .distinct().toList();
     var alleLeden = bezwaarGroepLidRepository.findByBezwaarGroepIdIn(groepIds);
     var ledenPerGroep = alleLeden.stream()
@@ -75,7 +75,7 @@ public class AntwoordStatusService {
     // Group: bestandsnaam -> set of kernbezwaar-IDs
     Map<String, Set<Long>> kernbezwarenPerDocument = new HashMap<>();
     for (var ref : referenties) {
-      var leden = ledenPerGroep.getOrDefault(ref.getPassageGroepId(), List.of());
+      var leden = ledenPerGroep.getOrDefault(ref.getBezwaarGroepId(), List.of());
       for (var lid : leden) {
         var bestandsnaam = bestandsnaamPerBezwaarId.getOrDefault(
             lid.getBezwaarId(), "onbekend");

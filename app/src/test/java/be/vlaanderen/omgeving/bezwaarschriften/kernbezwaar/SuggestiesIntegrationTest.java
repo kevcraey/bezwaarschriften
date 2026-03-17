@@ -61,13 +61,13 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
     final var groep1 = maakPassageGroep(clusteringTaak.getId(), "Passage 1");
     var ref1 = new KernbezwaarReferentieEntiteit();
     ref1.setKernbezwaarId(kern1.getId());
-    ref1.setPassageGroepId(groep1.getId());
+    ref1.setBezwaarGroepId(groep1.getId());
     referentieRepository.save(ref1);
 
     final var groep2 = maakPassageGroep(clusteringTaak.getId(), "Passage 2");
     var ref2 = new KernbezwaarReferentieEntiteit();
     ref2.setKernbezwaarId(kern2.getId());
-    ref2.setPassageGroepId(groep2.getId());
+    ref2.setBezwaarGroepId(groep2.getId());
     referentieRepository.save(ref2);
 
     var refs = referentieRepository.findByKernbezwaarIdIn(

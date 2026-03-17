@@ -159,10 +159,10 @@ class AntwoordStatusServiceTest {
     assertThat(resultaat.get("bezwaar-001.txt").isVolledig()).isFalse();
   }
 
-  private KernbezwaarReferentieEntiteit maakRef(Long passageGroepId, Long kernbezwaarId) {
+  private KernbezwaarReferentieEntiteit maakRef(Long bezwaarGroepId, Long kernbezwaarId) {
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kernbezwaarId);
-    ref.setPassageGroepId(passageGroepId);
+    ref.setBezwaarGroepId(bezwaarGroepId);
     return ref;
   }
 

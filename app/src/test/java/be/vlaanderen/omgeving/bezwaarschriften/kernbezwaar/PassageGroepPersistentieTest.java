@@ -162,12 +162,12 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
         "IDENTIEK");
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setPassageGroepId(groep.getId());
+    ref.setBezwaarGroepId(groep.getId());
     ref = referentieRepository.save(ref);
 
     var refs = referentieRepository.findByKernbezwaarIdIn(List.of(kern.getId()));
     assertThat(refs).hasSize(1);
-    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(groep.getId());
+    assertThat(refs.get(0).getBezwaarGroepId()).isEqualTo(groep.getId());
     assertThat(refs.get(0).getToewijzingsmethode()).isEqualTo(ToewijzingsMethode.HDBSCAN);
   }
 

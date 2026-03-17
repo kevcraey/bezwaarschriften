@@ -71,7 +71,7 @@ public class KernbezwaarController {
     // Haal bestandsnamen op via bezwaar_groep_lid -> bezwaar -> document
     var refs = referentieRepository.findByKernbezwaarIdIn(List.of(id));
     var groepIds = refs.stream()
-        .map(KernbezwaarReferentieEntiteit::getPassageGroepId).toList();
+        .map(KernbezwaarReferentieEntiteit::getBezwaarGroepId).toList();
     var leden = bezwaarGroepLidRepository.findByBezwaarGroepIdIn(groepIds);
     var bezwaarIds = leden.stream()
         .map(BezwaarGroepLid::getBezwaarId).distinct().toList();

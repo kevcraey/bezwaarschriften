@@ -259,7 +259,7 @@ class KernbezwaarServiceTest {
     var refEntiteit = new KernbezwaarReferentieEntiteit();
     refEntiteit.setId(30L);
     refEntiteit.setKernbezwaarId(20L);
-    refEntiteit.setPassageGroepId(100L);
+    refEntiteit.setBezwaarGroepId(100L);
     refEntiteit.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of(refEntiteit));
@@ -842,19 +842,19 @@ class KernbezwaarServiceTest {
     var ref1 = new KernbezwaarReferentieEntiteit();
     ref1.setId(31L);
     ref1.setKernbezwaarId(20L);
-    ref1.setPassageGroepId(100L);
+    ref1.setBezwaarGroepId(100L);
     ref1.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var ref2 = new KernbezwaarReferentieEntiteit();
     ref2.setId(32L);
     ref2.setKernbezwaarId(20L);
-    ref2.setPassageGroepId(101L);
+    ref2.setBezwaarGroepId(101L);
     ref2.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var ref3 = new KernbezwaarReferentieEntiteit();
     ref3.setId(33L);
     ref3.setKernbezwaarId(20L);
-    ref3.setPassageGroepId(102L);
+    ref3.setBezwaarGroepId(102L);
     ref3.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -897,13 +897,13 @@ class KernbezwaarServiceTest {
     var ref1 = new KernbezwaarReferentieEntiteit();
     ref1.setId(31L);
     ref1.setKernbezwaarId(20L);
-    ref1.setPassageGroepId(100L);
+    ref1.setBezwaarGroepId(100L);
     ref1.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var ref2 = new KernbezwaarReferentieEntiteit();
     ref2.setId(32L);
     ref2.setKernbezwaarId(20L);
-    ref2.setPassageGroepId(101L);
+    ref2.setBezwaarGroepId(101L);
     ref2.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -972,7 +972,7 @@ class KernbezwaarServiceTest {
     // Assert: referentie verwijst naar passage groep
     var refCaptor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
     verify(referentieRepository).save(refCaptor.capture());
-    assertThat(refCaptor.getValue().getPassageGroepId()).isNotNull();
+    assertThat(refCaptor.getValue().getBezwaarGroepId()).isNotNull();
   }
 
   @Test
@@ -1157,7 +1157,7 @@ class KernbezwaarServiceTest {
     var refEntiteit = new KernbezwaarReferentieEntiteit();
     refEntiteit.setId(30L);
     refEntiteit.setKernbezwaarId(20L);
-    refEntiteit.setPassageGroepId(100L);
+    refEntiteit.setBezwaarGroepId(100L);
     refEntiteit.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of(refEntiteit));

@@ -20,8 +20,8 @@ public class KernbezwaarReferentieEntiteit {
   @Column(name = "kernbezwaar_id", nullable = false)
   private Long kernbezwaarId;
 
-  @Column(name = "passage_groep_id", nullable = false)
-  private Long passageGroepId;
+  @Column(name = "bezwaar_groep_id", nullable = false)
+  private Long bezwaarGroepId;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "toewijzingsmethode", nullable = false, length = 20)
@@ -43,12 +43,12 @@ public class KernbezwaarReferentieEntiteit {
     this.kernbezwaarId = kernbezwaarId;
   }
 
-  public Long getPassageGroepId() {
-    return passageGroepId;
+  public Long getBezwaarGroepId() {
+    return bezwaarGroepId;
   }
 
-  public void setPassageGroepId(Long passageGroepId) {
-    this.passageGroepId = passageGroepId;
+  public void setBezwaarGroepId(Long bezwaarGroepId) {
+    this.bezwaarGroepId = bezwaarGroepId;
   }
 
   public ToewijzingsMethode getToewijzingsmethode() {
