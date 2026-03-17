@@ -141,4 +141,83 @@ public class BezwaarDocument {
   public void setVersie(int versie) {
     this.versie = versie;
   }
+
+  // --- Domeinmethoden voor status-transities ---
+
+  /**
+   * Start de tekst-extractie voor dit document.
+   */
+  public void startTekstExtractie() {
+    this.tekstExtractieStatus = TekstExtractieStatus.BEZIG;
+    this.foutmelding = null;
+  }
+
+  /**
+   * Markeert tekst-extractie als succesvol afgerond.
+   *
+   * @param extractieMethode de gebruikte extractiemethode
+   */
+  public void voltooiTekstExtractie(String extractieMethode) {
+    this.tekstExtractieStatus = TekstExtractieStatus.KLAAR;
+    this.extractieMethode = extractieMethode;
+  }
+
+  /**
+   * Markeert tekst-extractie als mislukt.
+   *
+   * @param foutmelding omschrijving van de fout
+   */
+  public void markeerTekstExtractieFout(String foutmelding) {
+    this.tekstExtractieStatus = TekstExtractieStatus.FOUT;
+    this.foutmelding = foutmelding;
+  }
+
+  /**
+   * Reset de tekst-extractie status naar GEEN.
+   */
+  public void resetTekstExtractie() {
+    this.tekstExtractieStatus = TekstExtractieStatus.GEEN;
+    this.foutmelding = null;
+    this.extractieMethode = null;
+  }
+
+  /**
+   * Start de bezwaar-extractie voor dit document.
+   */
+  public void startBezwaarExtractie() {
+    this.bezwaarExtractieStatus = BezwaarExtractieStatus.BEZIG;
+    this.foutmelding = null;
+  }
+
+  /**
+   * Markeert bezwaar-extractie als succesvol afgerond.
+   *
+   * @param heeftPassagesDieNietInTekstVoorkomen of er passages zijn die niet in de tekst voorkomen
+   * @param heeftManueel of er manueel toegevoegde bezwaren zijn
+   */
+  public void voltooiBezwaarExtractie(boolean heeftPassagesDieNietInTekstVoorkomen,
+      boolean heeftManueel) {
+    this.bezwaarExtractieStatus = BezwaarExtractieStatus.KLAAR;
+    this.heeftPassagesDieNietInTekstVoorkomen = heeftPassagesDieNietInTekstVoorkomen;
+    this.heeftManueel = heeftManueel;
+  }
+
+  /**
+   * Markeert bezwaar-extractie als mislukt.
+   *
+   * @param foutmelding omschrijving van de fout
+   */
+  public void markeerBezwaarExtractieFout(String foutmelding) {
+    this.bezwaarExtractieStatus = BezwaarExtractieStatus.FOUT;
+    this.foutmelding = foutmelding;
+  }
+
+  /**
+   * Reset de bezwaar-extractie status naar GEEN.
+   */
+  public void resetBezwaarExtractie() {
+    this.bezwaarExtractieStatus = BezwaarExtractieStatus.GEEN;
+    this.heeftPassagesDieNietInTekstVoorkomen = false;
+    this.heeftManueel = false;
+  }
 }

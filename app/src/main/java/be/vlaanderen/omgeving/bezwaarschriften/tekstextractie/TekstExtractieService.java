@@ -3,7 +3,6 @@ package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarExtractieStatus;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectPoort;
@@ -114,14 +113,13 @@ public class TekstExtractieService {
         var bezwaarIds = bezwaren.stream().map(IndividueelBezwaar::getId).toList();
         bezwaarGroepLidRepository.deleteByBezwaarIdIn(bezwaarIds);
         bezwaarRepository.deleteByDocumentId(document.getId());
-        document.setBezwaarExtractieStatus(BezwaarExtractieStatus.GEEN);
+        document.resetBezwaarExtractie();
         LOGGER.info("Her-extractie: {} bezwaren opgeruimd voor document {}/{}",
             bezwaarIds.size(), projectNaam, bestandsnaam);
       }
     }
 
-    document.setTekstExtractieStatus(TekstExtractieStatus.BEZIG);
-    document.setFoutmelding(null);
+    document.startTekstExtractie();
     var opgeslagen = documentRepository.save(document);
     notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(opgeslagen));
     LOGGER.info("Tekst-extractie ingediend: project='{}', bestand='{}'",
@@ -229,8 +227,7 @@ public class TekstExtractieService {
     var document = documentRepository.findById(documentId)
         .orElseThrow(() -> new IllegalArgumentException(
             "Document niet gevonden: " + documentId));
-    document.setTekstExtractieStatus(TekstExtractieStatus.KLAAR);
-    document.setExtractieMethode(methode.name());
+    document.voltooiTekstExtractie(methode.name());
     documentRepository.save(document);
     notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(document));
     LOGGER.info("Tekst-extractie document {} afgerond (methode={})", documentId, methode);
@@ -247,8 +244,7 @@ public class TekstExtractieService {
     var document = documentRepository.findById(documentId)
         .orElseThrow(() -> new IllegalArgumentException(
             "Document niet gevonden: " + documentId));
-    document.setTekstExtractieStatus(TekstExtractieStatus.FOUT);
-    document.setFoutmelding(foutmelding);
+    document.markeerTekstExtractieFout(foutmelding);
     documentRepository.save(document);
     notificatie.tekstExtractieTaakGewijzigd(TekstExtractieTaakDto.van(document));
     LOGGER.error("Tekst-extractie document {} mislukt: {}", documentId, foutmelding);
@@ -313,8 +309,7 @@ public class TekstExtractieService {
               + document.getTekstExtractieStatus());
     }
 
-    document.setTekstExtractieStatus(TekstExtractieStatus.BEZIG);
-    document.setFoutmelding(null);
+    document.startTekstExtractie();
     documentRepository.save(document);
     var dto = TekstExtractieTaakDto.van(document);
     notificatie.tekstExtractieTaakGewijzigd(dto);
@@ -338,9 +333,7 @@ public class TekstExtractieService {
       throw new IllegalArgumentException(
           "Document behoort niet tot project: " + projectNaam);
     }
-    document.setTekstExtractieStatus(TekstExtractieStatus.GEEN);
-    document.setFoutmelding(null);
-    document.setExtractieMethode(null);
+    document.resetTekstExtractie();
     documentRepository.save(document);
     LOGGER.info("Tekst-extractie gereset voor document {} in project '{}'",
         documentId, projectNaam);
