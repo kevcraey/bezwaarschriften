@@ -11,8 +11,8 @@ import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakStat
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaak;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakStatus;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectService;
 import java.time.Instant;
@@ -44,7 +44,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   private ExtractieTaakRepository extractieTaakRepository;
 
   @Autowired
-  private GeextraheerdBezwaarRepository bezwaarRepository;
+  private IndividueelBezwaarRepository bezwaarRepository;
 
   @Autowired
   private KernbezwaarRepository kernbezwaarRepository;
@@ -422,7 +422,7 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     taak = extractieTaakRepository.save(taak);
 
     // Maak ook een bezwaar aan zodat passage_groep_lid een geldige bezwaar_id kan refereren
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setTaakId(taak.getId());
     bezwaar.setProjectNaam(projectNaam);
     bezwaar.setBestandsnaam(bestandsnaam);
@@ -434,8 +434,8 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
     return taak;
   }
 
-  private GeextraheerdBezwaarEntiteit maakBezwaar(Long taakId, String samenvatting) {
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+  private IndividueelBezwaar maakBezwaar(Long taakId, String samenvatting) {
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setTaakId(taakId);
     bezwaar.setProjectNaam("testproject");
     bezwaar.setBestandsnaam("test.txt");

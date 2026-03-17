@@ -3,7 +3,7 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -167,9 +167,9 @@ class PassageDeduplicatieServiceTest {
     assertThat(groepen.get(0).leden().get(0).bestandsnaam()).isEqualTo("mijn-bestand.pdf");
   }
 
-  private GeextraheerdBezwaarEntiteit maakBezwaar(
+  private IndividueelBezwaar maakBezwaar(
       Long id, Long taakId, int passageNr, String samenvatting, String bestandsnaam) {
-    var b = new GeextraheerdBezwaarEntiteit();
+    var b = new IndividueelBezwaar();
     b.setId(id);
     b.setTaakId(taakId);
     b.setPassageNr(passageNr);

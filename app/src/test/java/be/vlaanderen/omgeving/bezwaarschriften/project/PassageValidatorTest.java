@@ -173,8 +173,8 @@ class PassageValidatorTest {
     assertThat(bezwaar.isPassageGevonden()).isFalse();
   }
 
-  private GeextraheerdBezwaarEntiteit maakBezwaar(int passageNr) {
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+  private IndividueelBezwaar maakBezwaar(int passageNr) {
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setPassageNr(passageNr);
     bezwaar.setSamenvatting("Samenvatting " + passageNr);
     return bezwaar;

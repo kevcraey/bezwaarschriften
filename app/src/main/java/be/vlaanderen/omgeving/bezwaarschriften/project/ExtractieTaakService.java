@@ -30,7 +30,7 @@ public class ExtractieTaakService {
   private final ExtractieNotificatie notificatie;
   private final ProjectService projectService;
   private final ExtractiePassageRepository passageRepository;
-  private final GeextraheerdBezwaarRepository bezwaarRepository;
+  private final IndividueelBezwaarRepository bezwaarRepository;
   private final ProjectPoort projectPoort;
   private final IngestiePoort ingestiePoort;
   private final PassageValidator passageValidator;
@@ -62,7 +62,7 @@ public class ExtractieTaakService {
       ExtractieNotificatie notificatie,
       ProjectService projectService,
       ExtractiePassageRepository passageRepository,
-      GeextraheerdBezwaarRepository bezwaarRepository,
+      IndividueelBezwaarRepository bezwaarRepository,
       ProjectPoort projectPoort,
       IngestiePoort ingestiePoort,
       PassageValidator passageValidator,
@@ -220,9 +220,9 @@ public class ExtractieTaakService {
       passageMap.put(passage.id(), passage.tekst());
     }
 
-    var bezwaarEntiteiten = new java.util.ArrayList<GeextraheerdBezwaarEntiteit>();
+    var bezwaarEntiteiten = new java.util.ArrayList<IndividueelBezwaar>();
     for (var bezwaar : resultaat.bezwaren()) {
-      var entiteit = new GeextraheerdBezwaarEntiteit();
+      var entiteit = new IndividueelBezwaar();
       entiteit.setTaakId(taakId);
       entiteit.setPassageNr(bezwaar.passageId());
       entiteit.setSamenvatting(bezwaar.samenvatting());
@@ -260,7 +260,7 @@ public class ExtractieTaakService {
           })
           .toList();
       var samenvattingen = bezwaarEntiteiten.stream()
-          .map(GeextraheerdBezwaarEntiteit::getSamenvatting)
+          .map(IndividueelBezwaar::getSamenvatting)
           .toList();
       var passageEmbeddings = embeddingPoort.genereerEmbeddings(passageTeksten);
       var samenvattingEmbeddings = embeddingPoort.genereerEmbeddings(samenvattingen);
@@ -484,7 +484,7 @@ public class ExtractieTaakService {
     passageRepository.save(passageEntiteit);
 
     // Sla bezwaar op
-    var bezwaarEntiteit = new GeextraheerdBezwaarEntiteit();
+    var bezwaarEntiteit = new IndividueelBezwaar();
     bezwaarEntiteit.setTaakId(taak.getId());
     bezwaarEntiteit.setPassageNr(volgendPassageNr);
     bezwaarEntiteit.setSamenvatting(samenvatting);
@@ -544,7 +544,7 @@ public class ExtractieTaakService {
     if (wasAiBezwaar) {
       taak.setHeeftManueel(true);
     } else {
-      boolean nogManueel = overigeBezwaren.stream().anyMatch(GeextraheerdBezwaarEntiteit::isManueel);
+      boolean nogManueel = overigeBezwaren.stream().anyMatch(IndividueelBezwaar::isManueel);
       taak.setHeeftManueel(nogManueel);
     }
 

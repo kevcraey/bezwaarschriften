@@ -1,6 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
 import java.util.List;
@@ -24,14 +24,14 @@ public class ClusteringTaakService {
   private final ClusteringTaakRepository taakRepository;
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarAntwoordRepository antwoordRepository;
-  private final GeextraheerdBezwaarRepository bezwaarRepository;
+  private final IndividueelBezwaarRepository bezwaarRepository;
   private final ClusteringNotificatie notificatie;
   private final int maxConcurrent;
 
   public ClusteringTaakService(ClusteringTaakRepository taakRepository,
       KernbezwaarRepository kernbezwaarRepository,
       KernbezwaarAntwoordRepository antwoordRepository,
-      GeextraheerdBezwaarRepository bezwaarRepository,
+      IndividueelBezwaarRepository bezwaarRepository,
       ClusteringNotificatie notificatie,
       @Value("${bezwaarschriften.clustering.max-concurrent:2}") int maxConcurrent) {
     this.taakRepository = taakRepository;

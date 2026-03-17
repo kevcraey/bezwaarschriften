@@ -11,8 +11,8 @@ import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageDeduplicatieSe
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -37,7 +37,7 @@ public class KernbezwaarService {
 
   private final EmbeddingPoort embeddingPoort;
   private final ClusteringPoort clusteringPoort;
-  private final GeextraheerdBezwaarRepository bezwaarRepository;
+  private final IndividueelBezwaarRepository bezwaarRepository;
   private final ExtractiePassageRepository passageRepository;
   private final ExtractieTaakRepository taakRepository;
   private final KernbezwaarAntwoordRepository antwoordRepository;
@@ -58,7 +58,7 @@ public class KernbezwaarService {
    */
   public KernbezwaarService(EmbeddingPoort embeddingPoort,
       ClusteringPoort clusteringPoort,
-      GeextraheerdBezwaarRepository bezwaarRepository,
+      IndividueelBezwaarRepository bezwaarRepository,
       ExtractiePassageRepository passageRepository,
       ExtractieTaakRepository taakRepository,
       KernbezwaarAntwoordRepository antwoordRepository,
@@ -106,7 +106,7 @@ public class KernbezwaarService {
 
     // Bouw lookups voor originele passage-teksten en bestandsnamen
     var taakIds = bezwaren.stream()
-        .map(GeextraheerdBezwaarEntiteit::getTaakId)
+        .map(IndividueelBezwaar::getTaakId)
         .distinct()
         .toList();
     final var passageLookup = bouwPassageLookup(taakIds);
@@ -124,7 +124,7 @@ public class KernbezwaarService {
           .map(b -> geefPassageTekst(b, passageLookup))
           .toList();
       var samenvattingen = zonderEmbedding.stream()
-          .map(GeextraheerdBezwaarEntiteit::getSamenvatting)
+          .map(IndividueelBezwaar::getSamenvatting)
           .toList();
       var passageEmbeddings = embeddingPoort.genereerEmbeddings(passageTeksten);
       var samenvattingEmbeddings = embeddingPoort.genereerEmbeddings(samenvattingen);
@@ -162,7 +162,7 @@ public class KernbezwaarService {
    * Stuurt 1 representatief bezwaar per groep naar HDBSCAN.
    */
   private void clusterMetDeduplicatieVooraf(String projectNaam, Long taakId,
-      List<GeextraheerdBezwaarEntiteit> bezwaren,
+      List<IndividueelBezwaar> bezwaren,
       Map<Long, Map<Integer, String>> passageLookup) {
 
     // Groepeer bezwaren op passage-gelijkenis
@@ -194,7 +194,7 @@ public class KernbezwaarService {
 
     // Centroid matching in originele embedding-ruimte (UMAP vervormt cosinus-afstanden)
     var repById = representatieven.stream()
-        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
+        .collect(Collectors.toMap(IndividueelBezwaar::getId, b -> b));
 
     var origineleClusters = clusterResultaat.clusters().stream()
         .map(cluster -> {
@@ -224,7 +224,7 @@ public class KernbezwaarService {
 
     // Bouw lookup van bezwaar-ID naar entiteit
     final var bezwaarById = bezwaren.stream()
-        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
+        .collect(Collectors.toMap(IndividueelBezwaar::getId, b -> b));
 
     // Sla passage-groepen en kernbezwaren op in een transactie
     transactionTemplate.executeWithoutResult(status -> {
@@ -236,7 +236,7 @@ public class KernbezwaarService {
         clusterRepIds.addAll(extraIds);
 
         // Verzamel alle bezwaren in dit cluster (via hun groepen)
-        var clusterBezwaren = new ArrayList<GeextraheerdBezwaarEntiteit>();
+        var clusterBezwaren = new ArrayList<IndividueelBezwaar>();
         var clusterGroepen = new ArrayList<DeduplicatieGroep>();
         for (var repId : clusterRepIds) {
           var groep = groepPerRepresentatief.get(repId);
@@ -293,7 +293,7 @@ public class KernbezwaarService {
    * Daarna worden bezwaren per cluster gegroepeerd op passage-gelijkenis.
    */
   private void clusterMetDeduplicatieAchteraf(String projectNaam, Long taakId,
-      List<GeextraheerdBezwaarEntiteit> bezwaren,
+      List<IndividueelBezwaar> bezwaren,
       Map<Long, Map<Integer, String>> passageLookup) {
 
     // HDBSCAN-clustering op alle bezwaren (bestaand gedrag)
@@ -318,7 +318,7 @@ public class KernbezwaarService {
 
     // Centroid matching in originele embedding-ruimte (UMAP vervormt cosinus-afstanden)
     var bezwaarById = bezwaren.stream()
-        .collect(Collectors.toMap(GeextraheerdBezwaarEntiteit::getId, b -> b));
+        .collect(Collectors.toMap(IndividueelBezwaar::getId, b -> b));
 
     var origineleClusters = clusterResultaat.clusters().stream()
         .map(cluster -> {
@@ -640,9 +640,9 @@ public class KernbezwaarService {
     return centroid;
   }
 
-  private GeextraheerdBezwaarEntiteit vindDichtstBijCentroid(
-      List<GeextraheerdBezwaarEntiteit> bezwaren, float[] centroid) {
-    GeextraheerdBezwaarEntiteit dichtstbij = null;
+  private IndividueelBezwaar vindDichtstBijCentroid(
+      List<IndividueelBezwaar> bezwaren, float[] centroid) {
+    IndividueelBezwaar dichtstbij = null;
     double hoogsteGelijkenis = Double.NEGATIVE_INFINITY;
     for (var bezwaar : bezwaren) {
       double gelijkenis = cosinusGelijkenis(geefEmbedding(bezwaar), centroid);
@@ -667,7 +667,7 @@ public class KernbezwaarService {
     return deler == 0.0 ? 0.0 : dot / deler;
   }
 
-  float[] geefEmbedding(GeextraheerdBezwaarEntiteit bezwaar) {
+  float[] geefEmbedding(IndividueelBezwaar bezwaar) {
     return clusteringConfig.isClusterOpPassages()
         ? bezwaar.getEmbeddingPassage()
         : bezwaar.getEmbeddingSamenvatting();
@@ -777,7 +777,7 @@ public class KernbezwaarService {
     return resultaat;
   }
 
-  private String geefPassageTekst(GeextraheerdBezwaarEntiteit bezwaar,
+  private String geefPassageTekst(IndividueelBezwaar bezwaar,
       Map<Long, Map<Integer, String>> passageLookup) {
     var taakPassages = passageLookup.get(bezwaar.getTaakId());
     if (taakPassages != null) {

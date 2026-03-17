@@ -1,6 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,13 +15,13 @@ public class PassageDeduplicatieService {
   public record DeduplicatieGroep(
       String passage,
       String samenvatting,
-      GeextraheerdBezwaarEntiteit representatief,
+      IndividueelBezwaar representatief,
       List<DeduplicatieLid> leden) {}
 
   public record DeduplicatieLid(Long bezwaarId, String bestandsnaam) {}
 
   public List<DeduplicatieGroep> groepeer(
-      List<GeextraheerdBezwaarEntiteit> bezwaren,
+      List<IndividueelBezwaar> bezwaren,
       Map<Long, Map<Integer, String>> passageLookup) {
 
     if (bezwaren.isEmpty()) {
@@ -88,7 +88,7 @@ public class PassageDeduplicatieService {
   private record BigramInfo(String genormaliseerd, Map<String, Integer> bigrammen, int lengte) {}
 
   private String geefPassageTekst(
-      GeextraheerdBezwaarEntiteit bezwaar, Map<Long, Map<Integer, String>> passageLookup) {
+      IndividueelBezwaar bezwaar, Map<Long, Map<Integer, String>> passageLookup) {
     var taakPassages = passageLookup.get(bezwaar.getTaakId());
     if (taakPassages != null) {
       var tekst = taakPassages.get(bezwaar.getPassageNr());
@@ -102,13 +102,13 @@ public class PassageDeduplicatieService {
   private static class GroepBouwer {
     String passage;
     BigramInfo bigramInfo;
-    GeextraheerdBezwaarEntiteit representatief;
+    IndividueelBezwaar representatief;
     List<DeduplicatieLid> leden = new ArrayList<>();
 
     GroepBouwer(
         String passage,
         BigramInfo bigramInfo,
-        GeextraheerdBezwaarEntiteit bezwaar,
+        IndividueelBezwaar bezwaar,
         String bestandsnaam) {
       this.passage = passage;
       this.bigramInfo = bigramInfo;
@@ -117,7 +117,7 @@ public class PassageDeduplicatieService {
     }
 
     void voegToe(
-        GeextraheerdBezwaarEntiteit bezwaar,
+        IndividueelBezwaar bezwaar,
         String passageTekst,
         BigramInfo bigramInfo,
         String bestandsnaam) {

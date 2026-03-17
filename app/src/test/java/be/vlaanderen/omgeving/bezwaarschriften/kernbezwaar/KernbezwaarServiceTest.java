@@ -29,8 +29,8 @@ import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageDeduplicatieSe
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,7 +55,7 @@ class KernbezwaarServiceTest {
   private ClusteringPoort clusteringPoort;
 
   @Mock
-  private GeextraheerdBezwaarRepository bezwaarRepository;
+  private IndividueelBezwaarRepository bezwaarRepository;
 
   @Mock
   private ExtractiePassageRepository passageRepository;
@@ -122,7 +122,7 @@ class KernbezwaarServiceTest {
     // Standaard: deduplicatieService geeft 1 groep per bezwaar terug
     lenient().when(deduplicatieService.groepeer(anyList(), anyMap()))
         .thenAnswer(inv -> {
-          List<GeextraheerdBezwaarEntiteit> bezwaren = inv.getArgument(0);
+          List<IndividueelBezwaar> bezwaren = inv.getArgument(0);
           return bezwaren.stream()
               .map(b -> new DeduplicatieGroep(
                   b.getSamenvatting(), b.getSamenvatting(), b,
@@ -1062,7 +1062,7 @@ class KernbezwaarServiceTest {
     // Groepeer bezwaar1+2 samen, bezwaar3 apart
     when(deduplicatieService.groepeer(anyList(), anyMap()))
         .thenAnswer(inv -> {
-          List<GeextraheerdBezwaarEntiteit> bezwaren = inv.getArgument(0);
+          List<IndividueelBezwaar> bezwaren = inv.getArgument(0);
           // Simuleer: als alle 3 in dezelfde cluster zitten, groepeer 1+2
           if (bezwaren.size() == 3) {
             return List.of(
@@ -1185,7 +1185,7 @@ class KernbezwaarServiceTest {
 
   // --- Hulpmethoden ---
 
-  private GeextraheerdBezwaarEntiteit maakBezwaarMetEmbedding(Long id, Long taakId,
+  private IndividueelBezwaar maakBezwaarMetEmbedding(Long id, Long taakId,
       int passageNr, String samenvatting, float[] embedding) {
     var b = maakBezwaar(id, taakId, passageNr, samenvatting);
     b.setEmbeddingPassage(embedding);
@@ -1193,9 +1193,9 @@ class KernbezwaarServiceTest {
     return b;
   }
 
-  private GeextraheerdBezwaarEntiteit maakBezwaar(Long id, Long taakId,
+  private IndividueelBezwaar maakBezwaar(Long id, Long taakId,
       int passageNr, String samenvatting) {
-    var b = new GeextraheerdBezwaarEntiteit();
+    var b = new IndividueelBezwaar();
     b.setId(id);
     b.setTaakId(taakId);
     b.setPassageNr(passageNr);

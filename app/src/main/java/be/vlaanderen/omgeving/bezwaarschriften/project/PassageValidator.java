@@ -23,14 +23,14 @@ public class PassageValidator {
    * originele documenttekst. Zet {@code passageGevonden} op elke entiteit.
    */
   public ValidatieResultaat valideer(
-      List<GeextraheerdBezwaarEntiteit> bezwaren,
+      List<IndividueelBezwaar> bezwaren,
       Map<Integer, String> passageMap,
       String documentTekst) {
 
     String genormaliseerdeDocument = normaliseer(documentTekst);
     int aantalNietGevonden = 0;
 
-    for (GeextraheerdBezwaarEntiteit bezwaar : bezwaren) {
+    for (IndividueelBezwaar bezwaar : bezwaren) {
       String passage = passageMap.get(bezwaar.getPassageNr());
 
       if (passage == null) {

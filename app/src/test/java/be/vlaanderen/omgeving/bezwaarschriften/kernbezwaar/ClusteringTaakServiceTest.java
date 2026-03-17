@@ -6,7 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +30,7 @@ class ClusteringTaakServiceTest {
   private KernbezwaarAntwoordRepository antwoordRepository;
 
   @Mock
-  private GeextraheerdBezwaarRepository bezwaarRepository;
+  private IndividueelBezwaarRepository bezwaarRepository;
 
   @Mock
   private ClusteringNotificatie notificatie;

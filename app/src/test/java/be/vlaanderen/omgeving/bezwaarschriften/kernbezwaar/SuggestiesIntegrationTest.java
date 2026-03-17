@@ -6,8 +6,8 @@ import be.vlaanderen.omgeving.bezwaarschriften.BaseBezwaarschriftenIntegrationTe
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaak;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakStatus;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +25,7 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
   private ExtractieTaakRepository extractieTaakRepository;
 
   @Autowired
-  private GeextraheerdBezwaarRepository bezwaarRepository;
+  private IndividueelBezwaarRepository bezwaarRepository;
 
   @Autowired
   private KernbezwaarRepository kernbezwaarRepository;

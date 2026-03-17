@@ -39,7 +39,7 @@ class ExtractieTaakServiceTest {
   private ExtractiePassageRepository passageRepository;
 
   @Mock
-  private GeextraheerdBezwaarRepository bezwaarRepository;
+  private IndividueelBezwaarRepository bezwaarRepository;
 
   @Mock
   private ProjectPoort projectPoort;
@@ -195,7 +195,7 @@ class ExtractieTaakServiceTest {
     assertThat(passageCaptor.getAllValues().get(0).getTekst()).isEqualTo("Passage een");
     assertThat(passageCaptor.getAllValues().get(0).getTaakId()).isEqualTo(1L);
 
-    var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
+    var bezwaarCaptor = ArgumentCaptor.forClass(IndividueelBezwaar.class);
     // Elke bezwaar wordt 2x opgeslagen: eerst zonder embedding, dan met embedding
     verify(bezwaarRepository, times(4)).save(bezwaarCaptor.capture());
     assertThat(bezwaarCaptor.getAllValues().get(0).getSamenvatting()).isEqualTo("Samenvatting een");
@@ -407,7 +407,7 @@ class ExtractieTaakServiceTest {
     passage.setTekst("De geluidsoverlast zal onze nachtrust verstoren.");
     when(passageRepository.findByTaakId(1L)).thenReturn(List.of(passage));
 
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setTaakId(1L);
     bezwaar.setPassageNr(1);
     bezwaar.setSamenvatting("Geluidshinder");
@@ -534,7 +534,7 @@ class ExtractieTaakServiceTest {
         .thenReturn(Optional.of(maakPassage(1L, 3)));
     when(passageRepository.save(any())).thenAnswer(i -> i.getArgument(0));
     when(bezwaarRepository.save(any())).thenAnswer(i -> {
-      var b = i.getArgument(0, GeextraheerdBezwaarEntiteit.class);
+      var b = i.getArgument(0, IndividueelBezwaar.class);
       b.setId(10L);
       return b;
     });
@@ -549,7 +549,7 @@ class ExtractieTaakServiceTest {
     assertThat(detail.manueel()).isTrue();
     assertThat(detail.passageGevonden()).isTrue();
 
-    var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
+    var bezwaarCaptor = ArgumentCaptor.forClass(IndividueelBezwaar.class);
     // Bezwaar wordt 2x opgeslagen: eerst zonder embedding, dan met embedding
     verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
     assertThat(bezwaarCaptor.getAllValues().get(0).isManueel()).isTrue();
@@ -617,7 +617,7 @@ class ExtractieTaakServiceTest {
     taak.setAantalBezwaren(3);
     taak.setHeeftManueel(true);
 
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setId(10L);
     bezwaar.setTaakId(1L);
     bezwaar.setManueel(true);
@@ -625,7 +625,7 @@ class ExtractieTaakServiceTest {
     when(repository.findById(1L)).thenReturn(Optional.of(taak));
 
     // Nog 1 ander manueel bezwaar over na verwijdering
-    var anderManueel = new GeextraheerdBezwaarEntiteit();
+    var anderManueel = new IndividueelBezwaar();
     anderManueel.setManueel(true);
     when(bezwaarRepository.findByTaakId(1L)).thenReturn(List.of(anderManueel));
     when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -644,7 +644,7 @@ class ExtractieTaakServiceTest {
     taak.setAantalBezwaren(2);
     taak.setHeeftManueel(true);
 
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setId(10L);
     bezwaar.setTaakId(1L);
     bezwaar.setManueel(true);
@@ -667,7 +667,7 @@ class ExtractieTaakServiceTest {
     taak.setAantalBezwaren(3);
     taak.setHeeftManueel(false);
 
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setId(10L);
     bezwaar.setTaakId(1L);
     bezwaar.setManueel(false); // AI-bezwaar
@@ -691,7 +691,7 @@ class ExtractieTaakServiceTest {
     taak.setHeeftPassagesDieNietInTekstVoorkomen(true);
     taak.setHeeftManueel(false);
 
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setId(10L);
     bezwaar.setTaakId(1L);
     bezwaar.setManueel(false);
@@ -711,7 +711,7 @@ class ExtractieTaakServiceTest {
 
   @Test
   void verwijderBezwaarGooitExceptieBijVerkeerdeProject() {
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setId(10L);
     bezwaar.setTaakId(1L);
     bezwaar.setManueel(true);
@@ -768,7 +768,7 @@ class ExtractieTaakServiceTest {
 
     service.markeerKlaar(1L, resultaat);
 
-    var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
+    var bezwaarCaptor = ArgumentCaptor.forClass(IndividueelBezwaar.class);
     verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
     var eersteBezwaar = bezwaarCaptor.getAllValues().get(0);
     assertThat(eersteBezwaar.getProjectNaam()).isEqualTo("windmolens");
@@ -794,7 +794,7 @@ class ExtractieTaakServiceTest {
         .thenReturn(Optional.empty());
     when(passageRepository.save(any())).thenAnswer(i -> i.getArgument(0));
     when(bezwaarRepository.save(any())).thenAnswer(i -> {
-      var b = i.getArgument(0, GeextraheerdBezwaarEntiteit.class);
+      var b = i.getArgument(0, IndividueelBezwaar.class);
       b.setId(10L);
       return b;
     });
@@ -803,7 +803,7 @@ class ExtractieTaakServiceTest {
     service.voegManueelBezwaarToe(
         "windmolens", "bezwaar-001.txt", "Samenvatting test", "volledige documenttekst");
 
-    var bezwaarCaptor = ArgumentCaptor.forClass(GeextraheerdBezwaarEntiteit.class);
+    var bezwaarCaptor = ArgumentCaptor.forClass(IndividueelBezwaar.class);
     verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
     var eersteBezwaar = bezwaarCaptor.getAllValues().get(0);
     assertThat(eersteBezwaar.getProjectNaam()).isEqualTo("windmolens");

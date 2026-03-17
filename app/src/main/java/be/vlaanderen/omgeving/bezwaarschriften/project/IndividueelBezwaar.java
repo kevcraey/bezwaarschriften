@@ -9,27 +9,21 @@ import javax.persistence.Table;
 import org.hibernate.annotations.Type;
 
 @Entity
-@Table(name = "geextraheerd_bezwaar")
-public class GeextraheerdBezwaarEntiteit {
+@Table(name = "individueel_bezwaar")
+public class IndividueelBezwaar {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "taak_id", nullable = false)
-  private Long taakId;
-
-  @Column(name = "project_naam", nullable = false)
-  private String projectNaam;
-
-  @Column(name = "bestandsnaam", nullable = false)
-  private String bestandsnaam;
-
-  @Column(name = "passage_nr", nullable = false)
-  private int passageNr;
+  @Column(name = "document_id", nullable = false)
+  private Long documentId;
 
   @Column(name = "samenvatting", columnDefinition = "text", nullable = false)
   private String samenvatting;
+
+  @Column(name = "passage_tekst", columnDefinition = "text")
+  private String passageTekst;
 
   @Column(name = "passage_gevonden", nullable = false)
   private boolean passageGevonden = true;
@@ -53,36 +47,12 @@ public class GeextraheerdBezwaarEntiteit {
     this.id = id;
   }
 
-  public Long getTaakId() {
-    return taakId;
+  public Long getDocumentId() {
+    return documentId;
   }
 
-  public void setTaakId(Long taakId) {
-    this.taakId = taakId;
-  }
-
-  public String getProjectNaam() {
-    return projectNaam;
-  }
-
-  public void setProjectNaam(String projectNaam) {
-    this.projectNaam = projectNaam;
-  }
-
-  public String getBestandsnaam() {
-    return bestandsnaam;
-  }
-
-  public void setBestandsnaam(String bestandsnaam) {
-    this.bestandsnaam = bestandsnaam;
-  }
-
-  public int getPassageNr() {
-    return passageNr;
-  }
-
-  public void setPassageNr(int passageNr) {
-    this.passageNr = passageNr;
+  public void setDocumentId(Long documentId) {
+    this.documentId = documentId;
   }
 
   public String getSamenvatting() {
@@ -91,6 +61,14 @@ public class GeextraheerdBezwaarEntiteit {
 
   public void setSamenvatting(String samenvatting) {
     this.samenvatting = samenvatting;
+  }
+
+  public String getPassageTekst() {
+    return passageTekst;
+  }
+
+  public void setPassageTekst(String passageTekst) {
+    this.passageTekst = passageTekst;
   }
 
   public boolean isPassageGevonden() {

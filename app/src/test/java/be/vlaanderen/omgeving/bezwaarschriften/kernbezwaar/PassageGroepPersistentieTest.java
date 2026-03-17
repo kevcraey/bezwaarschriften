@@ -6,8 +6,8 @@ import be.vlaanderen.omgeving.bezwaarschriften.BaseBezwaarschriftenIntegrationTe
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaak;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakStatus;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +36,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   private ExtractieTaakRepository extractieTaakRepository;
 
   @Autowired
-  private GeextraheerdBezwaarRepository bezwaarRepository;
+  private IndividueelBezwaarRepository bezwaarRepository;
 
   @Autowired
   private KernbezwaarRepository kernbezwaarRepository;
@@ -220,8 +220,8 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     return extractieTaakRepository.save(taak);
   }
 
-  private GeextraheerdBezwaarEntiteit maakBezwaar(Long taakId, String samenvatting) {
-    var bezwaar = new GeextraheerdBezwaarEntiteit();
+  private IndividueelBezwaar maakBezwaar(Long taakId, String samenvatting) {
+    var bezwaar = new IndividueelBezwaar();
     bezwaar.setTaakId(taakId);
     bezwaar.setProjectNaam("testproject");
     bezwaar.setBestandsnaam("test.txt");
