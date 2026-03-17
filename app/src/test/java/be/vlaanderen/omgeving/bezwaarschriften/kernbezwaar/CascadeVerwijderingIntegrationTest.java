@@ -498,9 +498,11 @@ class CascadeVerwijderingIntegrationTest extends BaseBezwaarschriftenIntegration
   }
 
   private ConsolidatieTaak maakConsolidatieTaak(String projectNaam, String bestandsnaam) {
+    var document = documentRepository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam)
+        .orElseThrow(() -> new IllegalStateException(
+            "Document niet gevonden: " + projectNaam + "/" + bestandsnaam));
     var taak = new ConsolidatieTaak();
-    taak.setProjectNaam(projectNaam);
-    taak.setBestandsnaam(bestandsnaam);
+    taak.setDocumentId(document.getId());
     taak.setStatus(ConsolidatieTaakStatus.KLAAR);
     taak.setAantalPogingen(1);
     taak.setMaxPogingen(3);

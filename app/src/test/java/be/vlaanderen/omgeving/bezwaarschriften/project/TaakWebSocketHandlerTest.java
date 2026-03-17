@@ -71,7 +71,7 @@ class TaakWebSocketHandlerTest {
     handler.afterConnectionEstablished(session);
 
     var taak = new ConsolidatieTaakDto(
-        1L, "windmolens", "bezwaar-001.txt", "bezig",
+        1L, 10L, "windmolens", "bezwaar-001.txt", "bezig",
         1, "2026-03-02T10:00:00Z", "2026-03-02T10:01:00Z",
         null);
 

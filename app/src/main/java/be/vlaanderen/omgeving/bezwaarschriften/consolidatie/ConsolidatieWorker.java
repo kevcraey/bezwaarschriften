@@ -1,5 +1,7 @@
 package be.vlaanderen.omgeving.bezwaarschriften.consolidatie;
 
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -25,13 +27,16 @@ public class ConsolidatieWorker {
 
   private final ConsolidatieTaakService service;
   private final ConsolidatieVerwerker verwerker;
+  private final BezwaarDocumentRepository documentRepository;
   private final ThreadPoolTaskExecutor executor;
   private final ConcurrentHashMap<Long, Future<?>> lopendeTaken = new ConcurrentHashMap<>();
 
   public ConsolidatieWorker(ConsolidatieTaakService service, ConsolidatieVerwerker verwerker,
+      BezwaarDocumentRepository documentRepository,
       @Qualifier("consolidatieExecutor") ThreadPoolTaskExecutor executor) {
     this.service = service;
     this.verwerker = verwerker;
+    this.documentRepository = documentRepository;
     this.executor = executor;
   }
 
@@ -61,7 +66,11 @@ public class ConsolidatieWorker {
 
   private void verwerkTaak(ConsolidatieTaak taak) {
     try {
-      verwerker.verwerk(taak.getProjectNaam(), taak.getBestandsnaam(), taak.getAantalPogingen());
+      var document = documentRepository.findById(taak.getDocumentId())
+          .orElseThrow(() -> new IllegalStateException(
+              "Document niet gevonden voor consolidatie-taak " + taak.getId()));
+      verwerker.verwerk(document.getProjectNaam(), document.getBestandsnaam(),
+          taak.getAantalPogingen());
       try {
         service.markeerKlaar(taak.getId());
       } catch (IllegalArgumentException e) {

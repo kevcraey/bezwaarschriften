@@ -1,13 +1,13 @@
 package be.vlaanderen.omgeving.bezwaarschriften.consolidatie;
 
 public record ConsolidatieTaakDto(
-    Long id, String projectNaam, String bestandsnaam, String status,
+    Long id, Long documentId, String projectNaam, String bestandsnaam, String status,
     int aantalPogingen, String aangemaaktOp, String verwerkingGestartOp,
     String foutmelding) {
 
-  static ConsolidatieTaakDto van(ConsolidatieTaak taak) {
+  static ConsolidatieTaakDto van(ConsolidatieTaak taak, String projectNaam, String bestandsnaam) {
     return new ConsolidatieTaakDto(
-        taak.getId(), taak.getProjectNaam(), taak.getBestandsnaam(),
+        taak.getId(), taak.getDocumentId(), projectNaam, bestandsnaam,
         statusNaarString(taak.getStatus()), taak.getAantalPogingen(),
         taak.getAangemaaktOp().toString(),
         taak.getVerwerkingGestartOp() != null ? taak.getVerwerkingGestartOp().toString() : null,

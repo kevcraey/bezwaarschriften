@@ -48,7 +48,7 @@ class ConsolidatieControllerTest {
                 new AntwoordStatus.KernbezwaarInfo("Motivering besluit ontoereikend", true)))));
     when(consolidatieTaakService.geefTaken("windmolens"))
         .thenReturn(List.of(
-            new ConsolidatieTaakDto(1L, "windmolens", "bezwaar-002.txt", "klaar",
+            new ConsolidatieTaakDto(1L, 10L, "windmolens", "bezwaar-002.txt", "klaar",
                 0, "2026-03-02T10:00:00Z", "2026-03-02T10:01:00Z", null)));
 
     mockMvc.perform(get("/api/v1/projects/windmolens/consolidaties"))
@@ -63,7 +63,7 @@ class ConsolidatieControllerTest {
   void dientConsolidatieTakenIn() throws Exception {
     when(consolidatieTaakService.indienen("windmolens", List.of("bezwaar-001.txt")))
         .thenReturn(List.of(
-            new ConsolidatieTaakDto(1L, "windmolens", "bezwaar-001.txt", "wachtend",
+            new ConsolidatieTaakDto(1L, 10L, "windmolens", "bezwaar-001.txt", "wachtend",
                 0, "2026-03-02T10:00:00Z", null, null)));
 
     mockMvc.perform(post("/api/v1/projects/windmolens/consolidaties")
