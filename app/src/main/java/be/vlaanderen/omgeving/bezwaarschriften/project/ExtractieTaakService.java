@@ -87,8 +87,7 @@ public class ExtractieTaakService {
                 "Tekst-extractie niet voltooid voor bestand: " + bestandsnaam);
           }
 
-          doc.setBezwaarExtractieStatus(BezwaarExtractieStatus.BEZIG);
-          doc.setFoutmelding(null);
+          doc.startBezwaarExtractie();
 
           // Ruim bestaande bezwaren op (eerst FK-relaties, dan bezwaren)
           var bestaandeBezwaren = bezwaarRepository.findByDocumentId(doc.getId());
@@ -160,7 +159,6 @@ public class ExtractieTaakService {
     var doc = documentRepository.findById(documentId)
         .orElseThrow(() -> new IllegalArgumentException("Document niet gevonden: " + documentId));
 
-    doc.setBezwaarExtractieStatus(BezwaarExtractieStatus.KLAAR);
     doc.setAantalWoorden(resultaat.aantalWoorden());
 
     // Bouw passage-map op voor validatie
@@ -181,22 +179,19 @@ public class ExtractieTaakService {
     }
 
     // Passage-validatie: gebruik tekst-bestand i.p.v. origineel
+    boolean passagesNietGevonden = false;
     try {
       var pad = projectPoort.geefTekstBestandsPad(doc.getProjectNaam(), doc.getBestandsnaam());
       var brondocument = ingestiePoort.leesBestand(pad);
       var validatie = passageValidator.valideer(bezwaarEntiteiten, brondocument.tekst());
       if (validatie.aantalNietGevonden() > 0) {
-        doc.setHeeftPassagesDieNietInTekstVoorkomen(true);
+        passagesNietGevonden = true;
         LOGGER.info("Document {}: {} van {} passages niet gevonden in brondocument",
             documentId, validatie.aantalNietGevonden(), bezwaarEntiteiten.size());
       }
     } catch (Exception e) {
       LOGGER.warn("Passage-validatie overgeslagen voor document {} ({}): {}",
           documentId, doc.getBestandsnaam(), e.getMessage());
-    }
-
-    for (var entiteit : bezwaarEntiteiten) {
-      bezwaarRepository.save(entiteit);
     }
 
     // Genereer embeddings voor alle bezwaren (batch): passage + samenvatting
@@ -215,11 +210,11 @@ public class ExtractieTaakService {
       for (int i = 0; i < bezwaarEntiteiten.size(); i++) {
         bezwaarEntiteiten.get(i).setEmbeddingPassage(passageEmbeddings.get(i));
         bezwaarEntiteiten.get(i).setEmbeddingSamenvatting(samenvattingEmbeddings.get(i));
-        bezwaarRepository.save(bezwaarEntiteiten.get(i));
       }
     }
+    bezwaarRepository.saveAll(bezwaarEntiteiten);
 
-    doc.setHeeftManueel(false);
+    doc.voltooiBezwaarExtractie(passagesNietGevonden, false);
     documentRepository.save(doc);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
     LOGGER.info("Document {} afgerond: {} woorden, {} bezwaren opgeslagen",
@@ -237,8 +232,7 @@ public class ExtractieTaakService {
     var doc = documentRepository.findById(documentId)
         .orElseThrow(() -> new IllegalArgumentException(
             "Document niet gevonden: " + documentId));
-    doc.setBezwaarExtractieStatus(BezwaarExtractieStatus.FOUT);
-    doc.setFoutmelding(foutmelding);
+    doc.markeerBezwaarExtractieFout(foutmelding);
     documentRepository.save(doc);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
     LOGGER.error("Document {} mislukt: {}", documentId, foutmelding);
@@ -324,7 +318,7 @@ public class ExtractieTaakService {
     bezwaarEntiteit.setPassageGevonden(true);
     bezwaarEntiteit.setManueel(true);
 
-    // Werk document bij
+    // Werk document bij: markeer als manueel bewerkt
     doc.setHeeftManueel(true);
     documentRepository.save(doc);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
@@ -397,8 +391,7 @@ public class ExtractieTaakService {
         .toList();
 
     for (var doc : foutDocumenten) {
-      doc.setBezwaarExtractieStatus(BezwaarExtractieStatus.BEZIG);
-      doc.setFoutmelding(null);
+      doc.startBezwaarExtractie();
       documentRepository.save(doc);
       notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
     }

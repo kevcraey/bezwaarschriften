@@ -180,15 +180,17 @@ class ExtractieTaakServiceTest {
     assertThat(doc.getBezwaarExtractieStatus()).isEqualTo(BezwaarExtractieStatus.KLAAR);
     assertThat(doc.getAantalWoorden()).isEqualTo(500);
 
-    var bezwaarCaptor = ArgumentCaptor.forClass(IndividueelBezwaar.class);
-    // Elke bezwaar wordt 2x opgeslagen: eerst zonder embedding, dan met embedding
-    verify(bezwaarRepository, times(4)).save(bezwaarCaptor.capture());
-    var eersteBezwaar = bezwaarCaptor.getAllValues().get(0);
-    assertThat(eersteBezwaar.getSamenvatting()).isEqualTo("Samenvatting een");
-    assertThat(eersteBezwaar.getDocumentId()).isEqualTo(1L);
-    assertThat(eersteBezwaar.getPassageTekst()).isEqualTo("Passage een");
-    assertThat(eersteBezwaar.isManueel()).isFalse();
-    assertThat(bezwaarCaptor.getAllValues().get(2).getEmbeddingPassage()).isNotNull();
+    @SuppressWarnings("unchecked")
+    var bezwaarListCaptor = ArgumentCaptor.forClass(List.class);
+    // Alle bezwaren worden in één keer opgeslagen via saveAll (inclusief embeddings)
+    verify(bezwaarRepository).saveAll(bezwaarListCaptor.capture());
+    var opgeslagenBezwaren = (List<IndividueelBezwaar>) bezwaarListCaptor.getValue();
+    assertThat(opgeslagenBezwaren).hasSize(2);
+    assertThat(opgeslagenBezwaren.get(0).getSamenvatting()).isEqualTo("Samenvatting een");
+    assertThat(opgeslagenBezwaren.get(0).getDocumentId()).isEqualTo(1L);
+    assertThat(opgeslagenBezwaren.get(0).getPassageTekst()).isEqualTo("Passage een");
+    assertThat(opgeslagenBezwaren.get(0).isManueel()).isFalse();
+    assertThat(opgeslagenBezwaren.get(0).getEmbeddingPassage()).isNotNull();
   }
 
   @Test
