@@ -397,15 +397,10 @@ class KernbezwaarServiceTest {
 
   @Test
   void ruimOpNaDocumentVerwijdering_cascadeVerwijderingViaBezwaarIds() {
-    // Arrange: document -> bezwaar -> bezwaar_groep_lid
-    var doc = new BezwaarDocument();
-    doc.setId(500L);
-    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar-001.txt"))
-        .thenReturn(Optional.of(doc));
-    var bezwaar = new IndividueelBezwaar();
-    bezwaar.setId(1L);
-    bezwaar.setDocumentId(500L);
-    when(bezwaarRepository.findByDocumentId(500L)).thenReturn(List.of(bezwaar));
+    // Arrange: batch query retourneert bezwaar-IDs voor bestandsnaam
+    when(bezwaarRepository.findIdsByProjectNaamAndBestandsnamen(
+        "windmolens", List.of("bezwaar-001.txt")))
+        .thenReturn(List.of(1L));
 
     service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
 
@@ -420,24 +415,10 @@ class KernbezwaarServiceTest {
 
   @Test
   void ruimOpNaBestandenVerwijdering_cascadeVerwijderingViaBezwaarIds() {
-    // Arrange: documenten -> bezwaren
-    var docA = new BezwaarDocument();
-    docA.setId(500L);
-    when(documentRepository.findByProjectNaamAndBestandsnaam("testproject", "doc-a.txt"))
-        .thenReturn(Optional.of(docA));
-    var bezwaarA = new IndividueelBezwaar();
-    bezwaarA.setId(1L);
-    bezwaarA.setDocumentId(500L);
-    when(bezwaarRepository.findByDocumentId(500L)).thenReturn(List.of(bezwaarA));
-
-    var docB = new BezwaarDocument();
-    docB.setId(501L);
-    when(documentRepository.findByProjectNaamAndBestandsnaam("testproject", "doc-b.txt"))
-        .thenReturn(Optional.of(docB));
-    var bezwaarB = new IndividueelBezwaar();
-    bezwaarB.setId(2L);
-    bezwaarB.setDocumentId(501L);
-    when(bezwaarRepository.findByDocumentId(501L)).thenReturn(List.of(bezwaarB));
+    // Arrange: batch query retourneert bezwaar-IDs voor bestandsnamen
+    when(bezwaarRepository.findIdsByProjectNaamAndBestandsnamen(
+        "testproject", List.of("doc-a.txt", "doc-b.txt")))
+        .thenReturn(List.of(1L, 2L));
 
     service.ruimOpNaBestandenVerwijdering("testproject", List.of("doc-a.txt", "doc-b.txt"));
 
