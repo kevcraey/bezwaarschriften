@@ -147,10 +147,16 @@ public class ConsolidatieTaakService {
   public List<String> vindKlareBestandsnamen(String projectNaam,
       Collection<String> bestandsnamen) {
     var documentIds = zoekDocumentIdsVoorBestandsnamen(projectNaam, bestandsnamen);
-    return repository.findByDocumentIdInAndStatus(documentIds, ConsolidatieTaakStatus.KLAAR)
-        .stream()
-        .map(taak -> documentRepository.findById(taak.getDocumentId())
-            .map(BezwaarDocument::getBestandsnaam).orElse(null))
+    var klareTaken = repository.findByDocumentIdInAndStatus(
+        documentIds, ConsolidatieTaakStatus.KLAAR);
+    var klareDocumentIds = klareTaken.stream()
+        .map(ConsolidatieTaak::getDocumentId).distinct().toList();
+    var documentenPerId = zoekDocumentenPerId(klareDocumentIds);
+    return klareTaken.stream()
+        .map(taak -> {
+          var document = documentenPerId.get(taak.getDocumentId());
+          return document != null ? document.getBestandsnaam() : null;
+        })
         .distinct()
         .toList();
   }
