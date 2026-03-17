@@ -3,6 +3,8 @@ package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import be.vlaanderen.omgeving.bezwaarschriften.BaseBezwaarschriftenIntegrationTest;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.TekstExtractieStatus;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,7 +25,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * E2E integratietest: upload PDF → tekst-extractie → pseudonimisering → verificatie.
+ * E2E integratietest: upload PDF -> tekst-extractie -> pseudonimisering -> verificatie.
  *
  * <p>Gebruikt een echte Obscuro container via Testcontainers.
  */
@@ -43,7 +45,7 @@ class TekstExtractiePseudonimiseringIntegrationTest
   }
 
   // TODO: Vervang door ghcr.io/kevcraey/obscuro-service:latest zodra GHCR image publiek is.
-  //       In CI/CD moet dit image lokaal gebouwd worden vóór de integratietests.
+  //       In CI/CD moet dit image lokaal gebouwd worden voor de integratietests.
   @Container
   static final GenericContainer<?> obscuro =
       new GenericContainer<>("pseudonimiseren:test")
@@ -62,7 +64,7 @@ class TekstExtractiePseudonimiseringIntegrationTest
   private TekstExtractieService tekstExtractieService;
 
   @Autowired
-  private TekstExtractieTaakRepository repository;
+  private BezwaarDocumentRepository documentRepository;
 
   @Autowired
   private PseudonimiseringChunkRepository chunkRepository;
@@ -93,28 +95,28 @@ class TekstExtractiePseudonimiseringIntegrationTest
     Files.createDirectories(tekstDir);
     Files.write(origDir.resolve(bestandsnaam), pdfBytes);
 
-    // 3. Dien de extractie-taak in
-    var taak = tekstExtractieService.indienen(projectNaam, bestandsnaam);
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.WACHTEND);
+    // 3. Dien de extractie in (maakt/vindt BezwaarDocument)
+    var document = tekstExtractieService.indienen(projectNaam, bestandsnaam);
+    assertThat(document.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.BEZIG);
 
-    // 4. Verwerk de taak (synchroon, via pakOpVoorVerwerking om versie-conflicten te vermijden)
-    var opgepakteTaken = tekstExtractieService.pakOpVoorVerwerking();
-    assertThat(opgepakteTaken).hasSize(1);
-    tekstExtractieService.verwerkTaak(opgepakteTaken.get(0));
+    // 4. Verwerk het document (synchroon)
+    var opgepakteDocumenten = tekstExtractieService.pakOpVoorVerwerking();
+    assertThat(opgepakteDocumenten).hasSize(1);
+    tekstExtractieService.verwerkTaak(opgepakteDocumenten.get(0));
 
     // 5. Verifieer resultaat
-    var bijgewerkt = repository.findById(taak.getId()).orElseThrow();
+    var bijgewerkt = documentRepository.findById(document.getId()).orElseThrow();
 
     // Status is KLAAR
-    assertThat(bijgewerkt.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
+    assertThat(bijgewerkt.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.KLAAR);
 
     // Chunk mapping-ID's zijn opgeslagen
-    var chunks = chunkRepository.findByTaakIdOrderByVolgnummerAsc(bijgewerkt.getId());
+    var chunks = chunkRepository.findByDocumentIdOrderByVolgnummerAsc(bijgewerkt.getId());
     assertThat(chunks).isNotEmpty();
     assertThat(chunks.get(0).getMappingId()).isNotEmpty();
 
     // Extractiemethode is ingevuld
-    assertThat(bijgewerkt.getExtractieMethode()).isEqualTo(ExtractieMethode.DIGITAAL);
+    assertThat(bijgewerkt.getExtractieMethode()).isEqualTo("DIGITAAL");
 
     // De opgeslagen tekst bevat GEEN originele PII meer
     // slaTekstOp replaces .pdf extension with .txt
