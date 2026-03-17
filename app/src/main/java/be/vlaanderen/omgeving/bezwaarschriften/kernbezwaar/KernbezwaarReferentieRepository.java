@@ -16,7 +16,7 @@ public interface KernbezwaarReferentieRepository extends JpaRepository<Kernbezwa
   List<KernbezwaarReferentieEntiteit> findByProjectNaam(@Param("projectNaam") String projectNaam);
 
   @Modifying(clearAutomatically = true)
-  @Query("DELETE FROM KernbezwaarReferentieEntiteit r WHERE r.passageGroepId NOT IN "
-      + "(SELECT g.id FROM PassageGroepEntiteit g)")
+  @Query("DELETE FROM KernbezwaarReferentieEntiteit r WHERE r.bezwaarGroepId NOT IN "
+      + "(SELECT g.id FROM BezwaarGroep g)")
   void deleteMetVerwijderdePassageGroep();
 }

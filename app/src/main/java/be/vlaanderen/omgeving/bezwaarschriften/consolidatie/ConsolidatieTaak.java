@@ -19,11 +19,8 @@ public class ConsolidatieTaak {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "project_naam", nullable = false)
-  private String projectNaam;
-
-  @Column(name = "bestandsnaam", nullable = false)
-  private String bestandsnaam;
+  @Column(name = "document_id", nullable = false)
+  private Long documentId;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false)
@@ -59,20 +56,12 @@ public class ConsolidatieTaak {
     this.id = id;
   }
 
-  public String getProjectNaam() {
-    return projectNaam;
+  public Long getDocumentId() {
+    return documentId;
   }
 
-  public void setProjectNaam(String projectNaam) {
-    this.projectNaam = projectNaam;
-  }
-
-  public String getBestandsnaam() {
-    return bestandsnaam;
-  }
-
-  public void setBestandsnaam(String bestandsnaam) {
-    this.bestandsnaam = bestandsnaam;
+  public void setDocumentId(Long documentId) {
+    this.documentId = documentId;
   }
 
   public ConsolidatieTaakStatus getStatus() {

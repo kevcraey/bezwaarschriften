@@ -5,11 +5,9 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-/** Koppelt een pseudonimisering mapping-ID aan een chunk-volgnummer binnen een extractie-taak. */
+/** Koppelt een pseudonimisering mapping-ID aan een chunk-volgnummer binnen een document. */
 @Entity
 @Table(name = "pseudonimisering_chunk")
 public class PseudonimiseringChunk {
@@ -18,9 +16,8 @@ public class PseudonimiseringChunk {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @ManyToOne
-  @JoinColumn(name = "taak_id", nullable = false)
-  private TekstExtractieTaak taak;
+  @Column(name = "document_id", nullable = false)
+  private Long documentId;
 
   @Column(name = "volgnummer", nullable = false)
   private int volgnummer;
@@ -30,8 +27,8 @@ public class PseudonimiseringChunk {
 
   protected PseudonimiseringChunk() {}
 
-  public PseudonimiseringChunk(TekstExtractieTaak taak, int volgnummer, String mappingId) {
-    this.taak = taak;
+  public PseudonimiseringChunk(Long documentId, int volgnummer, String mappingId) {
+    this.documentId = documentId;
     this.volgnummer = volgnummer;
     this.mappingId = mappingId;
   }
@@ -40,8 +37,8 @@ public class PseudonimiseringChunk {
     return id;
   }
 
-  public TekstExtractieTaak getTaak() {
-    return taak;
+  public Long getDocumentId() {
+    return documentId;
   }
 
   public int getVolgnummer() {

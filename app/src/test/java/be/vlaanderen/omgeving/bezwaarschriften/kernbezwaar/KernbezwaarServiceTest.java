@@ -26,11 +26,10 @@ import be.vlaanderen.omgeving.bezwaarschriften.clustering.DimensieReductiePoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageDeduplicatieService.DeduplicatieGroep;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageDeduplicatieService.DeduplicatieLid;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,13 +54,10 @@ class KernbezwaarServiceTest {
   private ClusteringPoort clusteringPoort;
 
   @Mock
-  private GeextraheerdBezwaarRepository bezwaarRepository;
+  private IndividueelBezwaarRepository bezwaarRepository;
 
   @Mock
-  private ExtractiePassageRepository passageRepository;
-
-  @Mock
-  private ExtractieTaakRepository taakRepository;
+  private BezwaarDocumentRepository documentRepository;
 
   @Mock
   private KernbezwaarAntwoordRepository antwoordRepository;
@@ -76,9 +72,6 @@ class KernbezwaarServiceTest {
   private ClusteringTaakService clusteringTaakService;
 
   @Mock
-  private ClusteringTaakRepository clusteringTaakRepository;
-
-  @Mock
   private PlatformTransactionManager transactionManager;
 
   @Mock
@@ -91,10 +84,10 @@ class KernbezwaarServiceTest {
   private PassageDeduplicatieService deduplicatieService;
 
   @Mock
-  private PassageGroepRepository passageGroepRepository;
+  private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Mock
-  private PassageGroepLidRepository passageGroepLidRepository;
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   @Spy
   private ClusteringConfig clusteringConfig = new ClusteringConfig();
@@ -113,27 +106,32 @@ class KernbezwaarServiceTest {
     passageGroepIdCounter.set(1000L);
 
     // Standaard: clustering-taak zonder deduplicatie (modus B)
-    var standaardTaak = new ClusteringTaak();
-    standaardTaak.setId(TEST_TAAK_ID);
-    standaardTaak.setDeduplicatieVoorClustering(false);
-    lenient().when(clusteringTaakRepository.findById(TEST_TAAK_ID))
-        .thenReturn(Optional.of(standaardTaak));
+    lenient().when(clusteringTaakService.isDeduplicatieVoorClustering(TEST_TAAK_ID))
+        .thenReturn(false);
 
     // Standaard: deduplicatieService geeft 1 groep per bezwaar terug
     lenient().when(deduplicatieService.groepeer(anyList(), anyMap()))
         .thenAnswer(inv -> {
-          List<GeextraheerdBezwaarEntiteit> bezwaren = inv.getArgument(0);
+          List<IndividueelBezwaar> bezwaren = inv.getArgument(0);
           return bezwaren.stream()
               .map(b -> new DeduplicatieGroep(
                   b.getSamenvatting(), b.getSamenvatting(), b,
                   List.of(new DeduplicatieLid(b.getId(),
-                      b.getBestandsnaam() != null ? b.getBestandsnaam() : "onbekend"))))
+                      "onbekend"))))
               .toList();
         });
 
-    // Standaard: passageGroepRepository.save geeft entiteit met incrementerend ID terug
-    lenient().when(passageGroepRepository.save(any())).thenAnswer(inv -> {
-      var e = (PassageGroepEntiteit) inv.getArgument(0);
+    // Standaard: documentRepository geeft een document terug voor bestandsnaam-lookup
+    var doc = new BezwaarDocument();
+    doc.setId(10L);
+    doc.setProjectNaam("windmolens");
+    doc.setBestandsnaam("bestand.pdf");
+    lenient().when(documentRepository.findByProjectNaam(any()))
+        .thenReturn(List.of(doc));
+
+    // Standaard: bezwaarGroepRepository.save geeft entiteit met incrementerend ID terug
+    lenient().when(bezwaarGroepRepository.save(any())).thenAnswer(inv -> {
+      var e = (BezwaarGroep) inv.getArgument(0);
       e.setId(passageGroepIdCounter.getAndIncrement());
       return e;
     });
@@ -144,27 +142,24 @@ class KernbezwaarServiceTest {
   private KernbezwaarService maakService(CentroidMatchingService cms) {
     return new KernbezwaarService(
         embeddingPoort, clusteringPoort,
-        bezwaarRepository, passageRepository, taakRepository,
+        bezwaarRepository, documentRepository,
         antwoordRepository,
         kernbezwaarRepository, referentieRepository,
-        clusteringTaakService, clusteringTaakRepository,
+        clusteringTaakService,
         transactionManager, dimensieReductiePoort, clusteringConfig,
-        cms, deduplicatieService, passageGroepRepository,
-        passageGroepLidRepository);
+        cms, deduplicatieService, bezwaarGroepRepository,
+        bezwaarGroepLidRepository);
   }
 
   @Test
   void clusterProjectClustertBezwarenSuccesvol() {
     // Arrange: 2 bezwaren in hetzelfde project, zelfde taak
     var bezwaar1 = maakBezwaar(1L, 10L, 1, "samenvatting geluid 1");
+    bezwaar1.setPassageTekst("originele tekst passage 1");
     var bezwaar2 = maakBezwaar(2L, 10L, 2, "samenvatting geluid 2");
+    bezwaar2.setPassageTekst("originele tekst passage 2");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-
-    // Passages: originele tekst voor elke passage
-    var passage1 = maakPassage(10L, 1, "originele tekst passage 1");
-    var passage2 = maakPassage(10L, 2, "originele tekst passage 2");
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of(passage1, passage2));
 
     // Embeddings: retourneer 2 vectoren
     float[] emb1 = {1.0f, 0.0f, 0.0f};
@@ -206,13 +201,11 @@ class KernbezwaarServiceTest {
   void noiseItemsWordenGebundeldOnderNietGeclusterdKernbezwaar() {
     // Arrange: 2 bezwaren die als noise worden geclassificeerd
     var bezwaar1 = maakBezwaar(5L, 20L, 1, "uniek bezwaar 1");
+    bezwaar1.setPassageTekst("originele noise tekst 1");
     var bezwaar2 = maakBezwaar(6L, 20L, 2, "uniek bezwaar 2");
+    bezwaar2.setPassageTekst("originele noise tekst 2");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-
-    var passage1 = maakPassage(20L, 1, "originele noise tekst 1");
-    var passage2 = maakPassage(20L, 2, "originele noise tekst 2");
-    when(passageRepository.findByTaakId(20L)).thenReturn(List.of(passage1, passage2));
 
     float[] emb1 = {0.5f, 0.5f};
     float[] emb2 = {0.4f, 0.6f};
@@ -260,15 +253,15 @@ class KernbezwaarServiceTest {
     var refEntiteit = new KernbezwaarReferentieEntiteit();
     refEntiteit.setId(30L);
     refEntiteit.setKernbezwaarId(20L);
-    refEntiteit.setPassageGroepId(100L);
+    refEntiteit.setBezwaarGroepId(100L);
     refEntiteit.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of(refEntiteit));
 
     var groep = maakPassageGroep(100L, "Verkeershinder passage", 85);
-    when(passageGroepRepository.findAllById(List.of(100L)))
+    when(bezwaarGroepRepository.findAllById(List.of(100L)))
         .thenReturn(List.of(groep));
-    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(List.of(100L)))
         .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -306,7 +299,7 @@ class KernbezwaarServiceTest {
         .thenReturn(List.of(bezwaar));
 
     // Geen passages voor dit taakId
-    when(passageRepository.findByTaakId(30L)).thenReturn(List.of());
+
 
     float[] emb = {1.0f};
     when(embeddingPoort.genereerEmbeddings(anyList())).thenReturn(List.of(emb));
@@ -347,7 +340,7 @@ class KernbezwaarServiceTest {
     var bezwaar = maakBezwaar(1L, 10L, 1, "bezwaar");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     float[] emb = {1.0f};
@@ -365,11 +358,9 @@ class KernbezwaarServiceTest {
     // Arrange: 1 bezwaar
     var bezwaar = maakBezwaarMetEmbedding(1L, 10L, 1, "geluidshinder",
         new float[]{1.0f, 0.0f});
+    bezwaar.setPassageTekst("originele geluidstekst");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar));
-
-    var passage = maakPassage(10L, 1, "originele geluidstekst");
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of(passage));
 
 
     // Clustering: noise item
@@ -399,31 +390,37 @@ class KernbezwaarServiceTest {
   }
 
   @Test
-  void ruimOpNaDocumentVerwijdering_cascadeVerwijderingViaPassageGroepModel() {
+  void ruimOpNaDocumentVerwijdering_cascadeVerwijderingViaBezwaarIds() {
+    // Arrange: batch query retourneert bezwaar-IDs voor bestandsnaam
+    when(bezwaarRepository.findIdsByProjectNaamAndBestandsnamen(
+        "windmolens", List.of("bezwaar-001.txt")))
+        .thenReturn(List.of(1L));
+
     service.ruimOpNaDocumentVerwijdering("windmolens", "bezwaar-001.txt");
 
     var inOrder = org.mockito.Mockito.inOrder(
-        passageGroepLidRepository, passageGroepRepository,
+        bezwaarGroepLidRepository, bezwaarGroepRepository,
         referentieRepository, kernbezwaarRepository);
-    inOrder.verify(passageGroepLidRepository)
-        .deleteByBestandsnaamInAndProjectNaam(List.of("bezwaar-001.txt"), "windmolens");
-    inOrder.verify(passageGroepRepository).deleteZonderLeden();
+    inOrder.verify(bezwaarGroepLidRepository).deleteByBezwaarIdIn(List.of(1L));
+    inOrder.verify(bezwaarGroepRepository).deleteZonderLeden();
     inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("windmolens");
   }
 
   @Test
-  void ruimOpNaBestandenVerwijdering_cascadeVerwijderingViaPassageGroepModel() {
-    var bestandsnamen = List.of("doc-a.txt", "doc-b.txt");
+  void ruimOpNaBestandenVerwijdering_cascadeVerwijderingViaBezwaarIds() {
+    // Arrange: batch query retourneert bezwaar-IDs voor bestandsnamen
+    when(bezwaarRepository.findIdsByProjectNaamAndBestandsnamen(
+        "testproject", List.of("doc-a.txt", "doc-b.txt")))
+        .thenReturn(List.of(1L, 2L));
 
-    service.ruimOpNaBestandenVerwijdering("testproject", bestandsnamen);
+    service.ruimOpNaBestandenVerwijdering("testproject", List.of("doc-a.txt", "doc-b.txt"));
 
     var inOrder = org.mockito.Mockito.inOrder(
-        passageGroepLidRepository, passageGroepRepository,
+        bezwaarGroepLidRepository, bezwaarGroepRepository,
         referentieRepository, kernbezwaarRepository);
-    inOrder.verify(passageGroepLidRepository)
-        .deleteByBestandsnaamInAndProjectNaam(bestandsnamen, "testproject");
-    inOrder.verify(passageGroepRepository).deleteZonderLeden();
+    inOrder.verify(bezwaarGroepLidRepository).deleteByBezwaarIdIn(List.of(1L, 2L));
+    inOrder.verify(bezwaarGroepRepository).deleteZonderLeden();
     inOrder.verify(referentieRepository).deleteMetVerwijderdePassageGroep();
     inOrder.verify(kernbezwaarRepository).deleteZonderReferenties("testproject");
   }
@@ -433,7 +430,7 @@ class KernbezwaarServiceTest {
     service.ruimAllesOpVoorProject("windmolens");
 
     verify(kernbezwaarRepository).deleteByProjectNaam("windmolens");
-    verify(clusteringTaakRepository).deleteByProjectNaam("windmolens");
+    verify(clusteringTaakService).verwijderTaakVoorProject("windmolens");
   }
 
   @Test
@@ -452,7 +449,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(bezwaren);
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // UMAP reduceert naar lagere dimensie
@@ -506,7 +503,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // UMAP reduceert van 3D naar 2D (enkel voor HDBSCAN clustering)
@@ -553,7 +550,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     var resultaat = new ClusteringResultaat(List.of(), List.of(1L, 2L));
@@ -593,7 +590,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     var resultaat = new ClusteringResultaat(List.of(), List.of(1L, 2L));
@@ -636,7 +633,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // UMAP reduceert naar 2D
@@ -691,7 +688,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("test"))
         .thenReturn(List.of(b1, b2));
-    when(passageRepository.findByTaakId(100L)).thenReturn(List.of());
+
 
 
     var cluster = new Cluster(0, List.of(1L, 2L), samenvattingEmb);
@@ -735,7 +732,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // 1 cluster met alle 3
@@ -777,7 +774,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-    when(passageRepository.findByTaakId(20L)).thenReturn(List.of());
+
 
 
     // Clustering: geen clusters, 2 noise items
@@ -820,19 +817,19 @@ class KernbezwaarServiceTest {
     var ref1 = new KernbezwaarReferentieEntiteit();
     ref1.setId(31L);
     ref1.setKernbezwaarId(20L);
-    ref1.setPassageGroepId(100L);
+    ref1.setBezwaarGroepId(100L);
     ref1.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var ref2 = new KernbezwaarReferentieEntiteit();
     ref2.setId(32L);
     ref2.setKernbezwaarId(20L);
-    ref2.setPassageGroepId(101L);
+    ref2.setBezwaarGroepId(101L);
     ref2.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var ref3 = new KernbezwaarReferentieEntiteit();
     ref3.setId(33L);
     ref3.setKernbezwaarId(20L);
-    ref3.setPassageGroepId(102L);
+    ref3.setBezwaarGroepId(102L);
     ref3.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -842,9 +839,9 @@ class KernbezwaarServiceTest {
     var groep100 = maakPassageGroep(100L, "passage A", 85);
     var groep101 = maakPassageGroep(101L, "passage B", 92);
     var groep102 = maakPassageGroep(102L, "passage C", 78);
-    when(passageGroepRepository.findAllById(anyList()))
+    when(bezwaarGroepRepository.findAllById(anyList()))
         .thenReturn(List.of(groep100, groep101, groep102));
-    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(anyList()))
         .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -875,13 +872,13 @@ class KernbezwaarServiceTest {
     var ref1 = new KernbezwaarReferentieEntiteit();
     ref1.setId(31L);
     ref1.setKernbezwaarId(20L);
-    ref1.setPassageGroepId(100L);
+    ref1.setBezwaarGroepId(100L);
     ref1.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     var ref2 = new KernbezwaarReferentieEntiteit();
     ref2.setId(32L);
     ref2.setKernbezwaarId(20L);
-    ref2.setPassageGroepId(101L);
+    ref2.setBezwaarGroepId(101L);
     ref2.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
 
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -890,9 +887,9 @@ class KernbezwaarServiceTest {
     // Groep 100 heeft score, groep 101 heeft null score
     var groep100 = maakPassageGroep(100L, "passage A", 75);
     var groep101 = maakPassageGroep(101L, "passage B", null);
-    when(passageGroepRepository.findAllById(anyList()))
+    when(bezwaarGroepRepository.findAllById(anyList()))
         .thenReturn(List.of(groep100, groep101));
-    when(passageGroepLidRepository.findByPassageGroepIdIn(anyList()))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(anyList()))
         .thenReturn(List.of());
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
@@ -917,7 +914,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // 1 cluster met 1 bezwaar
@@ -943,14 +940,14 @@ class KernbezwaarServiceTest {
     service.clusterProject("windmolens", TEST_TAAK_ID);
 
     // Assert: passage groep wordt opgeslagen met score
-    var groepCaptor = ArgumentCaptor.forClass(PassageGroepEntiteit.class);
-    verify(passageGroepRepository).save(groepCaptor.capture());
+    var groepCaptor = ArgumentCaptor.forClass(BezwaarGroep.class);
+    verify(bezwaarGroepRepository).save(groepCaptor.capture());
     assertThat(groepCaptor.getValue().getScorePercentage()).isEqualTo(100);
 
     // Assert: referentie verwijst naar passage groep
     var refCaptor = ArgumentCaptor.forClass(KernbezwaarReferentieEntiteit.class);
     verify(referentieRepository).save(refCaptor.capture());
-    assertThat(refCaptor.getValue().getPassageGroepId()).isNotNull();
+    assertThat(refCaptor.getValue().getBezwaarGroepId()).isNotNull();
   }
 
   @Test
@@ -976,15 +973,12 @@ class KernbezwaarServiceTest {
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
 
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // ClusteringTaak met deduplicatieVoorClustering = true (modus A)
-    var clusteringTaak = new ClusteringTaak();
-    clusteringTaak.setId(42L);
-    clusteringTaak.setDeduplicatieVoorClustering(true);
-    when(clusteringTaakRepository.findById(42L))
-        .thenReturn(Optional.of(clusteringTaak));
+    when(clusteringTaakService.isDeduplicatieVoorClustering(42L))
+        .thenReturn(true);
 
     // DeduplicatieService groepeert bezwaar1+2 samen, bezwaar3 apart
     when(deduplicatieService.groepeer(anyList(), anyMap()))
@@ -1026,14 +1020,14 @@ class KernbezwaarServiceTest {
     assertThat(invoer).hasSize(2);
 
     // Assert: 2 passage-groepen aangemaakt
-    verify(passageGroepRepository, times(2)).save(any());
+    verify(bezwaarGroepRepository, times(2)).save(any());
 
     // Assert: 2 referenties (1 per passage-groep) naar 1 kernbezwaar
     verify(referentieRepository, times(2)).save(any());
 
     // Assert: 1 passage-groep lid met 2 leden (geluidshinder)
     // en 1 passage-groep lid met 1 lid (verkeerslast)
-    verify(passageGroepLidRepository, times(3)).save(any());
+    verify(bezwaarGroepLidRepository, times(3)).save(any());
   }
 
   @Test
@@ -1048,21 +1042,18 @@ class KernbezwaarServiceTest {
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
 
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // ClusteringTaak met deduplicatieVoorClustering = false (modus B)
-    var clusteringTaak = new ClusteringTaak();
-    clusteringTaak.setId(42L);
-    clusteringTaak.setDeduplicatieVoorClustering(false);
-    when(clusteringTaakRepository.findById(42L))
-        .thenReturn(Optional.of(clusteringTaak));
+    when(clusteringTaakService.isDeduplicatieVoorClustering(42L))
+        .thenReturn(false);
 
     // DeduplicatieService wordt NA clustering aangeroepen per cluster
     // Groepeer bezwaar1+2 samen, bezwaar3 apart
     when(deduplicatieService.groepeer(anyList(), anyMap()))
         .thenAnswer(inv -> {
-          List<GeextraheerdBezwaarEntiteit> bezwaren = inv.getArgument(0);
+          List<IndividueelBezwaar> bezwaren = inv.getArgument(0);
           // Simuleer: als alle 3 in dezelfde cluster zitten, groepeer 1+2
           if (bezwaren.size() == 3) {
             return List.of(
@@ -1078,7 +1069,7 @@ class KernbezwaarServiceTest {
               .map(b -> new DeduplicatieGroep(
                   b.getSamenvatting(), b.getSamenvatting(), b,
                   List.of(new DeduplicatieLid(b.getId(),
-                      b.getBestandsnaam() != null ? b.getBestandsnaam() : "onbekend"))))
+                      "onbekend"))))
               .toList();
         });
 
@@ -1116,7 +1107,7 @@ class KernbezwaarServiceTest {
     verify(deduplicatieService).groepeer(anyList(), anyMap());
 
     // Assert: 2 passage-groepen (geluidshinder gegroepeerd, verkeerslast apart)
-    verify(passageGroepRepository, times(2)).save(any());
+    verify(bezwaarGroepRepository, times(2)).save(any());
 
     // Assert: 2 referenties (1 per passage-groep)
     verify(referentieRepository, times(2)).save(any());
@@ -1135,26 +1126,43 @@ class KernbezwaarServiceTest {
     var refEntiteit = new KernbezwaarReferentieEntiteit();
     refEntiteit.setId(30L);
     refEntiteit.setKernbezwaarId(20L);
-    refEntiteit.setPassageGroepId(100L);
+    refEntiteit.setBezwaarGroepId(100L);
     refEntiteit.setToewijzingsmethode(ToewijzingsMethode.HDBSCAN);
     when(referentieRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of(refEntiteit));
 
     var groep = maakPassageGroep(100L, "Geluidshinder passage", 90);
-    when(passageGroepRepository.findAllById(List.of(100L)))
+    when(bezwaarGroepRepository.findAllById(List.of(100L)))
         .thenReturn(List.of(groep));
 
-    // Passage groep met 2 leden (documenten)
-    var lid1 = new PassageGroepLidEntiteit();
-    lid1.setPassageGroepId(100L);
+    // Bezwaar groep met 2 leden (documenten)
+    var lid1 = new BezwaarGroepLid();
+    lid1.setBezwaarGroepId(100L);
     lid1.setBezwaarId(1L);
-    lid1.setBestandsnaam("bezwaar1.pdf");
-    var lid2 = new PassageGroepLidEntiteit();
-    lid2.setPassageGroepId(100L);
+    var lid2 = new BezwaarGroepLid();
+    lid2.setBezwaarGroepId(100L);
     lid2.setBezwaarId(2L);
-    lid2.setBestandsnaam("bezwaar2.pdf");
-    when(passageGroepLidRepository.findByPassageGroepIdIn(List.of(100L)))
+    when(bezwaarGroepLidRepository.findByBezwaarGroepIdIn(List.of(100L)))
         .thenReturn(List.of(lid1, lid2));
+
+    // Bezwaar -> document -> bestandsnaam lookup
+    var bezwaar1 = new IndividueelBezwaar();
+    bezwaar1.setId(1L);
+    bezwaar1.setDocumentId(500L);
+    var bezwaar2 = new IndividueelBezwaar();
+    bezwaar2.setId(2L);
+    bezwaar2.setDocumentId(501L);
+    when(bezwaarRepository.findAllById(anyList()))
+        .thenReturn(List.of(bezwaar1, bezwaar2));
+
+    var doc1 = new BezwaarDocument();
+    doc1.setId(500L);
+    doc1.setBestandsnaam("bezwaar1.pdf");
+    var doc2 = new BezwaarDocument();
+    doc2.setId(501L);
+    doc2.setBestandsnaam("bezwaar2.pdf");
+    when(documentRepository.findAllById(anyList()))
+        .thenReturn(List.of(doc1, doc2));
 
     when(antwoordRepository.findByKernbezwaarIdIn(List.of(20L)))
         .thenReturn(List.of());
@@ -1185,7 +1193,7 @@ class KernbezwaarServiceTest {
 
   // --- Hulpmethoden ---
 
-  private GeextraheerdBezwaarEntiteit maakBezwaarMetEmbedding(Long id, Long taakId,
+  private IndividueelBezwaar maakBezwaarMetEmbedding(Long id, Long taakId,
       int passageNr, String samenvatting, float[] embedding) {
     var b = maakBezwaar(id, taakId, passageNr, samenvatting);
     b.setEmbeddingPassage(embedding);
@@ -1193,29 +1201,18 @@ class KernbezwaarServiceTest {
     return b;
   }
 
-  private GeextraheerdBezwaarEntiteit maakBezwaar(Long id, Long taakId,
+  private IndividueelBezwaar maakBezwaar(Long id, Long documentId,
       int passageNr, String samenvatting) {
-    var b = new GeextraheerdBezwaarEntiteit();
+    var b = new IndividueelBezwaar();
     b.setId(id);
-    b.setTaakId(taakId);
-    b.setPassageNr(passageNr);
+    b.setDocumentId(documentId);
     b.setSamenvatting(samenvatting);
-    b.setBestandsnaam("bestand.pdf");
     return b;
   }
 
-  private ExtractiePassageEntiteit maakPassage(Long taakId, int passageNr,
-      String tekst) {
-    var p = new ExtractiePassageEntiteit();
-    p.setTaakId(taakId);
-    p.setPassageNr(passageNr);
-    p.setTekst(tekst);
-    return p;
-  }
-
-  private PassageGroepEntiteit maakPassageGroep(Long id, String passage,
+  private BezwaarGroep maakPassageGroep(Long id, String passage,
       Integer scorePercentage) {
-    var g = new PassageGroepEntiteit();
+    var g = new BezwaarGroep();
     g.setId(id);
     g.setPassage(passage);
     g.setSamenvatting(passage);

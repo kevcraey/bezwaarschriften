@@ -3,11 +3,9 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import be.vlaanderen.omgeving.bezwaarschriften.BaseBezwaarschriftenIntegrationTest;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaak;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakStatus;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.GeextraheerdBezwaarRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,10 +20,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
 
   @Autowired
-  private ExtractieTaakRepository extractieTaakRepository;
+  private BezwaarDocumentRepository documentRepository;
 
   @Autowired
-  private GeextraheerdBezwaarRepository bezwaarRepository;
+  private IndividueelBezwaarRepository bezwaarRepository;
 
   @Autowired
   private KernbezwaarRepository kernbezwaarRepository;
@@ -40,17 +38,17 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
   private ClusteringTaakRepository clusteringTaakRepository;
 
   @Autowired
-  private PassageGroepRepository passageGroepRepository;
+  private BezwaarGroepRepository bezwaarGroepRepository;
 
   @BeforeEach
   void setUp() {
     referentieRepository.deleteAll();
     antwoordRepository.deleteAll();
     kernbezwaarRepository.deleteAll();
-    passageGroepRepository.deleteAll();
+    bezwaarGroepRepository.deleteAll();
     clusteringTaakRepository.deleteAll();
     bezwaarRepository.deleteAll();
-    extractieTaakRepository.deleteAll();
+    documentRepository.deleteAll();
   }
 
   @Test
@@ -63,13 +61,13 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
     final var groep1 = maakPassageGroep(clusteringTaak.getId(), "Passage 1");
     var ref1 = new KernbezwaarReferentieEntiteit();
     ref1.setKernbezwaarId(kern1.getId());
-    ref1.setPassageGroepId(groep1.getId());
+    ref1.setBezwaarGroepId(groep1.getId());
     referentieRepository.save(ref1);
 
     final var groep2 = maakPassageGroep(clusteringTaak.getId(), "Passage 2");
     var ref2 = new KernbezwaarReferentieEntiteit();
     ref2.setKernbezwaarId(kern2.getId());
-    ref2.setPassageGroepId(groep2.getId());
+    ref2.setBezwaarGroepId(groep2.getId());
     referentieRepository.save(ref2);
 
     var refs = referentieRepository.findByKernbezwaarIdIn(
@@ -94,12 +92,12 @@ class SuggestiesIntegrationTest extends BaseBezwaarschriftenIntegrationTest {
     return clusteringTaakRepository.save(taak);
   }
 
-  private PassageGroepEntiteit maakPassageGroep(Long clusteringTaakId, String passage) {
-    var groep = new PassageGroepEntiteit();
+  private BezwaarGroep maakPassageGroep(Long clusteringTaakId, String passage) {
+    var groep = new BezwaarGroep();
     groep.setClusteringTaakId(clusteringTaakId);
     groep.setPassage(passage);
     groep.setSamenvatting(passage);
     groep.setCategorie("Test");
-    return passageGroepRepository.save(groep);
+    return bezwaarGroepRepository.save(groep);
   }
 }

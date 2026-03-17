@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
  * Worker die periodiek wachtende tekst-extractie taken oppakt en asynchroon verwerkt.
  *
  * <p>Pollt elke seconde via {@link TekstExtractieService#pakOpVoorVerwerking()}
- * en dient opgepakte taken in bij de thread pool voor parallelle verwerking.
+ * en dient opgepakte documenten in bij de thread pool voor parallelle verwerking.
  */
 @Component
 public class TekstExtractieWorker {
@@ -39,43 +40,47 @@ public class TekstExtractieWorker {
   }
 
   /**
-   * Pollt periodiek voor wachtende taken en dient ze in bij de thread pool.
+   * Pollt periodiek voor documenten met status BEZIG en dient ze in bij de thread pool.
    */
   @Scheduled(fixedDelay = 1000)
   public void verwerkTaken() {
-    var taken = service.pakOpVoorVerwerking();
-    for (var taak : taken) {
-      var future = executor.submit(() -> verwerkTaak(taak));
-      lopendeTaken.put(taak.getId(), future);
+    var documenten = service.pakOpVoorVerwerking();
+    for (var document : documenten) {
+      if (lopendeTaken.containsKey(document.getId())) {
+        continue;
+      }
+      var future = executor.submit(() -> verwerkDocument(document));
+      lopendeTaken.put(document.getId(), future);
     }
   }
 
-  private void verwerkTaak(TekstExtractieTaak taak) {
+  private void verwerkDocument(BezwaarDocument document) {
     try {
-      service.verwerkTaak(taak);
+      service.markeerVerwerkingGestart(document.getId());
+      service.verwerkTaak(document);
     } catch (Throwable e) {
-      LOGGER.error("Fout bij verwerking van tekst-extractie taak {}: {}",
-          taak.getId(), e.getMessage(), e);
+      LOGGER.error("Fout bij verwerking van tekst-extractie document {}: {}",
+          document.getId(), e.getMessage(), e);
       try {
-        service.markeerMislukt(taak.getId(), e.getMessage());
+        service.markeerFout(document.getId(), e.getMessage());
       } catch (IllegalArgumentException ex) {
-        LOGGER.info("Taak {} niet meer aanwezig na fout", taak.getId());
+        LOGGER.info("Document {} niet meer aanwezig na fout", document.getId());
       }
     } finally {
-      lopendeTaken.remove(taak.getId());
+      lopendeTaken.remove(document.getId());
     }
   }
 
   /**
    * Annuleert een lopende tekst-extractie taak.
    *
-   * @param taakId id van de te annuleren taak
+   * @param documentId id van het te annuleren document
    */
-  public void annuleerTaak(Long taakId) {
-    var future = lopendeTaken.remove(taakId);
+  public void annuleerTaak(Long documentId) {
+    var future = lopendeTaken.remove(documentId);
     if (future != null) {
       future.cancel(true);
-      LOGGER.info("Tekst-extractie taak {} geannuleerd", taakId);
+      LOGGER.info("Tekst-extractie voor document {} geannuleerd", documentId);
     }
   }
 }

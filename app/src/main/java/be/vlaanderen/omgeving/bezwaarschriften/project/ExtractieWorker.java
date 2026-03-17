@@ -11,10 +11,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
 /**
- * Worker die periodiek wachtende extractie-taken oppakt en asynchroon verwerkt.
+ * Worker die periodiek documenten met bezwaar-extractie status BEZIG oppakt
+ * en asynchroon verwerkt.
  *
  * <p>Pollt elke seconde via {@link ExtractieTaakService#pakOpVoorVerwerking()}
- * en dient opgepakte taken in bij de thread pool voor parallelle verwerking.
+ * en dient opgepakte documenten in bij de thread pool voor parallelle verwerking.
  */
 @Component
 public class ExtractieWorker {
@@ -30,7 +31,7 @@ public class ExtractieWorker {
   /**
    * Maakt een nieuwe ExtractieWorker aan.
    *
-   * @param service service voor het beheren van extractie-taken
+   * @param service service voor het beheren van bezwaar-extractie
    * @param verwerker verwerker die de daadwerkelijke extractie uitvoert
    * @param executor thread pool voor asynchrone uitvoering
    */
@@ -42,52 +43,56 @@ public class ExtractieWorker {
   }
 
   /**
-   * Pollt periodiek voor wachtende taken en dient ze in bij de thread pool.
+   * Pollt periodiek voor documenten met status BEZIG en dient ze in bij de thread pool.
    */
   @Scheduled(fixedDelay = 1000)
   public void verwerkTaken() {
-    var taken = service.pakOpVoorVerwerking();
-    for (var taak : taken) {
-      var future = executor.submit(() -> verwerkTaak(taak));
-      lopendeTaken.put(taak.getId(), future);
+    var documenten = service.pakOpVoorVerwerking();
+    for (var doc : documenten) {
+      if (lopendeTaken.containsKey(doc.getId())) {
+        continue;
+      }
+      var future = executor.submit(() -> verwerkDocument(doc));
+      lopendeTaken.put(doc.getId(), future);
     }
   }
 
   /**
    * Annuleert een lopende taak door de bijbehorende Future te cancellen.
    *
-   * @param taakId id van de te annuleren taak
+   * @param documentId id van het te annuleren document
    * @return true als de taak gevonden en geannuleerd is, false als er geen lopende taak was
    */
-  public boolean annuleerTaak(Long taakId) {
-    var future = lopendeTaken.remove(taakId);
+  public boolean annuleerTaak(Long documentId) {
+    var future = lopendeTaken.remove(documentId);
     if (future != null) {
-      LOGGER.info("Taak {} geannuleerd", taakId);
+      LOGGER.info("Document {} geannuleerd", documentId);
       return future.cancel(true);
     }
     return false;
   }
 
-  private void verwerkTaak(ExtractieTaak taak) {
+  private void verwerkDocument(BezwaarDocument doc) {
     try {
+      service.markeerVerwerkingGestart(doc.getId());
       var resultaat = verwerker.verwerk(
-          taak.getProjectNaam(),
-          taak.getBestandsnaam(),
-          taak.getAantalPogingen());
+          doc.getProjectNaam(),
+          doc.getBestandsnaam(),
+          0);
       try {
-        service.markeerKlaar(taak.getId(), resultaat);
+        service.markeerKlaar(doc.getId(), resultaat);
       } catch (IllegalArgumentException e) {
-        LOGGER.info("Taak {} niet meer aanwezig na voltooiing (geannuleerd?)", taak.getId());
+        LOGGER.info("Document {} niet meer aanwezig na voltooiing (geannuleerd?)", doc.getId());
       }
     } catch (Throwable e) {
-      LOGGER.error("Fout bij verwerking van taak {}: {}", taak.getId(), e.getMessage(), e);
+      LOGGER.error("Fout bij verwerking van document {}: {}", doc.getId(), e.getMessage(), e);
       try {
-        service.markeerFout(taak.getId(), e.getMessage());
+        service.markeerFout(doc.getId(), e.getMessage());
       } catch (IllegalArgumentException ex) {
-        LOGGER.info("Taak {} niet meer aanwezig na fout (geannuleerd?)", taak.getId());
+        LOGGER.info("Document {} niet meer aanwezig na fout (geannuleerd?)", doc.getId());
       }
     } finally {
-      lopendeTaken.remove(taak.getId());
+      lopendeTaken.remove(doc.getId());
     }
   }
 }

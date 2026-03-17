@@ -21,24 +21,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class ExtractieController {
 
   private final ExtractieTaakService extractieTaakService;
-  private final ExtractieWorker extractieWorker;
   private final TekstExtractieService tekstExtractieService;
   private final TekstExtractieWorker tekstExtractieWorker;
 
   /**
    * Maakt een nieuwe ExtractieController aan.
    *
-   * @param extractieTaakService service voor extractie-takenbeheer
-   * @param extractieWorker worker voor het annuleren van lopende taken
+   * @param extractieTaakService service voor bezwaar-extractie beheer
    * @param tekstExtractieService service voor tekst-extractie taken
    * @param tekstExtractieWorker worker voor tekst-extractie taken
    */
   public ExtractieController(ExtractieTaakService extractieTaakService,
-      ExtractieWorker extractieWorker,
       TekstExtractieService tekstExtractieService,
       TekstExtractieWorker tekstExtractieWorker) {
     this.extractieTaakService = extractieTaakService;
-    this.extractieWorker = extractieWorker;
     this.tekstExtractieService = tekstExtractieService;
     this.tekstExtractieWorker = tekstExtractieWorker;
   }
@@ -80,25 +76,6 @@ public class ExtractieController {
   public ResponseEntity<VerwerkenResponse> verwerken(@PathVariable String naam) {
     int aantal = extractieTaakService.verwerkOnafgeronde(naam);
     return ResponseEntity.ok(new VerwerkenResponse(aantal));
-  }
-
-  /**
-   * Annuleert een extractie-taak. Verwijdert de taak uit de database
-   * en annuleert eventuele lopende verwerking.
-   *
-   * @param naam projectnaam
-   * @param taakId id van de te annuleren taak
-   * @return 204 No Content bij succes, 404 als taak niet gevonden
-   */
-  @DeleteMapping("/{naam}/extracties/{taakId}")
-  public ResponseEntity<Void> annuleer(@PathVariable String naam, @PathVariable Long taakId) {
-    try {
-      extractieTaakService.verwijderTaak(naam, taakId);
-      extractieWorker.annuleerTaak(taakId);
-      return ResponseEntity.noContent().build();
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.notFound().build();
-    }
   }
 
   /**

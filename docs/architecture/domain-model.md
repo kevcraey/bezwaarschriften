@@ -1,6 +1,6 @@
 # Domeinmodel
 
-**Laatst bijgewerkt:** 2026-03-16
+**Laatst bijgewerkt:** 2026-03-17
 
 ---
 
@@ -8,51 +8,28 @@
 
 ```mermaid
 erDiagram
-    BezwaarBestandEntiteit {
+    BezwaarDocument {
         Long id PK
         String projectNaam
         String bestandsnaam
-        BezwaarBestandStatus status
-    }
-
-    TekstExtractieTaak {
-        Long id PK
-        String projectNaam
-        String bestandsnaam
-        TekstExtractieTaakStatus status
-        ExtractieMethode extractieMethode
-        String pseudonimiseringMappingId
+        TekstExtractieStatus tekstExtractieStatus
+        BezwaarExtractieStatus bezwaarExtractieStatus
+        String extractieMethode
+        Integer aantalWoorden
+        boolean heeftPassagesDieNietInTekstVoorkomen
+        boolean heeftManueel
         String foutmelding
-    }
-
-    ExtractieTaak {
-        Long id PK
-        String projectNaam
-        String bestandsnaam
-        ExtractieTaakStatus status
-        String foutmelding
-    }
-
-    GeextraheerdBezwaarEntiteit {
-        Long id PK
-        String projectNaam
-        String bestandsnaam
-        Long taakId FK "traceerbaarheid"
-        String bezwaarTekst
-        float[] embedding
-    }
-
-    ExtractiePassageEntiteit {
-        Long id PK
-        String passageTekst
-        int startPositie
-        int eindPositie
     }
 
     IndividueelBezwaar {
         Long id PK
-        String tekst
-        float[] embedding
+        Long documentId FK
+        String samenvatting
+        String passageTekst
+        boolean passageGevonden
+        boolean manueel
+        float[] embeddingPassage
+        float[] embeddingSamenvatting
     }
 
     KernbezwaarEntiteit {
@@ -63,23 +40,29 @@ erDiagram
 
     KernbezwaarReferentieEntiteit {
         Long id PK
+        Long bezwaarGroepId FK
         ToewijzingsMethode toewijzingsMethode
-        Double score
     }
 
     KernbezwaarAntwoordEntiteit {
-        Long id PK
-        String antwoordTekst
+        Long kernbezwaarId PK
+        String inhoud
+        Instant bijgewerktOp
     }
 
-    PassageGroepEntiteit {
+    BezwaarGroep {
         Long id PK
-        String label
+        Long clusteringTaakId FK
+        String passage
+        String samenvatting
+        String categorie
+        Integer scorePercentage
     }
 
-    PassageGroepLidEntiteit {
+    BezwaarGroepLid {
         Long id PK
-        Double score
+        Long bezwaarGroepId FK
+        Long bezwaarId FK
     }
 
     ClusteringTaak {
@@ -92,22 +75,26 @@ erDiagram
 
     ConsolidatieTaak {
         Long id PK
-        String projectNaam
+        Long documentId FK
         ConsolidatieTaakStatus status
     }
 
-    BezwaarBestandEntiteit ||--o| TekstExtractieTaak : "tekst-extractie"
-    BezwaarBestandEntiteit ||--o| ExtractieTaak : "bezwaar-extractie"
-    BezwaarBestandEntiteit ||--|{ GeextraheerdBezwaarEntiteit : "bevat bezwaren"
-    ExtractieTaak ||--|{ ExtractiePassageEntiteit : "passages"
-    GeextraheerdBezwaarEntiteit }|--|| ExtractiePassageEntiteit : "passage"
-    ExtractieTaak ||--o{ GeextraheerdBezwaarEntiteit : "traceerbaarheid"
+    PseudonimiseringChunk {
+        Long id PK
+        Long documentId FK
+        int volgnummer
+        String mappingId
+    }
+
+    BezwaarDocument ||--|{ IndividueelBezwaar : "bevat"
+    BezwaarDocument ||--o{ PseudonimiseringChunk : "pseudonimisering"
+    BezwaarDocument ||--o{ ConsolidatieTaak : "consolidatie"
+    IndividueelBezwaar ||--o{ BezwaarGroepLid : "lid van"
+    BezwaarGroep ||--|{ BezwaarGroepLid : "leden"
     KernbezwaarEntiteit ||--|{ KernbezwaarReferentieEntiteit : "referenties"
-    KernbezwaarReferentieEntiteit }|--|| GeextraheerdBezwaarEntiteit : "bezwaar"
+    KernbezwaarReferentieEntiteit }|--|| BezwaarGroep : "verwijst naar"
     KernbezwaarEntiteit ||--o| KernbezwaarAntwoordEntiteit : "antwoord"
-    KernbezwaarEntiteit ||--|{ PassageGroepEntiteit : "passage-groepen"
-    PassageGroepEntiteit ||--|{ PassageGroepLidEntiteit : "leden"
-    PassageGroepLidEntiteit }|--|| ExtractiePassageEntiteit : "passage"
+    ClusteringTaak ||--|{ BezwaarGroep : "produceert"
 ```
 
 ---
@@ -116,16 +103,33 @@ erDiagram
 
 | Package | Entiteit | Tabel | Kernvelden |
 |---------|----------|-------|------------|
-| `project` | `BezwaarBestandEntiteit` | `bezwaar_bestand` | projectNaam, bestandsnaam, status |
-| `project` | `ExtractieTaak` | `extractie_taak` | projectNaam, bestandsnaam, status |
-| `project` | `GeextraheerdBezwaarEntiteit` | `geextraheerd_bezwaar` | **projectNaam, bestandsnaam**, bezwaarTekst, embedding |
-| `project` | `ExtractiePassageEntiteit` | `extractie_passage` | passageTekst, start/eindPositie |
-| `tekstextractie` | `TekstExtractieTaak` | `tekst_extractie_taak` | status, extractieMethode, **pseudonimiseringMappingId** |
-| `domain` | `IndividueelBezwaar` | `individueel_bezwaar` | tekst, embedding |
+| `project` | `BezwaarDocument` | `bezwaar_document` | projectNaam, bestandsnaam, tekstExtractieStatus, bezwaarExtractieStatus |
+| `project` | `IndividueelBezwaar` | `individueel_bezwaar` | documentId, samenvatting, passageTekst, embeddingPassage, embeddingSamenvatting |
+| `tekstextractie` | `PseudonimiseringChunk` | `pseudonimisering_chunk` | documentId, volgnummer, mappingId |
 | `kernbezwaar` | `KernbezwaarEntiteit` | `kernbezwaar` | projectNaam, samenvatting |
-| `kernbezwaar` | `KernbezwaarReferentieEntiteit` | `kernbezwaar_referentie` | toewijzingsMethode, score |
-| `kernbezwaar` | `KernbezwaarAntwoordEntiteit` | `kernbezwaar_antwoord` | antwoordTekst |
-| `kernbezwaar` | `PassageGroepEntiteit` | `passage_groep` | label |
-| `kernbezwaar` | `PassageGroepLidEntiteit` | `passage_groep_lid` | score |
+| `kernbezwaar` | `KernbezwaarReferentieEntiteit` | `kernbezwaar_referentie` | toewijzingsMethode |
+| `kernbezwaar` | `KernbezwaarAntwoordEntiteit` | `kernbezwaar_antwoord` | inhoud, bijgewerktOp |
+| `kernbezwaar` | `BezwaarGroep` | `bezwaar_groep` | passage, samenvatting, categorie, scorePercentage |
+| `kernbezwaar` | `BezwaarGroepLid` | `bezwaar_groep_lid` | bezwaarGroepId, bezwaarId |
 | `kernbezwaar` | `ClusteringTaak` | `clustering_taak` | status, aantalBezwaren, aantalClusters |
-| `consolidatie` | `ConsolidatieTaak` | `consolidatie_taak` | projectNaam, status |
+| `consolidatie` | `ConsolidatieTaak` | `consolidatie_taak` | documentId, status |
+
+---
+
+## Verwijderde entiteiten (Plan 1)
+
+| Entiteit | Reden |
+|----------|-------|
+| `BezwaarBestandEntiteit` | Opgegaan in `BezwaarDocument` |
+| `TekstExtractieTaak` | Efemeer — status geabsorbeerd in `BezwaarDocument` |
+| `ExtractieTaak` | Efemeer — status geabsorbeerd in `BezwaarDocument` |
+| `ExtractiePassageEntiteit` | `passageTekst` is nu veld op `IndividueelBezwaar` |
+| `BezwaarBestandStatus` | Vervangen door `TekstExtractieStatus` + `BezwaarExtractieStatus` |
+
+## Hernoemde entiteiten (Plan 2)
+
+| Oud | Nieuw | Reden |
+|-----|-------|-------|
+| `PassageGroepEntiteit` | `BezwaarGroep` | Functionele naam — groepeert bezwaren, niet passages |
+| `PassageGroepLidEntiteit` | `BezwaarGroepLid` | Consistent met `BezwaarGroep` |
+| `ConsolidatieTaak.projectNaam+bestandsnaam` | `ConsolidatieTaak.documentId` | FK naar `BezwaarDocument` i.p.v. losse velden |

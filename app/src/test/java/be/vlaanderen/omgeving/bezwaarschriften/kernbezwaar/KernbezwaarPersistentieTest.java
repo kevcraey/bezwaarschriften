@@ -24,7 +24,7 @@ class KernbezwaarPersistentieTest {
   private ClusteringTaakRepository clusteringTaakRepository;
 
   @Autowired
-  private PassageGroepRepository passageGroepRepository;
+  private BezwaarGroepRepository bezwaarGroepRepository;
 
   @Autowired
   private TestEntityManager entityManager;
@@ -41,7 +41,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setPassageGroepId(groep.getId());
+    ref.setBezwaarGroepId(groep.getId());
     referentieRepository.save(ref);
 
     entityManager.flush();
@@ -54,7 +54,7 @@ class KernbezwaarPersistentieTest {
     var refs = referentieRepository.findByKernbezwaarIdIn(
         kernen.stream().map(KernbezwaarEntiteit::getId).toList());
     assertThat(refs).hasSize(1);
-    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(groep.getId());
+    assertThat(refs.get(0).getBezwaarGroepId()).isEqualTo(groep.getId());
   }
 
   @Test
@@ -69,7 +69,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setPassageGroepId(groep.getId());
+    ref.setBezwaarGroepId(groep.getId());
     referentieRepository.save(ref);
 
     var antwoord = new KernbezwaarAntwoordEntiteit();
@@ -103,7 +103,7 @@ class KernbezwaarPersistentieTest {
 
     var ref = new KernbezwaarReferentieEntiteit();
     ref.setKernbezwaarId(kern.getId());
-    ref.setPassageGroepId(groep.getId());
+    ref.setBezwaarGroepId(groep.getId());
     referentieRepository.save(ref);
 
     entityManager.flush();
@@ -112,7 +112,7 @@ class KernbezwaarPersistentieTest {
     var refs = referentieRepository.findByKernbezwaarIdIn(
         java.util.List.of(kern.getId()));
     assertThat(refs).hasSize(1);
-    assertThat(refs.get(0).getPassageGroepId()).isEqualTo(groep.getId());
+    assertThat(refs.get(0).getBezwaarGroepId()).isEqualTo(groep.getId());
   }
 
   // --- Helper methoden ---
@@ -125,12 +125,12 @@ class KernbezwaarPersistentieTest {
     return clusteringTaakRepository.save(taak);
   }
 
-  private PassageGroepEntiteit maakPassageGroep(Long clusteringTaakId) {
-    var groep = new PassageGroepEntiteit();
+  private BezwaarGroep maakPassageGroep(Long clusteringTaakId) {
+    var groep = new BezwaarGroep();
     groep.setClusteringTaakId(clusteringTaakId);
     groep.setPassage("test passage");
     groep.setSamenvatting("test samenvatting");
     groep.setCategorie("Test");
-    return passageGroepRepository.save(groep);
+    return bezwaarGroepRepository.save(groep);
   }
 }

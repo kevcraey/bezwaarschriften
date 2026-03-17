@@ -3,17 +3,21 @@ package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarBestandEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarBestandRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarBestandStatus;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarExtractieStatus;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
+import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.ProjectPoort;
+import be.vlaanderen.omgeving.bezwaarschriften.project.TekstExtractieStatus;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,7 +35,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class TekstExtractieServiceTest {
 
   @Mock
-  private TekstExtractieTaakRepository repository;
+  private BezwaarDocumentRepository documentRepository;
+
+  @Mock
+  private IndividueelBezwaarRepository bezwaarRepository;
+
+  @Mock
+  private BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   @Mock
   private PdfTekstExtractor pdfExtractor;
@@ -41,9 +51,6 @@ class TekstExtractieServiceTest {
 
   @Mock
   private ProjectPoort projectPoort;
-
-  @Mock
-  private BezwaarBestandRepository bezwaarBestandRepository;
 
   @Mock
   private TekstExtractieNotificatie notificatie;
@@ -62,261 +69,274 @@ class TekstExtractieServiceTest {
   @BeforeEach
   void setUp() {
     service = new TekstExtractieService(
-        repository, pdfExtractor, kwaliteitsControle, projectPoort,
-        pseudonimiseringPoort, bezwaarBestandRepository, notificatie,
+        documentRepository, bezwaarRepository, bezwaarGroepLidRepository,
+        pdfExtractor, kwaliteitsControle, projectPoort,
+        pseudonimiseringPoort, notificatie,
         chunker, chunkRepository, 2);
   }
 
   @Test
-  void indienen_maaktTaakAanMetStatusWachtend() {
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> {
-      TekstExtractieTaak t = i.getArgument(0);
-      t.setId(1L);
-      return t;
+  void indienen_maaktNieuwDocumentAanMetStatusBezig() {
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> {
+      BezwaarDocument d = i.getArgument(0);
+      d.setId(1L);
+      return d;
     });
 
     var resultaat = service.indienen("windmolens", "bezwaar.pdf");
 
     assertThat(resultaat.getId()).isEqualTo(1L);
+    assertThat(resultaat.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.BEZIG);
 
-    var captor = ArgumentCaptor.forClass(TekstExtractieTaak.class);
-    verify(repository).save(captor.capture());
+    var captor = ArgumentCaptor.forClass(BezwaarDocument.class);
+    verify(documentRepository).save(captor.capture());
     var opgeslagen = captor.getValue();
     assertThat(opgeslagen.getProjectNaam()).isEqualTo("windmolens");
     assertThat(opgeslagen.getBestandsnaam()).isEqualTo("bezwaar.pdf");
-    assertThat(opgeslagen.getStatus()).isEqualTo(TekstExtractieTaakStatus.WACHTEND);
-    assertThat(opgeslagen.getAangemaaktOp()).isNotNull();
+    assertThat(opgeslagen.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.BEZIG);
+    assertThat(opgeslagen.getFoutmelding()).isNull();
   }
 
   @Test
-  void pakOpVoorVerwerking_geeftWachtendeTakenEnZetStatusOpBezig() {
-    var taak1 = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.WACHTEND);
-    var taak2 = maakTaak(2L, "windmolens", "b.pdf", TekstExtractieTaakStatus.WACHTEND);
+  void indienen_hergebruiktBestaandDocument() {
+    var bestaand = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.KLAAR);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
+        .thenReturn(Optional.of(bestaand));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    when(repository.countByStatus(TekstExtractieTaakStatus.BEZIG)).thenReturn(0L);
-    when(repository.findByStatusOrderByAangemaaktOpAsc(TekstExtractieTaakStatus.WACHTEND))
-        .thenReturn(List.of(taak1, taak2));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    var resultaat = service.indienen("windmolens", "bezwaar.pdf");
+
+    assertThat(resultaat.getId()).isEqualTo(1L);
+    assertThat(resultaat.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.BEZIG);
+  }
+
+  @Test
+  void indienen_herExtractieRuimtBezwarenOp() {
+    var bestaand = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.KLAAR);
+    bestaand.setBezwaarExtractieStatus(BezwaarExtractieStatus.KLAAR);
+
+    var bezwaar1 = new IndividueelBezwaar();
+    bezwaar1.setId(10L);
+    bezwaar1.setDocumentId(1L);
+    var bezwaar2 = new IndividueelBezwaar();
+    bezwaar2.setId(11L);
+    bezwaar2.setDocumentId(1L);
+
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
+        .thenReturn(Optional.of(bestaand));
+    when(bezwaarRepository.findByDocumentId(1L)).thenReturn(List.of(bezwaar1, bezwaar2));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
+
+    var resultaat = service.indienen("windmolens", "bezwaar.pdf");
+
+    verify(bezwaarGroepLidRepository).deleteByBezwaarIdIn(List.of(10L, 11L));
+    verify(bezwaarRepository).deleteByDocumentId(1L);
+    assertThat(resultaat.getBezwaarExtractieStatus()).isEqualTo(BezwaarExtractieStatus.GEEN);
+    assertThat(resultaat.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.BEZIG);
+  }
+
+  @Test
+  void pakOpVoorVerwerking_geeftDocumentenMetStatusBezig() {
+    var doc1 = maakDocument(1L, "windmolens", "a.pdf", TekstExtractieStatus.BEZIG);
+    var doc2 = maakDocument(2L, "windmolens", "b.pdf", TekstExtractieStatus.BEZIG);
+
+    when(documentRepository.findByTekstExtractieStatus(TekstExtractieStatus.BEZIG))
+        .thenReturn(List.of(doc1, doc2));
 
     var resultaat = service.pakOpVoorVerwerking();
 
     assertThat(resultaat).hasSize(2);
-    assertThat(taak1.getStatus()).isEqualTo(TekstExtractieTaakStatus.BEZIG);
-    assertThat(taak2.getStatus()).isEqualTo(TekstExtractieTaakStatus.BEZIG);
-    assertThat(taak1.getVerwerkingGestartOp()).isNotNull();
-    assertThat(taak2.getVerwerkingGestartOp()).isNotNull();
   }
 
   @Test
   void pakOpVoorVerwerking_respecteertMaxConcurrentLimiet() {
-    var taak1 = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.WACHTEND);
-    var taak2 = maakTaak(2L, "windmolens", "b.pdf", TekstExtractieTaakStatus.WACHTEND);
-    var taak3 = maakTaak(3L, "windmolens", "c.pdf", TekstExtractieTaakStatus.WACHTEND);
+    var doc1 = maakDocument(1L, "windmolens", "a.pdf", TekstExtractieStatus.BEZIG);
+    var doc2 = maakDocument(2L, "windmolens", "b.pdf", TekstExtractieStatus.BEZIG);
+    var doc3 = maakDocument(3L, "windmolens", "c.pdf", TekstExtractieStatus.BEZIG);
 
-    // maxConcurrent = 2, er is al 1 bezig
-    when(repository.countByStatus(TekstExtractieTaakStatus.BEZIG)).thenReturn(1L);
-    when(repository.findByStatusOrderByAangemaaktOpAsc(TekstExtractieTaakStatus.WACHTEND))
-        .thenReturn(List.of(taak1, taak2, taak3));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findByTekstExtractieStatus(TekstExtractieStatus.BEZIG))
+        .thenReturn(List.of(doc1, doc2, doc3));
 
     var resultaat = service.pakOpVoorVerwerking();
 
-    // Slechts 1 slot beschikbaar (max 2, al 1 bezig)
-    assertThat(resultaat).hasSize(1);
+    // maxConcurrent = 2
+    assertThat(resultaat).hasSize(2);
   }
 
   @Test
-  void pakOpVoorVerwerking_geeftLegeLijstAlsGeenSlotsVrij() {
-    when(repository.countByStatus(TekstExtractieTaakStatus.BEZIG)).thenReturn(2L);
+  void pakOpVoorVerwerking_geeftLegeLijstAlsGeenDocumenten() {
+    when(documentRepository.findByTekstExtractieStatus(TekstExtractieStatus.BEZIG))
+        .thenReturn(List.of());
 
     var resultaat = service.pakOpVoorVerwerking();
 
     assertThat(resultaat).isEmpty();
-    verify(repository, never())
-        .findByStatusOrderByAangemaaktOpAsc(any());
   }
 
   @Test
   void markeerKlaar_zetStatusKlaarEnExtractieMethode() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    var doc = maakDocument(1L, "windmolens", "a.pdf", TekstExtractieStatus.BEZIG);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
     service.markeerKlaar(1L, ExtractieMethode.DIGITAAL);
 
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
-    assertThat(taak.getExtractieMethode()).isEqualTo(ExtractieMethode.DIGITAAL);
-    assertThat(taak.getAfgerondOp()).isNotNull();
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.KLAAR);
+    assertThat(doc.getExtractieMethode()).isEqualTo("DIGITAAL");
   }
 
   @Test
-  void markeerMislukt_zetStatusMisluktEnFoutmelding() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+  void markeerFout_zetStatusFoutEnFoutmelding() {
+    var doc = maakDocument(1L, "windmolens", "a.pdf", TekstExtractieStatus.BEZIG);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.markeerMislukt(1L, "Bestand niet gevonden");
+    service.markeerFout(1L, "Bestand niet gevonden");
 
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
-    assertThat(taak.getFoutmelding()).isEqualTo("Bestand niet gevonden");
-    assertThat(taak.getAfgerondOp()).isNotNull();
-  }
-
-  @Test
-  void markeerOcrNietBeschikbaar_zetStatusOcrNietBeschikbaar() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
-
-    service.markeerOcrNietBeschikbaar(1L, "Tesseract niet gevonden");
-
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.OCR_NIET_BESCHIKBAAR);
-    assertThat(taak.getFoutmelding()).isEqualTo("Tesseract niet gevonden");
-    assertThat(taak.getAfgerondOp()).isNotNull();
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.FOUT);
+    assertThat(doc.getFoutmelding()).isEqualTo("Bestand niet gevonden");
   }
 
   @Test
   void isTekstExtractieKlaar_geeftTrueWanneerStatusKlaar() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.KLAAR);
-    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
-        "windmolens", "a.pdf")).thenReturn(Optional.of(taak));
+    var doc = maakDocument(1L, "windmolens", "a.pdf", TekstExtractieStatus.KLAAR);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "a.pdf"))
+        .thenReturn(Optional.of(doc));
 
     assertThat(service.isTekstExtractieKlaar("windmolens", "a.pdf")).isTrue();
   }
 
   @Test
   void isTekstExtractieKlaar_geeftFalseWanneerStatusNietKlaar() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
-    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
-        "windmolens", "a.pdf")).thenReturn(Optional.of(taak));
+    var doc = maakDocument(1L, "windmolens", "a.pdf", TekstExtractieStatus.BEZIG);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "a.pdf"))
+        .thenReturn(Optional.of(doc));
 
     assertThat(service.isTekstExtractieKlaar("windmolens", "a.pdf")).isFalse();
   }
 
   @Test
-  void isTekstExtractieKlaar_geeftFalseWanneerGeenTaakBestaat() {
-    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
-        "windmolens", "a.pdf")).thenReturn(Optional.empty());
+  void isTekstExtractieKlaar_geeftFalseWanneerGeenDocumentBestaat() {
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "a.pdf"))
+        .thenReturn(Optional.empty());
 
     assertThat(service.isTekstExtractieKlaar("windmolens", "a.pdf")).isFalse();
   }
 
   @Test
   void verwerkTaak_verwerktPdfSuccesvol() throws IOException {
-    var taak = maakTaak(1L, "windmolens", "bezwaar.pdf", TekstExtractieTaakStatus.BEZIG);
+    var doc = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.BEZIG);
     var pad = Path.of("/tmp/bezwaar.pdf");
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad)).thenReturn(
-        new TekstExtractieResultaat("Geextraheerde tekst", ExtractieMethode.DIGITAAL,
-            "OK"));
+        new TekstExtractieResultaat("Geextraheerde tekst", ExtractieMethode.DIGITAAL, "OK"));
     when(chunker.chunk("Geextraheerde tekst")).thenReturn(List.of("Geextraheerde tekst"));
     when(pseudonimiseringPoort.pseudonimiseer("Geextraheerde tekst")).thenReturn(
         new PseudonimiseringResultaat("Geextraheerde tekst", "stub-mapping-id"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
     verify(projectPoort).slaTekstOp("windmolens", "bezwaar.pdf", "Geextraheerde tekst");
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
-    assertThat(taak.getExtractieMethode()).isEqualTo(ExtractieMethode.DIGITAAL);
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.KLAAR);
+    assertThat(doc.getExtractieMethode()).isEqualTo("DIGITAAL");
   }
 
   @Test
   void verwerkTaak_verwerktTxtSuccesvol(@TempDir Path tempDir) throws IOException {
     var txtBestand = tempDir.resolve("bezwaar.txt");
-    // Maak een tekst met voldoende woorden voor de kwaliteitscontrole
     var tekst = "Dit is een test tekst met voldoende woorden ".repeat(10);
     Files.writeString(txtBestand, tekst);
 
-    var taak = maakTaak(1L, "windmolens", "bezwaar.txt", TekstExtractieTaakStatus.BEZIG);
+    var doc = maakDocument(1L, "windmolens", "bezwaar.txt", TekstExtractieStatus.BEZIG);
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.txt")).thenReturn(txtBestand);
     when(kwaliteitsControle.controleer(tekst))
         .thenReturn(TekstKwaliteitsControle.Resultaat.valide());
     when(chunker.chunk(tekst)).thenReturn(List.of(tekst));
     when(pseudonimiseringPoort.pseudonimiseer(tekst)).thenReturn(
         new PseudonimiseringResultaat(tekst, "stub-mapping-id"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
     verify(projectPoort).slaTekstOp("windmolens", "bezwaar.txt", tekst);
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.KLAAR);
   }
 
   @Test
-  void verwerkTaak_txtMetOnvoldoendeKwaliteitWordtMislukt(@TempDir Path tempDir)
+  void verwerkTaak_txtMetOnvoldoendeKwaliteitWordtFout(@TempDir Path tempDir)
       throws IOException {
     var txtBestand = tempDir.resolve("slecht.txt");
     Files.writeString(txtBestand, "korte tekst");
 
-    var taak = maakTaak(1L, "windmolens", "slecht.txt", TekstExtractieTaakStatus.BEZIG);
+    var doc = maakDocument(1L, "windmolens", "slecht.txt", TekstExtractieStatus.BEZIG);
     when(projectPoort.geefBestandsPad("windmolens", "slecht.txt")).thenReturn(txtBestand);
     when(kwaliteitsControle.controleer("korte tekst"))
         .thenReturn(TekstKwaliteitsControle.Resultaat.ongeldig("Te weinig woorden"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
     verify(projectPoort, never()).slaTekstOp(anyString(), anyString(), anyString());
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
-    assertThat(taak.getFoutmelding()).contains("Te weinig woorden");
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.FOUT);
+    assertThat(doc.getFoutmelding()).contains("Te weinig woorden");
   }
 
   @Test
-  void verwerkTaak_ocrNietBeschikbaarWordtCorrectAfgehandeld() throws IOException {
-    var taak = maakTaak(1L, "windmolens", "scan.pdf", TekstExtractieTaakStatus.BEZIG);
+  void verwerkTaak_ocrNietBeschikbaarWordtFout() throws IOException {
+    var doc = maakDocument(1L, "windmolens", "scan.pdf", TekstExtractieStatus.BEZIG);
     var pad = Path.of("/tmp/scan.pdf");
     when(projectPoort.geefBestandsPad("windmolens", "scan.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad))
         .thenThrow(new OcrNietBeschikbaarException("Tesseract niet gevonden"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.OCR_NIET_BESCHIKBAAR);
-    assertThat(taak.getFoutmelding()).contains("Tesseract niet gevonden");
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.FOUT);
+    assertThat(doc.getFoutmelding()).contains("Tesseract niet gevonden");
   }
 
   @Test
-  void verwerkTaak_onverwachteFoutWordtMislukt() throws IOException {
-    var taak = maakTaak(1L, "windmolens", "fout.pdf", TekstExtractieTaakStatus.BEZIG);
+  void verwerkTaak_onverwachteFoutWordtFout() throws IOException {
+    var doc = maakDocument(1L, "windmolens", "fout.pdf", TekstExtractieStatus.BEZIG);
     var pad = Path.of("/tmp/fout.pdf");
     when(projectPoort.geefBestandsPad("windmolens", "fout.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad)).thenThrow(new IOException("Bestand corrupt"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
-    assertThat(taak.getFoutmelding()).contains("Bestand corrupt");
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.FOUT);
+    assertThat(doc.getFoutmelding()).contains("Bestand corrupt");
   }
 
   @Test
   void verwerkTaak_nietOndersteundBestandstype() {
-    var taak = maakTaak(1L, "windmolens", "foto.jpg", TekstExtractieTaakStatus.BEZIG);
+    var doc = maakDocument(1L, "windmolens", "foto.jpg", TekstExtractieStatus.BEZIG);
     var pad = Path.of("/tmp/foto.jpg");
     when(projectPoort.geefBestandsPad("windmolens", "foto.jpg")).thenReturn(pad);
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
-    assertThat(taak.getFoutmelding()).contains("Niet-ondersteund bestandstype");
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.FOUT);
+    assertThat(doc.getFoutmelding()).contains("Niet-ondersteund bestandstype");
   }
 
   @Test
   void geefGeextraheerdetekstLeestVanBestandssysteem(@TempDir Path tempDir) throws IOException {
-    var taak = new TekstExtractieTaak();
-    taak.setStatus(TekstExtractieTaakStatus.KLAAR);
-    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
-        "windmolens", "bezwaar.pdf"))
-        .thenReturn(Optional.of(taak));
+    var doc = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.KLAAR);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
+        .thenReturn(Optional.of(doc));
     var pad = tempDir.resolve("test-tekst.txt");
     Files.writeString(pad, "Testinhoud");
     when(projectPoort.geefTekstBestandsPad("windmolens", "bezwaar.pdf"))
@@ -328,12 +348,10 @@ class TekstExtractieServiceTest {
   }
 
   @Test
-  void geefGeextraheerdetekstRetourneertNullAlsTaakNietKlaar() {
-    var taak = new TekstExtractieTaak();
-    taak.setStatus(TekstExtractieTaakStatus.BEZIG);
-    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
-        "windmolens", "bezwaar.pdf"))
-        .thenReturn(Optional.of(taak));
+  void geefGeextraheerdetekstRetourneertNullAlsDocumentNietKlaar() {
+    var doc = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.BEZIG);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
+        .thenReturn(Optional.of(doc));
 
     var resultaat = service.geefGeextraheerdetekst("windmolens", "bezwaar.pdf");
 
@@ -341,9 +359,8 @@ class TekstExtractieServiceTest {
   }
 
   @Test
-  void geefGeextraheerdetekstRetourneertNullAlsGeenTaak() {
-    when(repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
-        "windmolens", "bezwaar.pdf"))
+  void geefGeextraheerdetekstRetourneertNullAlsGeenDocument() {
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
         .thenReturn(Optional.empty());
 
     var resultaat = service.geefGeextraheerdetekst("windmolens", "bezwaar.pdf");
@@ -353,10 +370,12 @@ class TekstExtractieServiceTest {
 
   @Test
   void indienen_stuurtWebSocketNotificatie() {
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> {
-      TekstExtractieTaak t = i.getArgument(0);
-      t.setId(1L);
-      return t;
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> {
+      BezwaarDocument d = i.getArgument(0);
+      d.setId(1L);
+      return d;
     });
 
     service.indienen("windmolens", "bezwaar.pdf");
@@ -364,137 +383,27 @@ class TekstExtractieServiceTest {
     var captor = ArgumentCaptor.forClass(TekstExtractieTaakDto.class);
     verify(notificatie).tekstExtractieTaakGewijzigd(captor.capture());
     var dto = captor.getValue();
-    assertThat(dto.status()).isEqualTo("tekst-extractie-wachtend");
+    assertThat(dto.tekstExtractieStatus()).isEqualTo("BEZIG");
     assertThat(dto.projectNaam()).isEqualTo("windmolens");
     assertThat(dto.bestandsnaam()).isEqualTo("bezwaar.pdf");
   }
 
   @Test
   void markeerKlaar_stuurtWebSocketNotificatie() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    var doc = maakDocument(1L, "windmolens", "a.pdf", TekstExtractieStatus.BEZIG);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
     service.markeerKlaar(1L, ExtractieMethode.DIGITAAL);
 
     var captor = ArgumentCaptor.forClass(TekstExtractieTaakDto.class);
     verify(notificatie).tekstExtractieTaakGewijzigd(captor.capture());
-    assertThat(captor.getValue().status()).isEqualTo("tekst-extractie-klaar");
-  }
-
-  @Test
-  void pakOpVoorVerwerking_stuurtWebSocketNotificatiePerTaak() {
-    var taak1 = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.WACHTEND);
-    when(repository.countByStatus(TekstExtractieTaakStatus.BEZIG)).thenReturn(0L);
-    when(repository.findByStatusOrderByAangemaaktOpAsc(TekstExtractieTaakStatus.WACHTEND))
-        .thenReturn(List.of(taak1));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
-
-    service.pakOpVoorVerwerking();
-
-    var captor = ArgumentCaptor.forClass(TekstExtractieTaakDto.class);
-    verify(notificatie).tekstExtractieTaakGewijzigd(captor.capture());
-    assertThat(captor.getValue().status()).isEqualTo("tekst-extractie-bezig");
-  }
-
-  @Test
-  void indienenUpdatetBezwaarBestandNaarTekstExtractieWachtend() {
-    when(repository.save(any(TekstExtractieTaak.class)))
-        .thenAnswer(i -> i.getArgument(0));
-    var bestandEntiteit = new BezwaarBestandEntiteit();
-    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
-        .thenReturn(Optional.of(bestandEntiteit));
-    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
-        .thenAnswer(i -> i.getArgument(0));
-
-    service.indienen("windmolens", "bezwaar.pdf");
-
-    assertThat(bestandEntiteit.getStatus())
-        .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_WACHTEND);
-    verify(bezwaarBestandRepository).save(bestandEntiteit);
-  }
-
-  @Test
-  void pakOpVoorVerwerkingUpdatetBezwaarBestandNaarTekstExtractieBezig() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.WACHTEND);
-    when(repository.countByStatus(TekstExtractieTaakStatus.BEZIG)).thenReturn(0L);
-    when(repository.findByStatusOrderByAangemaaktOpAsc(TekstExtractieTaakStatus.WACHTEND))
-        .thenReturn(List.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
-
-    var bestandEntiteit = new BezwaarBestandEntiteit();
-    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "a.pdf"))
-        .thenReturn(Optional.of(bestandEntiteit));
-    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
-        .thenAnswer(i -> i.getArgument(0));
-
-    service.pakOpVoorVerwerking();
-
-    assertThat(bestandEntiteit.getStatus())
-        .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_BEZIG);
-    verify(bezwaarBestandRepository).save(bestandEntiteit);
-  }
-
-  @Test
-  void markeerKlaarUpdatetBezwaarBestandNaarTekstExtractieKlaar() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
-
-    var bestandEntiteit = new BezwaarBestandEntiteit();
-    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "a.pdf"))
-        .thenReturn(Optional.of(bestandEntiteit));
-    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
-        .thenAnswer(i -> i.getArgument(0));
-
-    service.markeerKlaar(1L, ExtractieMethode.DIGITAAL);
-
-    assertThat(bestandEntiteit.getStatus())
-        .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR);
-    verify(bezwaarBestandRepository).save(bestandEntiteit);
-  }
-
-  @Test
-  void markeerMisluktUpdatetBezwaarBestandNaarTekstExtractieMislukt() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
-
-    var bestandEntiteit = new BezwaarBestandEntiteit();
-    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "a.pdf"))
-        .thenReturn(Optional.of(bestandEntiteit));
-    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
-        .thenAnswer(i -> i.getArgument(0));
-
-    service.markeerMislukt(1L, "Bestand niet gevonden");
-
-    assertThat(bestandEntiteit.getStatus())
-        .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT);
-    verify(bezwaarBestandRepository).save(bestandEntiteit);
-  }
-
-  @Test
-  void markeerOcrNietBeschikbaarUpdatetBezwaarBestandNaarOcrNietBeschikbaar() {
-    var taak = maakTaak(1L, "windmolens", "a.pdf", TekstExtractieTaakStatus.BEZIG);
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
-
-    var bestandEntiteit = new BezwaarBestandEntiteit();
-    when(bezwaarBestandRepository.findByProjectNaamAndBestandsnaam("windmolens", "a.pdf"))
-        .thenReturn(Optional.of(bestandEntiteit));
-    when(bezwaarBestandRepository.save(any(BezwaarBestandEntiteit.class)))
-        .thenAnswer(i -> i.getArgument(0));
-
-    service.markeerOcrNietBeschikbaar(1L, "Tesseract niet gevonden");
-
-    assertThat(bestandEntiteit.getStatus())
-        .isEqualTo(BezwaarBestandStatus.TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR);
-    verify(bezwaarBestandRepository).save(bestandEntiteit);
+    assertThat(captor.getValue().tekstExtractieStatus()).isEqualTo("KLAAR");
   }
 
   @Test
   void verwerkTaak_pseudonimiseertPdfTekstVoorOpslag() throws IOException {
-    var taak = maakTaak(1L, "windmolens", "bezwaar.pdf", TekstExtractieTaakStatus.BEZIG);
+    var doc = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.BEZIG);
     var pad = Path.of("/tmp/bezwaar.pdf");
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad)).thenReturn(
@@ -502,15 +411,15 @@ class TekstExtractieServiceTest {
     when(chunker.chunk("Jan uit Gent")).thenReturn(List.of("Jan uit Gent"));
     when(pseudonimiseringPoort.pseudonimiseer("Jan uit Gent")).thenReturn(
         new PseudonimiseringResultaat("{persoon_1} uit {adres_1}", "mapping-uuid-123"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
     // Gepseudonimiseerde tekst wordt opgeslagen, niet de originele
     verify(projectPoort).slaTekstOp("windmolens", "bezwaar.pdf", "{persoon_1} uit {adres_1}");
     verify(chunkRepository).save(any(PseudonimiseringChunk.class));
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.KLAAR);
   }
 
   @Test
@@ -519,25 +428,25 @@ class TekstExtractieServiceTest {
     var tekst = "Maria uit Antwerpen " + "heeft een bezwaar ".repeat(10);
     Files.writeString(txtBestand, tekst);
 
-    var taak = maakTaak(1L, "windmolens", "bezwaar.txt", TekstExtractieTaakStatus.BEZIG);
+    var doc = maakDocument(1L, "windmolens", "bezwaar.txt", TekstExtractieStatus.BEZIG);
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.txt")).thenReturn(txtBestand);
     when(kwaliteitsControle.controleer(tekst))
         .thenReturn(TekstKwaliteitsControle.Resultaat.valide());
     when(chunker.chunk(tekst)).thenReturn(List.of(tekst));
     when(pseudonimiseringPoort.pseudonimiseer(tekst)).thenReturn(
         new PseudonimiseringResultaat("{persoon_1} uit {adres_1}", "mapping-uuid-456"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
     verify(projectPoort).slaTekstOp("windmolens", "bezwaar.txt", "{persoon_1} uit {adres_1}");
     verify(chunkRepository).save(any(PseudonimiseringChunk.class));
   }
 
   @Test
-  void verwerkTaak_pseudonimiseringFoutWordtMislukt() throws IOException {
-    var taak = maakTaak(1L, "windmolens", "bezwaar.pdf", TekstExtractieTaakStatus.BEZIG);
+  void verwerkTaak_pseudonimiseringFoutWordtFout() throws IOException {
+    var doc = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.BEZIG);
     var pad = Path.of("/tmp/bezwaar.pdf");
     when(projectPoort.geefBestandsPad("windmolens", "bezwaar.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad)).thenReturn(
@@ -545,19 +454,19 @@ class TekstExtractieServiceTest {
     when(chunker.chunk("tekst")).thenReturn(List.of("tekst"));
     when(pseudonimiseringPoort.pseudonimiseer("tekst"))
         .thenThrow(new PseudonimiseringException("Obscuro onbereikbaar"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
-    assertThat(taak.getFoutmelding()).contains("Obscuro onbereikbaar");
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.FOUT);
+    assertThat(doc.getFoutmelding()).contains("Obscuro onbereikbaar");
     verify(projectPoort, never()).slaTekstOp(anyString(), anyString(), anyString());
   }
 
   @Test
   void verwerkTaak_multiChunkSlaatMeerdereChunksOp() throws IOException {
-    var taak = maakTaak(1L, "windmolens", "groot.pdf", TekstExtractieTaakStatus.BEZIG);
+    var doc = maakDocument(1L, "windmolens", "groot.pdf", TekstExtractieStatus.BEZIG);
     var pad = Path.of("/tmp/groot.pdf");
     when(projectPoort.geefBestandsPad("windmolens", "groot.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad)).thenReturn(
@@ -570,23 +479,23 @@ class TekstExtractieServiceTest {
         new PseudonimiseringResultaat("{p2}", "map-1"));
     when(pseudonimiseringPoort.pseudonimiseer("deel3")).thenReturn(
         new PseudonimiseringResultaat("{p3}", "map-2"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
     // Chunks worden samengevoegd met dubbele newline
     verify(projectPoort).slaTekstOp("windmolens", "groot.pdf", "{p1}\n\n{p2}\n\n{p3}");
     // Eerdere chunks worden opgeruimd
-    verify(chunkRepository).deleteByTaakId(1L);
+    verify(chunkRepository).deleteByDocumentId(1L);
     // 3 chunks opgeslagen
     verify(chunkRepository, times(3)).save(any(PseudonimiseringChunk.class));
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.KLAAR);
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.KLAAR);
   }
 
   @Test
   void verwerkTaak_partieleChunkFoutRolltTerug() throws IOException {
-    var taak = maakTaak(1L, "windmolens", "groot.pdf", TekstExtractieTaakStatus.BEZIG);
+    var doc = maakDocument(1L, "windmolens", "groot.pdf", TekstExtractieStatus.BEZIG);
     var pad = Path.of("/tmp/groot.pdf");
     when(projectPoort.geefBestandsPad("windmolens", "groot.pdf")).thenReturn(pad);
     when(pdfExtractor.extraheer(pad)).thenReturn(
@@ -596,42 +505,34 @@ class TekstExtractieServiceTest {
         new PseudonimiseringResultaat("{p1}", "map-0"));
     when(pseudonimiseringPoort.pseudonimiseer("deel2"))
         .thenThrow(new PseudonimiseringException("Timeout bij chunk 2"));
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
-    when(repository.save(any(TekstExtractieTaak.class))).thenAnswer(i -> i.getArgument(0));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
-    service.verwerkTaak(taak);
+    service.verwerkTaak(doc);
 
-    assertThat(taak.getStatus()).isEqualTo(TekstExtractieTaakStatus.MISLUKT);
-    assertThat(taak.getFoutmelding()).contains("Timeout bij chunk 2");
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.FOUT);
+    assertThat(doc.getFoutmelding()).contains("Timeout bij chunk 2");
     verify(projectPoort, never()).slaTekstOp(anyString(), anyString(), anyString());
   }
 
-  private TekstExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam,
-      TekstExtractieTaakStatus status) {
-    var taak = new TekstExtractieTaak();
-    taak.setId(id);
-    taak.setProjectNaam(projectNaam);
-    taak.setBestandsnaam(bestandsnaam);
-    taak.setStatus(status);
-    taak.setAangemaaktOp(java.time.Instant.parse("2026-03-11T10:00:00Z"));
-    return taak;
-  }
-
   @Test
-  void verwijderTaak_verwijdertBestaandeTaak() {
-    var taak = new TekstExtractieTaak();
-    taak.setProjectNaam("windmolens");
-    taak.setBestandsnaam("bezwaar.pdf");
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+  void verwijderTaak_resetDocumentStatus() {
+    var doc = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.KLAAR);
+    doc.setExtractieMethode("DIGITAAL");
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
 
     service.verwijderTaak("windmolens", 1L);
 
-    verify(repository).delete(taak);
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.GEEN);
+    assertThat(doc.getExtractieMethode()).isNull();
+    assertThat(doc.getFoutmelding()).isNull();
+    verify(documentRepository).save(doc);
   }
 
   @Test
-  void verwijderTaak_gooitExceptieAlsTaakNietBestaat() {
-    when(repository.findById(99L)).thenReturn(Optional.empty());
+  void verwijderTaak_gooitExceptieAlsDocumentNietBestaat() {
+    when(documentRepository.findById(99L)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.verwijderTaak("windmolens", 99L))
         .isInstanceOf(IllegalArgumentException.class);
@@ -639,11 +540,45 @@ class TekstExtractieServiceTest {
 
   @Test
   void verwijderTaak_gooitExceptieAlsProjectNietKlopt() {
-    var taak = new TekstExtractieTaak();
-    taak.setProjectNaam("anderProject");
-    when(repository.findById(1L)).thenReturn(Optional.of(taak));
+    var doc = maakDocument(1L, "anderProject", "bezwaar.pdf", TekstExtractieStatus.KLAAR);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
 
     assertThatThrownBy(() -> service.verwijderTaak("windmolens", 1L))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void herstartTekstExtractie_vanFoutNaarBezig() {
+    var doc = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.FOUT);
+    doc.setFoutmelding("Eerdere fout");
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
+        .thenReturn(Optional.of(doc));
+    when(documentRepository.save(any(BezwaarDocument.class))).thenAnswer(i -> i.getArgument(0));
+
+    var dto = service.herstartTekstExtractie("windmolens", "bezwaar.pdf");
+
+    assertThat(doc.getTekstExtractieStatus()).isEqualTo(TekstExtractieStatus.BEZIG);
+    assertThat(doc.getFoutmelding()).isNull();
+    assertThat(dto.tekstExtractieStatus()).isEqualTo("BEZIG");
+  }
+
+  @Test
+  void herstartTekstExtractie_gooitExceptieAlsNietInFoutStatus() {
+    var doc = maakDocument(1L, "windmolens", "bezwaar.pdf", TekstExtractieStatus.KLAAR);
+    when(documentRepository.findByProjectNaamAndBestandsnaam("windmolens", "bezwaar.pdf"))
+        .thenReturn(Optional.of(doc));
+
+    assertThatThrownBy(() -> service.herstartTekstExtractie("windmolens", "bezwaar.pdf"))
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  private BezwaarDocument maakDocument(Long id, String projectNaam, String bestandsnaam,
+      TekstExtractieStatus status) {
+    var doc = new BezwaarDocument();
+    doc.setId(id);
+    doc.setProjectNaam(projectNaam);
+    doc.setBestandsnaam(bestandsnaam);
+    doc.setTekstExtractieStatus(status);
+    return doc;
   }
 }

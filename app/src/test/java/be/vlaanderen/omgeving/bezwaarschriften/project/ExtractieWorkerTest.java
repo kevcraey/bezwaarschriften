@@ -11,7 +11,6 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,9 +48,9 @@ class ExtractieWorkerTest {
   }
 
   @Test
-  void paktTakenOpEnVoertUit() {
-    var taak = maakTaak(1L, "windmolens", "bezwaar-001.txt", 0);
-    when(service.pakOpVoorVerwerking()).thenReturn(List.of(taak));
+  void paktDocumentenOpEnVoertUit() {
+    var doc = maakDocument(1L, "windmolens", "bezwaar-001.txt");
+    when(service.pakOpVoorVerwerking()).thenReturn(List.of(doc));
     when(verwerker.verwerk("windmolens", "bezwaar-001.txt", 0))
         .thenReturn(new ExtractieResultaat(500, 7));
 
@@ -62,9 +61,9 @@ class ExtractieWorkerTest {
 
   @Test
   void markeertFoutBijException() {
-    var taak = maakTaak(2L, "snelweg", "bezwaar-042.txt", 1);
-    when(service.pakOpVoorVerwerking()).thenReturn(List.of(taak));
-    when(verwerker.verwerk("snelweg", "bezwaar-042.txt", 1))
+    var doc = maakDocument(2L, "snelweg", "bezwaar-042.txt");
+    when(service.pakOpVoorVerwerking()).thenReturn(List.of(doc));
+    when(verwerker.verwerk("snelweg", "bezwaar-042.txt", 0))
         .thenThrow(new RuntimeException("AI-service onbereikbaar"));
 
     worker.verwerkTaken();
@@ -73,7 +72,7 @@ class ExtractieWorkerTest {
   }
 
   @Test
-  void doetNietsAlsGeenTakenBeschikbaar() {
+  void doetNietsAlsGeenDocumentenBeschikbaar() {
     when(service.pakOpVoorVerwerking()).thenReturn(List.of());
 
     worker.verwerkTaken();
@@ -85,8 +84,8 @@ class ExtractieWorkerTest {
 
   @Test
   void annuleerTaakCanceltLopendeFuture() throws Exception {
-    var taak = maakTaak(5L, "windmolens", "stuck.txt", 0);
-    when(service.pakOpVoorVerwerking()).thenReturn(List.of(taak));
+    var doc = maakDocument(5L, "windmolens", "stuck.txt");
+    when(service.pakOpVoorVerwerking()).thenReturn(List.of(doc));
     when(verwerker.verwerk("windmolens", "stuck.txt", 0))
         .thenAnswer(invocation -> {
           Thread.sleep(10_000);
@@ -102,21 +101,39 @@ class ExtractieWorkerTest {
   }
 
   @Test
+  void slaaDocumentOverDatAlInLopendeTakenZit() throws Exception {
+    var doc = maakDocument(3L, "windmolens", "bezwaar-003.txt");
+    when(service.pakOpVoorVerwerking()).thenReturn(List.of(doc));
+    when(verwerker.verwerk("windmolens", "bezwaar-003.txt", 0))
+        .thenAnswer(invocation -> {
+          Thread.sleep(5_000);
+          return new ExtractieResultaat(100, 1);
+        });
+
+    // Eerste poll: document wordt ingediend
+    worker.verwerkTaken();
+    Thread.sleep(200);
+
+    // Tweede poll: zelfde document wordt opnieuw aangeboden, maar moet overgeslagen worden
+    worker.verwerkTaken();
+
+    // Verwerk mag maar 1x aangeroepen zijn (niet 2x)
+    verify(verwerker, timeout(1000).times(1)).verwerk("windmolens", "bezwaar-003.txt", 0);
+  }
+
+  @Test
   void annuleerTaakRetourneertFalseVoorOnbekendeTaak() {
     boolean geannuleerd = worker.annuleerTaak(999L);
 
     assertThat(geannuleerd).isFalse();
   }
 
-  private ExtractieTaak maakTaak(Long id, String projectNaam, String bestandsnaam, int pogingen) {
-    var taak = new ExtractieTaak();
-    taak.setId(id);
-    taak.setProjectNaam(projectNaam);
-    taak.setBestandsnaam(bestandsnaam);
-    taak.setStatus(ExtractieTaakStatus.BEZIG);
-    taak.setAantalPogingen(pogingen);
-    taak.setMaxPogingen(3);
-    taak.setAangemaaktOp(Instant.now());
-    return taak;
+  private BezwaarDocument maakDocument(Long id, String projectNaam, String bestandsnaam) {
+    var doc = new BezwaarDocument();
+    doc.setId(id);
+    doc.setProjectNaam(projectNaam);
+    doc.setBestandsnaam(bestandsnaam);
+    doc.setBezwaarExtractieStatus(BezwaarExtractieStatus.BEZIG);
+    return doc;
   }
 }

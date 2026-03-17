@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <changeSet id="20260317-ts-01" author="bezwaarschriften">
+    <comment>Voeg extractie timestamp-kolommen toe aan bezwaar_document</comment>
+    <addColumn tableName="bezwaar_document">
+      <column name="extractie_ingediend_op" type="timestamp with time zone"/>
+      <column name="extractie_gestart_op" type="timestamp with time zone"/>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

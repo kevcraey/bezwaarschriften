@@ -2,23 +2,21 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.ingestie.IngestiePoort;
-import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
 import java.lang.invoke.MethodHandles;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import javax.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service voor het beheren van extractie-taken in de verwerkingsqueue.
+ * Service voor het beheren van bezwaar-extractie.
  *
- * <p>Ondersteunt het indienen, oppakken, afronden en foutafhandeling van extractie-taken
- * met een configureerbaar maximum aantal gelijktijdige verwerkingen.
+ * <p>Ondersteunt het indienen, oppakken, afronden en foutafhandeling van bezwaar-extractie
+ * op basis van {@link BezwaarDocument} als aggregate root.
  */
 @Service
 public class ExtractieTaakService {
@@ -26,105 +24,85 @@ public class ExtractieTaakService {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private final ExtractieTaakRepository repository;
+  private final BezwaarDocumentRepository documentRepository;
   private final ExtractieNotificatie notificatie;
-  private final ProjectService projectService;
-  private final ExtractiePassageRepository passageRepository;
-  private final GeextraheerdBezwaarRepository bezwaarRepository;
+  private final IndividueelBezwaarRepository bezwaarRepository;
   private final ProjectPoort projectPoort;
   private final IngestiePoort ingestiePoort;
   private final PassageValidator passageValidator;
   private final EmbeddingPoort embeddingPoort;
-  private final TekstExtractieService tekstExtractieService;
-  private final BezwaarBestandRepository bezwaarBestandRepository;
-  private final int maxConcurrent;
-  private final int maxPogingen;
+  private final BezwaarGroepLidRepository bezwaarGroepLidRepository;
 
   /**
    * Maakt een nieuwe ExtractieTaakService aan.
    *
-   * @param repository repository voor extractie-taken
+   * @param documentRepository repository voor bezwaardocumenten
    * @param notificatie notificatie-interface voor statuswijzigingen
-   * @param projectService service voor projecten en bezwaarbestanden
-   * @param passageRepository repository voor extractie-passages
-   * @param bezwaarRepository repository voor geextraheerde bezwaren
+   * @param bezwaarRepository repository voor individuele bezwaren
    * @param projectPoort poort voor projectbestanden
    * @param ingestiePoort poort voor het inlezen van brondocumenten
    * @param passageValidator validator voor passage-verificatie
    * @param embeddingPoort poort voor het genereren van embeddings
-   * @param tekstExtractieService service voor tekst-extractie
-   * @param bezwaarBestandRepository repository voor bezwaarbestand-entiteiten
-   * @param maxConcurrent maximum aantal gelijktijdig verwerkbare taken
-   * @param maxPogingen maximum aantal pogingen per taak
+   * @param bezwaarGroepLidRepository repository voor passage-groep-leden (FK cleanup)
    */
   public ExtractieTaakService(
-      ExtractieTaakRepository repository,
+      BezwaarDocumentRepository documentRepository,
       ExtractieNotificatie notificatie,
-      ProjectService projectService,
-      ExtractiePassageRepository passageRepository,
-      GeextraheerdBezwaarRepository bezwaarRepository,
+      IndividueelBezwaarRepository bezwaarRepository,
       ProjectPoort projectPoort,
       IngestiePoort ingestiePoort,
       PassageValidator passageValidator,
       EmbeddingPoort embeddingPoort,
-      TekstExtractieService tekstExtractieService,
-      BezwaarBestandRepository bezwaarBestandRepository,
-      @Value("${bezwaarschriften.extractie.max-concurrent:3}") int maxConcurrent,
-      @Value("${bezwaarschriften.extractie.max-pogingen:3}") int maxPogingen) {
-    this.repository = repository;
+      BezwaarGroepLidRepository bezwaarGroepLidRepository) {
+    this.documentRepository = documentRepository;
     this.notificatie = notificatie;
-    this.projectService = projectService;
-    this.passageRepository = passageRepository;
     this.bezwaarRepository = bezwaarRepository;
     this.projectPoort = projectPoort;
     this.ingestiePoort = ingestiePoort;
     this.passageValidator = passageValidator;
     this.embeddingPoort = embeddingPoort;
-    this.tekstExtractieService = tekstExtractieService;
-    this.bezwaarBestandRepository = bezwaarBestandRepository;
-    this.maxConcurrent = maxConcurrent;
-    this.maxPogingen = maxPogingen;
+    this.bezwaarGroepLidRepository = bezwaarGroepLidRepository;
   }
 
   /**
-   * Dient nieuwe extractie-taken in met status WACHTEND.
+   * Dient bezwaar-extractie in voor de opgegeven bestanden.
+   *
+   * <p>Valideert dat tekst-extractie klaar is, ruimt bestaande bezwaren op,
+   * en zet de bezwaarExtractieStatus op BEZIG.
    *
    * @param projectNaam naam van het project
-   * @param bestandsnamen lijst van bestandsnamen waarvoor taken worden aangemaakt
-   * @return lijst van aangemaakte taak-DTOs
+   * @param bestandsnamen lijst van bestandsnamen waarvoor extractie wordt ingediend
+   * @return lijst van taak-DTOs
    */
   @Transactional
   public List<ExtractieTaakDto> indienen(String projectNaam, List<String> bestandsnamen) {
     return bestandsnamen.stream()
         .map(bestandsnaam -> {
-          if (!bestandsnaam.toLowerCase().endsWith(".txt")
-              && !tekstExtractieService.isTekstExtractieKlaar(projectNaam, bestandsnaam)) {
-            throw new TekstExtractieNietVoltooidException(bestandsnaam);
+          var doc = documentRepository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam)
+              .orElseThrow(() -> new IllegalArgumentException(
+                  "Document niet gevonden: " + bestandsnaam));
+
+          if (doc.getTekstExtractieStatus() != TekstExtractieStatus.KLAAR) {
+            throw new IllegalStateException(
+                "Tekst-extractie niet voltooid voor bestand: " + bestandsnaam);
           }
 
-          // Ruim ALLE bestaande taken + bezwaren + passages op voor dit bestand
-          var oudeTaken = repository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
-          if (!oudeTaken.isEmpty()) {
-            bezwaarRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
-            for (var oudeTaak : oudeTaken) {
-              passageRepository.deleteByTaakId(oudeTaak.getId());
-            }
-            repository.deleteAll(oudeTaken);
+          doc.startBezwaarExtractie();
+
+          // Ruim bestaande bezwaren op (eerst FK-relaties, dan bezwaren)
+          var bestaandeBezwaren = bezwaarRepository.findByDocumentId(doc.getId());
+          if (!bestaandeBezwaren.isEmpty()) {
+            var bezwaarIds = bestaandeBezwaren.stream()
+                .map(IndividueelBezwaar::getId)
+                .toList();
+            bezwaarGroepLidRepository.deleteByBezwaarIdIn(bezwaarIds);
+            bezwaarRepository.deleteByDocumentId(doc.getId());
           }
 
-          var taak = new ExtractieTaak();
-          taak.setProjectNaam(projectNaam);
-          taak.setBestandsnaam(bestandsnaam);
-          taak.setStatus(ExtractieTaakStatus.WACHTEND);
-          taak.setAantalPogingen(0);
-          taak.setMaxPogingen(maxPogingen);
-          taak.setAangemaaktOp(Instant.now());
-          var opgeslagen = repository.save(taak);
-          werkBestandStatusBij(projectNaam, bestandsnaam,
-              BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND);
+          var opgeslagen = documentRepository.save(doc);
           var dto = ExtractieTaakDto.van(opgeslagen);
           notificatie.taakGewijzigd(dto);
-          LOGGER.info("Extractie-taak ingediend: project='{}', bestand='{}'",
+          LOGGER.info("Bezwaar-extractie ingediend: project='{}', bestand='{}'",
               projectNaam, bestandsnaam);
           return dto;
         })
@@ -132,297 +110,171 @@ public class ExtractieTaakService {
   }
 
   /**
-   * Geeft alle extractie-taken voor een project.
+   * Geeft alle documenten met actieve bezwaar-extractie-status voor een project.
    *
    * @param projectNaam naam van het project
    * @return lijst van taak-DTOs
    */
   public List<ExtractieTaakDto> geefTaken(String projectNaam) {
-    return repository.findByProjectNaam(projectNaam).stream()
+    return documentRepository.findByProjectNaam(projectNaam).stream()
+        .filter(doc -> doc.getBezwaarExtractieStatus() != BezwaarExtractieStatus.GEEN)
         .map(ExtractieTaakDto::van)
         .toList();
   }
 
   /**
-   * Pakt wachtende taken op voor verwerking tot het maximum aantal gelijktijdige taken.
+   * Pakt documenten op met status BEZIG voor verwerking.
    *
-   * <p>Berekent het aantal beschikbare slots op basis van het aantal taken met status BEZIG
-   * en het geconfigureerde maximum. Pakt de oudste wachtende taken op en zet hun status op BEZIG.
-   *
-   * @return lijst van opgepakte taken (entiteiten), leeg als geen slots beschikbaar
+   * @return lijst van op te pakken documenten
    */
   @Transactional
-  public List<ExtractieTaak> pakOpVoorVerwerking() {
-    long aantalBezig = repository.countByStatus(ExtractieTaakStatus.BEZIG);
-    int beschikbareSlots = maxConcurrent - (int) aantalBezig;
-
-    if (beschikbareSlots <= 0) {
-      LOGGER.debug("Geen beschikbare slots (bezig={}, max={})", aantalBezig, maxConcurrent);
-      return List.of();
-    }
-
-    var wachtend = repository.findByStatusOrderByAangemaaktOpAsc(ExtractieTaakStatus.WACHTEND);
-    var opTePakken = wachtend.stream().limit(beschikbareSlots).toList();
-
-    for (var taak : opTePakken) {
-      taak.setStatus(ExtractieTaakStatus.BEZIG);
-      taak.setVerwerkingGestartOp(Instant.now());
-      repository.save(taak);
-      werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
-          BezwaarBestandStatus.BEZWAAR_EXTRACTIE_BEZIG);
-      notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
-      LOGGER.info("Taak {} opgepakt voor verwerking: project='{}', bestand='{}'",
-          taak.getId(), taak.getProjectNaam(), taak.getBestandsnaam());
-    }
-
-    return opTePakken;
+  public List<BezwaarDocument> pakOpVoorVerwerking() {
+    return documentRepository.findByBezwaarExtractieStatus(BezwaarExtractieStatus.BEZIG);
   }
 
   /**
-   * Markeert een taak als succesvol afgerond (terugwaarts-compatibele variant zonder details).
+   * Registreert dat de daadwerkelijke verwerking gestart is voor een document.
    *
-   * @param taakId id van de taak
+   * @param documentId id van het document
+   */
+  @Transactional
+  public void markeerVerwerkingGestart(Long documentId) {
+    var doc = documentRepository.findById(documentId)
+        .orElseThrow(() -> new IllegalArgumentException("Document niet gevonden: " + documentId));
+    doc.markeerVerwerkingGestart();
+    documentRepository.save(doc);
+    notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
+  }
+
+  /**
+   * Markeert een document als succesvol afgerond (terugwaarts-compatibele variant zonder details).
+   *
+   * @param documentId id van het document
    * @param aantalWoorden aantal woorden in het verwerkte bestand
    * @param aantalBezwaren aantal geextraheerde bezwaren
    */
   @Transactional
-  public void markeerKlaar(Long taakId, int aantalWoorden, int aantalBezwaren) {
-    markeerKlaar(taakId, new ExtractieResultaat(aantalWoorden, aantalBezwaren));
+  public void markeerKlaar(Long documentId, int aantalWoorden, int aantalBezwaren) {
+    markeerKlaar(documentId, new ExtractieResultaat(aantalWoorden, aantalBezwaren));
   }
 
   /**
-   * Markeert een taak als succesvol afgerond en slaat passages en bezwaren op.
+   * Markeert een document als succesvol afgerond en slaat bezwaren op.
    *
    * <p>Voert passage-validatie uit door de passages te vergelijken met het originele
-   * brondocument. Bij niet-gevonden passages wordt {@code heeftPassagesDieNietInTekstVoorkomen} gezet.
+   * brondocument. Bij niet-gevonden passages wordt
+   * {@code heeftPassagesDieNietInTekstVoorkomen} gezet.
    *
-   * @param taakId id van de taak
+   * @param documentId id van het document
    * @param resultaat het volledige extractie-resultaat met passages en bezwaren
    */
   @Transactional
-  public void markeerKlaar(Long taakId, ExtractieResultaat resultaat) {
-    var taak = repository.findById(taakId)
-        .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden: " + taakId));
-    werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
-        BezwaarBestandStatus.BEZWAAR_EXTRACTIE_KLAAR);
-    taak.setStatus(ExtractieTaakStatus.KLAAR);
-    taak.setAantalWoorden(resultaat.aantalWoorden());
-    taak.setAantalBezwaren(resultaat.aantalBezwaren());
-    taak.setAfgerondOp(Instant.now());
+  public void markeerKlaar(Long documentId, ExtractieResultaat resultaat) {
+    var doc = documentRepository.findById(documentId)
+        .orElseThrow(() -> new IllegalArgumentException("Document niet gevonden: " + documentId));
 
+    doc.setAantalWoorden(resultaat.aantalWoorden());
+
+    // Bouw passage-map op voor validatie
     var passageMap = new HashMap<Integer, String>();
     for (var passage : resultaat.passages()) {
-      var entiteit = new ExtractiePassageEntiteit();
-      entiteit.setTaakId(taakId);
-      entiteit.setPassageNr(passage.id());
-      entiteit.setTekst(passage.tekst());
-      passageRepository.save(entiteit);
       passageMap.put(passage.id(), passage.tekst());
     }
 
-    var bezwaarEntiteiten = new java.util.ArrayList<GeextraheerdBezwaarEntiteit>();
+    // Maak IndividueelBezwaar entiteiten aan
+    var bezwaarEntiteiten = new ArrayList<IndividueelBezwaar>();
     for (var bezwaar : resultaat.bezwaren()) {
-      var entiteit = new GeextraheerdBezwaarEntiteit();
-      entiteit.setTaakId(taakId);
-      entiteit.setPassageNr(bezwaar.passageId());
+      var entiteit = new IndividueelBezwaar();
+      entiteit.setDocumentId(documentId);
       entiteit.setSamenvatting(bezwaar.samenvatting());
-      entiteit.setProjectNaam(taak.getProjectNaam());
-      entiteit.setBestandsnaam(taak.getBestandsnaam());
+      entiteit.setPassageTekst(passageMap.get(bezwaar.passageId()));
+      entiteit.setManueel(false);
       bezwaarEntiteiten.add(entiteit);
     }
 
     // Passage-validatie: gebruik tekst-bestand i.p.v. origineel
+    boolean passagesNietGevonden = false;
     try {
-      var pad = projectPoort.geefTekstBestandsPad(taak.getProjectNaam(), taak.getBestandsnaam());
+      var pad = projectPoort.geefTekstBestandsPad(doc.getProjectNaam(), doc.getBestandsnaam());
       var brondocument = ingestiePoort.leesBestand(pad);
-      var validatie = passageValidator.valideer(bezwaarEntiteiten, passageMap,
-          brondocument.tekst());
+      var validatie = passageValidator.valideer(bezwaarEntiteiten, brondocument.tekst());
       if (validatie.aantalNietGevonden() > 0) {
-        taak.setHeeftPassagesDieNietInTekstVoorkomen(true);
-        LOGGER.info("Taak {}: {} van {} passages niet gevonden in brondocument",
-            taakId, validatie.aantalNietGevonden(), bezwaarEntiteiten.size());
+        passagesNietGevonden = true;
+        LOGGER.info("Document {}: {} van {} passages niet gevonden in brondocument",
+            documentId, validatie.aantalNietGevonden(), bezwaarEntiteiten.size());
       }
     } catch (Exception e) {
-      LOGGER.warn("Passage-validatie overgeslagen voor taak {} ({}): {}",
-          taakId, taak.getBestandsnaam(), e.getMessage());
-    }
-
-    for (var entiteit : bezwaarEntiteiten) {
-      bezwaarRepository.save(entiteit);
+      LOGGER.warn("Passage-validatie overgeslagen voor document {} ({}): {}",
+          documentId, doc.getBestandsnaam(), e.getMessage());
     }
 
     // Genereer embeddings voor alle bezwaren (batch): passage + samenvatting
     if (!bezwaarEntiteiten.isEmpty()) {
       var passageTeksten = bezwaarEntiteiten.stream()
           .map(b -> {
-            var tekst = passageMap.get(b.getPassageNr());
+            var tekst = b.getPassageTekst();
             return tekst != null ? tekst : b.getSamenvatting();
           })
           .toList();
       var samenvattingen = bezwaarEntiteiten.stream()
-          .map(GeextraheerdBezwaarEntiteit::getSamenvatting)
+          .map(IndividueelBezwaar::getSamenvatting)
           .toList();
       var passageEmbeddings = embeddingPoort.genereerEmbeddings(passageTeksten);
       var samenvattingEmbeddings = embeddingPoort.genereerEmbeddings(samenvattingen);
       for (int i = 0; i < bezwaarEntiteiten.size(); i++) {
         bezwaarEntiteiten.get(i).setEmbeddingPassage(passageEmbeddings.get(i));
         bezwaarEntiteiten.get(i).setEmbeddingSamenvatting(samenvattingEmbeddings.get(i));
-        bezwaarRepository.save(bezwaarEntiteiten.get(i));
       }
     }
+    bezwaarRepository.saveAll(bezwaarEntiteiten);
 
-    repository.save(taak);
-    notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
-    LOGGER.info("Taak {} afgerond: {} woorden, {} bezwaren, {} passages opgeslagen",
-        taakId, resultaat.aantalWoorden(), resultaat.aantalBezwaren(),
-        resultaat.passages().size());
+    doc.voltooiBezwaarExtractie(passagesNietGevonden, false);
+    documentRepository.save(doc);
+    notificatie.taakGewijzigd(ExtractieTaakDto.van(doc, bezwaarEntiteiten.size()));
+    LOGGER.info("Document {} afgerond: {} woorden, {} bezwaren opgeslagen",
+        documentId, resultaat.aantalWoorden(), bezwaarEntiteiten.size());
   }
 
   /**
-   * Markeert een taak als mislukt. Indien het maximum aantal pogingen nog niet bereikt is,
-   * wordt de taak teruggezet naar WACHTEND voor een nieuwe poging.
+   * Markeert een document als mislukt.
    *
-   * @param taakId id van de taak
+   * @param documentId id van het document
    * @param foutmelding omschrijving van de fout
    */
   @Transactional
-  public void markeerFout(Long taakId, String foutmelding) {
-    var taak = repository.findById(taakId)
-        .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden: " + taakId));
-    taak.setAantalPogingen(taak.getAantalPogingen() + 1);
-
-    if (taak.getAantalPogingen() < taak.getMaxPogingen()) {
-      taak.setStatus(ExtractieTaakStatus.WACHTEND);
-      taak.setVerwerkingGestartOp(null);
-      werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
-          BezwaarBestandStatus.BEZWAAR_EXTRACTIE_WACHTEND);
-      LOGGER.warn("Taak {} mislukt (poging {}/{}), terug naar wachtend: {}",
-          taakId, taak.getAantalPogingen(), taak.getMaxPogingen(), foutmelding);
-    } else {
-      taak.setStatus(ExtractieTaakStatus.FOUT);
-      taak.setFoutmelding(foutmelding);
-      taak.setAfgerondOp(Instant.now());
-      werkBestandStatusBij(taak.getProjectNaam(), taak.getBestandsnaam(),
-          BezwaarBestandStatus.BEZWAAR_EXTRACTIE_FOUT);
-      LOGGER.error("Taak {} definitief mislukt na {} pogingen: {}",
-          taakId, taak.getAantalPogingen(), foutmelding);
-    }
-
-    repository.save(taak);
-    notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
-  }
-
-  /**
-   * Geeft de meest recente extractie-taak voor een bestand binnen een project.
-   *
-   * @param projectNaam naam van het project
-   * @param bestandsnaam naam van het bestand
-   * @return de meest recente taak, of null als er geen bestaat
-   */
-  public ExtractieTaak geefLaatsteTaak(String projectNaam, String bestandsnaam) {
-    return repository.findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(
-        projectNaam, bestandsnaam).orElse(null);
-  }
-
-  /**
-   * Verwerkt onafgeronde items voor een project: herstelt gefaalde taken en maakt
-   * nieuwe taken aan voor documenten die nog niet verwerkt zijn.
-   *
-   * <p>Gefaalde taken worden teruggezet naar WACHTEND met 1 extra poging.
-   * Documenten met status TEKST_EXTRACTIE_KLAAR krijgen een nieuwe extractie-taak.
-   *
-   * @param projectNaam naam van het project
-   * @return het totaal aantal herstartte en nieuwe taken
-   */
-  @Transactional
-  public int verwerkOnafgeronde(String projectNaam) {
-    // Herstel gefaalde taken
-    var gefaaldeTaken = repository.findByProjectNaamAndStatus(projectNaam,
-        ExtractieTaakStatus.FOUT);
-    for (var taak : gefaaldeTaken) {
-      taak.setMaxPogingen(taak.getMaxPogingen() + 1);
-      taak.setStatus(ExtractieTaakStatus.WACHTEND);
-      taak.setFoutmelding(null);
-      taak.setVerwerkingGestartOp(null);
-      taak.setAfgerondOp(null);
-      repository.save(taak);
-      notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
-    }
-
-    // Maak taken aan voor documenten met voltooide tekst-extractie die nog geen bezwaar-extractie hebben
-    var todoDocumenten = projectService.geefBezwaren(projectNaam).stream()
-        .filter(b -> b.status() == BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR)
-        .toList();
-    for (var doc : todoDocumenten) {
-      var taak = new ExtractieTaak();
-      taak.setProjectNaam(projectNaam);
-      taak.setBestandsnaam(doc.bestandsnaam());
-      taak.setStatus(ExtractieTaakStatus.WACHTEND);
-      taak.setAantalPogingen(0);
-      taak.setMaxPogingen(maxPogingen);
-      taak.setAangemaaktOp(Instant.now());
-      var opgeslagen = repository.save(taak);
-      notificatie.taakGewijzigd(ExtractieTaakDto.van(opgeslagen));
-      LOGGER.info("Nieuwe extractie-taak voor document met voltooide tekst-extractie: project='{}', bestand='{}'",
-          projectNaam, doc.bestandsnaam());
-    }
-
-    int totaal = gefaaldeTaken.size() + todoDocumenten.size();
-    LOGGER.info("Verwerkt {} onafgeronde items voor project '{}' ({} fout, {} todo)",
-        totaal, projectNaam, gefaaldeTaken.size(), todoDocumenten.size());
-    return totaal;
-  }
-
-  /**
-   * Verwijdert een extractie-taak uit de database.
-   *
-   * @param projectNaam naam van het project (voor validatie)
-   * @param taakId id van de te verwijderen taak
-   * @throws IllegalArgumentException als de taak niet bestaat of niet bij het project hoort
-   */
-  @Transactional
-  public void verwijderTaak(String projectNaam, Long taakId) {
-    var taak = repository.findById(taakId)
-        .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden: " + taakId));
-    if (!taak.getProjectNaam().equals(projectNaam)) {
-      throw new IllegalArgumentException(
-          "Taak " + taakId + " behoort niet tot project: " + projectNaam);
-    }
-    repository.delete(taak);
-    LOGGER.info("Taak {} verwijderd uit project '{}'", taakId, projectNaam);
+  public void markeerFout(Long documentId, String foutmelding) {
+    var doc = documentRepository.findById(documentId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Document niet gevonden: " + documentId));
+    doc.markeerBezwaarExtractieFout(foutmelding);
+    documentRepository.save(doc);
+    notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
+    LOGGER.error("Document {} mislukt: {}", documentId, foutmelding);
   }
 
   /**
    * Geeft de extractie-details voor een bestand binnen een project.
    *
-   * <p>Zoekt de meest recente afgeronde taak voor het bestand en combineert
-   * de geextraheerde bezwaren met hun bijbehorende passages.
+   * <p>Zoekt het document en combineert de geextraheerde bezwaren met hun passage-tekst.
    *
    * @param projectNaam naam van het project
    * @param bestandsnaam naam van het bestand
-   * @return extractie-details, of null als geen afgeronde taak bestaat
+   * @return extractie-details, of null als geen afgerond document bestaat
    */
   public ExtractieDetailDto geefExtractieDetails(String projectNaam, String bestandsnaam) {
-    var taak = repository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, bestandsnaam)
+    var doc = documentRepository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam)
         .orElse(null);
-    if (taak == null || taak.getStatus() != ExtractieTaakStatus.KLAAR) {
+    if (doc == null || doc.getBezwaarExtractieStatus() != BezwaarExtractieStatus.KLAAR) {
       return null;
     }
 
-    var passages = passageRepository.findByTaakId(taak.getId());
-    var bezwaren = bezwaarRepository.findByTaakId(taak.getId());
-
-    var passageMap = new HashMap<Integer, String>();
-    for (var p : passages) {
-      passageMap.put(p.getPassageNr(), p.getTekst());
-    }
+    var bezwaren = bezwaarRepository.findByDocumentId(doc.getId());
 
     var details = bezwaren.stream()
         .map(b -> new ExtractieDetailDto.BezwaarDetail(
             b.getId(),
             b.getSamenvatting(),
-            passageMap.getOrDefault(b.getPassageNr(), ""),
+            b.getPassageTekst() != null ? b.getPassageTekst() : "",
             b.isPassageGevonden(),
             b.isManueel()))
         .toList();
@@ -431,7 +283,7 @@ public class ExtractieTaakService {
   }
 
   /**
-   * Voegt een manueel bezwaar toe aan een afgeronde extractietaak.
+   * Voegt een manueel bezwaar toe aan een afgerond document.
    *
    * <p>Valideert dat de passage exact voorkomt in het originele document (na normalisatie).
    *
@@ -453,12 +305,13 @@ public class ExtractieTaakService {
       throw new IllegalArgumentException("Passage mag niet leeg zijn");
     }
 
-    var taak = repository
-        .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, bestandsnaam)
-        .orElseThrow(() -> new IllegalArgumentException("Geen taak gevonden voor: " + bestandsnaam));
+    var doc = documentRepository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Document niet gevonden voor: " + bestandsnaam));
 
-    if (taak.getStatus() != ExtractieTaakStatus.KLAAR) {
-      throw new IllegalArgumentException("Taak is niet afgerond: " + taak.getStatus());
+    if (doc.getBezwaarExtractieStatus() != BezwaarExtractieStatus.KLAAR) {
+      throw new IllegalArgumentException(
+          "Bezwaar-extractie is niet afgerond: " + doc.getBezwaarExtractieStatus());
     }
 
     // Passage-validatie: exacte match na normalisatie (gebruik tekst-bestand)
@@ -471,41 +324,23 @@ public class ExtractieTaakService {
       throw new IllegalArgumentException("Passage komt niet voor in het originele document");
     }
 
-    // Bepaal volgend passageNr
-    int volgendPassageNr = passageRepository.findTopByTaakIdOrderByPassageNrDesc(taak.getId())
-        .map(p -> p.getPassageNr() + 1)
-        .orElse(1);
-
-    // Sla passage op
-    var passageEntiteit = new ExtractiePassageEntiteit();
-    passageEntiteit.setTaakId(taak.getId());
-    passageEntiteit.setPassageNr(volgendPassageNr);
-    passageEntiteit.setTekst(passageTekst);
-    passageRepository.save(passageEntiteit);
-
     // Sla bezwaar op
-    var bezwaarEntiteit = new GeextraheerdBezwaarEntiteit();
-    bezwaarEntiteit.setTaakId(taak.getId());
-    bezwaarEntiteit.setPassageNr(volgendPassageNr);
+    var bezwaarEntiteit = new IndividueelBezwaar();
+    bezwaarEntiteit.setDocumentId(doc.getId());
     bezwaarEntiteit.setSamenvatting(samenvatting);
+    bezwaarEntiteit.setPassageTekst(passageTekst);
     bezwaarEntiteit.setPassageGevonden(true);
     bezwaarEntiteit.setManueel(true);
-    bezwaarEntiteit.setProjectNaam(taak.getProjectNaam());
-    bezwaarEntiteit.setBestandsnaam(taak.getBestandsnaam());
 
-    // Werk taak bij
-    taak.setHeeftManueel(true);
-    int huidigAantal = taak.getAantalBezwaren() != null ? taak.getAantalBezwaren() : 0;
-    taak.setAantalBezwaren(huidigAantal + 1);
-    repository.save(taak);
-    notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
-
-    var opgeslagen = bezwaarRepository.save(bezwaarEntiteit);
+    // Werk document bij: markeer als manueel bewerkt
+    doc.setHeeftManueel(true);
+    documentRepository.save(doc);
+    notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
 
     var embeddings = embeddingPoort.genereerEmbeddings(List.of(passageTekst, samenvatting));
-    opgeslagen.setEmbeddingPassage(embeddings.get(0));
-    opgeslagen.setEmbeddingSamenvatting(embeddings.get(1));
-    bezwaarRepository.save(opgeslagen);
+    bezwaarEntiteit.setEmbeddingPassage(embeddings.get(0));
+    bezwaarEntiteit.setEmbeddingSamenvatting(embeddings.get(1));
+    var opgeslagen = bezwaarRepository.save(bezwaarEntiteit);
 
     return new ExtractieDetailDto.BezwaarDetail(
         opgeslagen.getId(), samenvatting, passageTekst, true, true);
@@ -524,43 +359,58 @@ public class ExtractieTaakService {
     var bezwaar = bezwaarRepository.findById(bezwaarId)
         .orElseThrow(() -> new IllegalArgumentException("Bezwaar niet gevonden: " + bezwaarId));
 
-    var taak = repository.findById(bezwaar.getTaakId())
-        .orElseThrow(() -> new IllegalArgumentException("Taak niet gevonden"));
+    var doc = documentRepository.findById(bezwaar.getDocumentId())
+        .orElseThrow(() -> new IllegalArgumentException("Document niet gevonden"));
 
-    if (!taak.getProjectNaam().equals(projectNaam)) {
+    if (!doc.getProjectNaam().equals(projectNaam)) {
       throw new IllegalArgumentException(
           "Bezwaar " + bezwaarId + " behoort niet tot project: " + projectNaam);
     }
 
     boolean wasAiBezwaar = !bezwaar.isManueel();
+
+    // Verwijder FK-relaties, dan bezwaar
+    bezwaarGroepLidRepository.deleteByBezwaarIdIn(List.of(bezwaarId));
     bezwaarRepository.delete(bezwaar);
 
-    // Werk aantalBezwaren bij
-    int huidigAantal = taak.getAantalBezwaren() != null ? taak.getAantalBezwaren() : 0;
-    taak.setAantalBezwaren(Math.max(0, huidigAantal - 1));
-
-    var overigeBezwaren = bezwaarRepository.findByTaakId(taak.getId());
+    var overigeBezwaren = bezwaarRepository.findByDocumentId(doc.getId());
 
     if (wasAiBezwaar) {
-      taak.setHeeftManueel(true);
+      doc.setHeeftManueel(true);
     } else {
-      boolean nogManueel = overigeBezwaren.stream().anyMatch(GeextraheerdBezwaarEntiteit::isManueel);
-      taak.setHeeftManueel(nogManueel);
+      boolean nogManueel = overigeBezwaren.stream().anyMatch(IndividueelBezwaar::isManueel);
+      doc.setHeeftManueel(nogManueel);
     }
 
     boolean nogNietGevonden = overigeBezwaren.stream().anyMatch(b -> !b.isPassageGevonden());
-    taak.setHeeftPassagesDieNietInTekstVoorkomen(nogNietGevonden);
+    doc.setHeeftPassagesDieNietInTekstVoorkomen(nogNietGevonden);
 
-    repository.save(taak);
-    notificatie.taakGewijzigd(ExtractieTaakDto.van(taak));
+    documentRepository.save(doc);
+    notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
   }
 
-  private void werkBestandStatusBij(String projectNaam, String bestandsnaam,
-      BezwaarBestandStatus status) {
-    bezwaarBestandRepository.findByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam)
-        .ifPresent(entiteit -> {
-          entiteit.setStatus(status);
-          bezwaarBestandRepository.save(entiteit);
-        });
+  /**
+   * Verwerkt onafgeronde items voor een project: herstelt documenten met fout-status.
+   *
+   * @param projectNaam naam van het project
+   * @return het totaal aantal herstartte documenten
+   */
+  @Transactional
+  public int verwerkOnafgeronde(String projectNaam) {
+    var documenten = documentRepository.findByProjectNaam(projectNaam);
+    var foutDocumenten = documenten.stream()
+        .filter(d -> d.getBezwaarExtractieStatus() == BezwaarExtractieStatus.FOUT)
+        .toList();
+
+    for (var doc : foutDocumenten) {
+      doc.startBezwaarExtractie();
+      documentRepository.save(doc);
+      notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
+    }
+
+    int totaal = foutDocumenten.size();
+    LOGGER.info("Verwerkt {} onafgeronde documenten voor project '{}'",
+        totaal, projectNaam);
+    return totaal;
   }
 }

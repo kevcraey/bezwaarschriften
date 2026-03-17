@@ -186,21 +186,6 @@ public class ProjectController {
         : ResponseEntity.notFound().build();
   }
 
-  private static String statusNaarString(BezwaarBestandStatus status) {
-    return switch (status) {
-      case TODO -> "todo";
-      case TEKST_EXTRACTIE_WACHTEND -> "tekst-extractie-wachtend";
-      case TEKST_EXTRACTIE_BEZIG -> "tekst-extractie-bezig";
-      case TEKST_EXTRACTIE_KLAAR -> "tekst-extractie-klaar";
-      case TEKST_EXTRACTIE_MISLUKT -> "tekst-extractie-mislukt";
-      case TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR -> "tekst-extractie-ocr-niet-beschikbaar";
-      case BEZWAAR_EXTRACTIE_WACHTEND -> "bezwaar-extractie-wachtend";
-      case BEZWAAR_EXTRACTIE_BEZIG -> "bezwaar-extractie-bezig";
-      case BEZWAAR_EXTRACTIE_KLAAR -> "bezwaar-extractie-klaar";
-      case BEZWAAR_EXTRACTIE_FOUT -> "bezwaar-extractie-fout";
-      case NIET_ONDERSTEUND -> "niet ondersteund";
-    };
-  }
 
   /** DTO voor een enkel project in de response. */
   record ProjectDto(String naam, int aantalDocumenten) {}
@@ -216,21 +201,20 @@ public class ProjectController {
 
     static BezwarenResponse van(List<BezwaarBestand> bezwaren) {
       return new BezwarenResponse(bezwaren.stream()
-          .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b.status()),
+          .map(b -> new BezwaarBestandDto(b.bestandsnaam(),
+              b.tekstExtractieStatus(), b.bezwaarExtractieStatus(),
               b.aantalWoorden(), b.aantalBezwaren(), b.heeftPassagesDieNietInTekstVoorkomen(),
-              b.extractieMethode(),
-              b.tekstExtractieAangemaaktOp(), b.tekstExtractieGestartOp(),
-              b.tekstExtractieTaakId(), b.tekstExtractieFoutmelding()))
+              b.extractieMethode(), b.foutmelding()))
           .toList());
     }
   }
 
   /** DTO voor een enkel bezwaarbestand in de response. */
-  record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden,
-      Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen,
-      String extractieMethode,
-      String tekstExtractieAangemaaktOp, String tekstExtractieGestartOp,
-      Long tekstExtractieTaakId, String tekstExtractieFoutmelding) {}
+  record BezwaarBestandDto(String bestandsnaam,
+      String tekstExtractieStatus, String bezwaarExtractieStatus,
+      Integer aantalWoorden, Integer aantalBezwaren,
+      boolean heeftPassagesDieNietInTekstVoorkomen,
+      String extractieMethode, String foutmelding) {}
 
   /** Response DTO voor upload-resultaat. */
   record UploadResponse(List<String> geupload, List<UploadFoutDto> fouten) {}

@@ -8,21 +8,18 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "passage_groep_lid")
-public class PassageGroepLidEntiteit {
+@Table(name = "bezwaar_groep_lid")
+public class BezwaarGroepLid {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "passage_groep_id", nullable = false)
-  private Long passageGroepId;
+  @Column(name = "bezwaar_groep_id", nullable = false)
+  private Long bezwaarGroepId;
 
   @Column(name = "bezwaar_id", nullable = false)
   private Long bezwaarId;
-
-  @Column(name = "bestandsnaam", nullable = false)
-  private String bestandsnaam;
 
   public Long getId() {
     return id;
@@ -32,12 +29,12 @@ public class PassageGroepLidEntiteit {
     this.id = id;
   }
 
-  public Long getPassageGroepId() {
-    return passageGroepId;
+  public Long getBezwaarGroepId() {
+    return bezwaarGroepId;
   }
 
-  public void setPassageGroepId(Long passageGroepId) {
-    this.passageGroepId = passageGroepId;
+  public void setBezwaarGroepId(Long bezwaarGroepId) {
+    this.bezwaarGroepId = bezwaarGroepId;
   }
 
   public Long getBezwaarId() {
@@ -46,13 +43,5 @@ public class PassageGroepLidEntiteit {
 
   public void setBezwaarId(Long bezwaarId) {
     this.bezwaarId = bezwaarId;
-  }
-
-  public String getBestandsnaam() {
-    return bestandsnaam;
-  }
-
-  public void setBestandsnaam(String bestandsnaam) {
-    this.bestandsnaam = bestandsnaam;
   }
 }

@@ -3,22 +3,22 @@ package be.vlaanderen.omgeving.bezwaarschriften.project;
 import be.vlaanderen.omgeving.bezwaarschriften.consolidatie.ConsolidatieTaakRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarService;
 import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieService;
-import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieTaakRepository;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service die projecten en bezwaarbestanden beheert.
  *
- * <p>Leidt de bestandsstatus af uit de meest recente extractie-taak in de database.
+ * <p>Leidt de bestandsstatus af uit het {@link BezwaarDocument} aggregaat.
  */
 @Service
 public class ProjectService {
@@ -27,38 +27,34 @@ public class ProjectService {
       LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final ProjectPoort projectPoort;
-  private final ExtractieTaakRepository extractieTaakRepository;
+  private final BezwaarDocumentRepository bezwaarDocumentRepository;
+  private final IndividueelBezwaarRepository bezwaarRepository;
   private final KernbezwaarService kernbezwaarService;
   private final ConsolidatieTaakRepository consolidatieTaakRepository;
   private final TekstExtractieService tekstExtractieService;
-  private final TekstExtractieTaakRepository tekstExtractieTaakRepository;
-  private final BezwaarBestandRepository bezwaarBestandRepository;
 
   /**
    * Maakt een nieuwe ProjectService aan.
    *
    * @param projectPoort Port voor filesystem toegang
-   * @param extractieTaakRepository Repository voor extractie-taken
+   * @param bezwaarDocumentRepository Repository voor bezwaardocumenten
+   * @param bezwaarRepository Repository voor individuele bezwaren
    * @param kernbezwaarService Service voor kernbezwaar-opruiming
    * @param consolidatieTaakRepository Repository voor consolidatie-taken
    * @param tekstExtractieService Service voor tekst-extractie
-   * @param tekstExtractieTaakRepository Repository voor tekst-extractie taken
-   * @param bezwaarBestandRepository Repository voor bezwaar-bestand entiteiten
    */
   public ProjectService(ProjectPoort projectPoort,
-      ExtractieTaakRepository extractieTaakRepository,
+      BezwaarDocumentRepository bezwaarDocumentRepository,
+      IndividueelBezwaarRepository bezwaarRepository,
       KernbezwaarService kernbezwaarService,
       ConsolidatieTaakRepository consolidatieTaakRepository,
-      TekstExtractieService tekstExtractieService,
-      TekstExtractieTaakRepository tekstExtractieTaakRepository,
-      BezwaarBestandRepository bezwaarBestandRepository) {
+      TekstExtractieService tekstExtractieService) {
     this.projectPoort = projectPoort;
-    this.extractieTaakRepository = extractieTaakRepository;
+    this.bezwaarDocumentRepository = bezwaarDocumentRepository;
+    this.bezwaarRepository = bezwaarRepository;
     this.kernbezwaarService = kernbezwaarService;
     this.consolidatieTaakRepository = consolidatieTaakRepository;
     this.tekstExtractieService = tekstExtractieService;
-    this.tekstExtractieTaakRepository = tekstExtractieTaakRepository;
-    this.bezwaarBestandRepository = bezwaarBestandRepository;
   }
 
   /**
@@ -73,11 +69,9 @@ public class ProjectService {
   /**
    * Geeft de bezwaarbestanden van een project terug met hun huidige status.
    *
-   * <p>De status wordt gelezen uit de {@code bezwaar_bestand} tabel. Voor legacy-bestanden
-   * zonder entiteit wordt de status afgeleid uit het bestandsformaat: .txt-bestanden krijgen
-   * {@link BezwaarBestandStatus#TEKST_EXTRACTIE_KLAAR}, overige ondersteunde formaten
-   * {@link BezwaarBestandStatus#TODO}. Metadata (aantalWoorden, extractieMethode, etc.)
-   * komt nog steeds uit de taak-tabellen.
+   * <p>De status wordt gelezen uit het {@link BezwaarDocument} aggregaat.
+   * Bestanden zonder document-entiteit krijgen status GEEN/GEEN.
+   * Niet-ondersteunde formaten krijgen NIET_ONDERSTEUND/GEEN.
    *
    * @param projectNaam Naam van het project
    * @return Lijst van bezwaarbestanden met status
@@ -85,69 +79,43 @@ public class ProjectService {
    */
   public List<BezwaarBestand> geefBezwaren(String projectNaam) {
     var bestandsnamen = projectPoort.geefBestandsnamen(projectNaam);
-    var entiteitenMap = bezwaarBestandRepository.findByProjectNaam(projectNaam)
-        .stream()
-        .collect(Collectors.toMap(BezwaarBestandEntiteit::getBestandsnaam, e -> e));
+    var documentenLijst = bezwaarDocumentRepository.findByProjectNaam(projectNaam);
+    var documenten = documentenLijst.stream()
+        .collect(Collectors.toMap(BezwaarDocument::getBestandsnaam, d -> d));
+
+    // Batch-query: haal bezwaar-aantallen per document op in één keer
+    var documentIds = documentenLijst.stream()
+        .map(BezwaarDocument::getId)
+        .filter(id -> id != null)
+        .toList();
+    var aantalBezwarenPerDocument = new HashMap<Long, Integer>();
+    if (!documentIds.isEmpty()) {
+      bezwaarRepository.countByDocumentIdIn(documentIds)
+          .forEach(row -> aantalBezwarenPerDocument.put(
+              (Long) row[0], ((Number) row[1]).intValue()));
+    }
 
     return bestandsnamen.stream()
         .map(naam -> {
           if (!isOndersteundFormaat(naam)) {
-            return new BezwaarBestand(naam, BezwaarBestandStatus.NIET_ONDERSTEUND);
+            return new BezwaarBestand(naam, "NIET_ONDERSTEUND", "GEEN",
+                null, null, false, false, null, null);
           }
-
-          // Status uit de database, of fallback voor legacy-bestanden
-          var entiteit = entiteitenMap.get(naam);
-          BezwaarBestandStatus status;
-          if (entiteit != null) {
-            status = entiteit.getStatus();
-          } else if (naam.toLowerCase().endsWith(".txt")) {
-            status = BezwaarBestandStatus.TEKST_EXTRACTIE_KLAAR;
-          } else {
-            status = BezwaarBestandStatus.TODO;
+          var doc = documenten.get(naam);
+          if (doc == null) {
+            return new BezwaarBestand(naam, "GEEN", "GEEN",
+                null, null, false, false, null, null);
           }
-
-          // Metadata uit tekst-extractie taak
-          var tekstExtractieTaak = tekstExtractieTaakRepository
-              .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
-              .orElse(null);
-
-          String extractieMethode = null;
-          String teAangemaaktOp = null;
-          String teGestartOp = null;
-          Long tekstExtractieTaakId = null;
-          String foutmelding = null;
-
-          if (tekstExtractieTaak != null) {
-            extractieMethode = tekstExtractieTaak.getExtractieMethode() != null
-                ? tekstExtractieTaak.getExtractieMethode().name() : null;
-            teAangemaaktOp = tekstExtractieTaak.getAangemaaktOp() != null
-                ? tekstExtractieTaak.getAangemaaktOp().toString() : null;
-            teGestartOp = tekstExtractieTaak.getVerwerkingGestartOp() != null
-                ? tekstExtractieTaak.getVerwerkingGestartOp().toString() : null;
-            tekstExtractieTaakId = tekstExtractieTaak.getId();
-            foutmelding = tekstExtractieTaak.getFoutmelding();
-          }
-
-          // Metadata uit AI-extractie taak
-          var extractieTaak = extractieTaakRepository
-              .findTopByProjectNaamAndBestandsnaamOrderByAangemaaktOpDesc(projectNaam, naam)
-              .orElse(null);
-
-          Integer aantalWoorden = null;
-          Integer aantalBezwaren = null;
-          boolean heeftPassages = false;
-          boolean heeftManueel = false;
-
-          if (extractieTaak != null) {
-            aantalWoorden = extractieTaak.getAantalWoorden();
-            aantalBezwaren = extractieTaak.getAantalBezwaren();
-            heeftPassages = extractieTaak.isHeeftPassagesDieNietInTekstVoorkomen();
-            heeftManueel = extractieTaak.isHeeftManueel();
-          }
-
-          return new BezwaarBestand(naam, status, aantalWoorden, aantalBezwaren,
-              heeftPassages, heeftManueel, extractieMethode,
-              teAangemaaktOp, teGestartOp, tekstExtractieTaakId, foutmelding);
+          var aantalBezwaren = aantalBezwarenPerDocument.getOrDefault(doc.getId(), 0);
+          return new BezwaarBestand(naam,
+              doc.getTekstExtractieStatus().name(),
+              doc.getBezwaarExtractieStatus().name(),
+              doc.getAantalWoorden(),
+              aantalBezwaren,
+              doc.isHeeftPassagesDieNietInTekstVoorkomen(),
+              doc.isHeeftManueel(),
+              doc.getExtractieMethode(),
+              doc.getFoutmelding());
         })
         .toList();
   }
@@ -182,8 +150,10 @@ public class ProjectService {
 
       projectPoort.slaBestandOp(projectNaam, bestandsnaam, inhoud);
       try {
-        bezwaarBestandRepository.save(
-            new BezwaarBestandEntiteit(projectNaam, bestandsnaam, BezwaarBestandStatus.TODO));
+        var document = new BezwaarDocument();
+        document.setProjectNaam(projectNaam);
+        document.setBestandsnaam(bestandsnaam);
+        bezwaarDocumentRepository.save(document);
       } catch (Exception e) {
         projectPoort.verwijderBestand(projectNaam, bestandsnaam);
         throw e;
@@ -200,7 +170,7 @@ public class ProjectService {
   }
 
   /**
-   * Verwijdert een bezwaarbestand en bijhorende extractie-taken.
+   * Verwijdert een bezwaarbestand en bijhorende data.
    *
    * @param projectNaam Naam van het project
    * @param bestandsnaam Naam van het te verwijderen bestand
@@ -209,9 +179,7 @@ public class ProjectService {
   @Transactional
   public boolean verwijderBezwaar(String projectNaam, String bestandsnaam) {
     kernbezwaarService.ruimOpNaDocumentVerwijdering(projectNaam, bestandsnaam);
-    extractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
-    tekstExtractieTaakRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
-    bezwaarBestandRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
+    bezwaarDocumentRepository.deleteByProjectNaamAndBestandsnaam(projectNaam, bestandsnaam);
     return projectPoort.verwijderBestand(projectNaam, bestandsnaam);
   }
 
@@ -226,11 +194,7 @@ public class ProjectService {
    */
   @Transactional
   public int verwijderBezwaren(String projectNaam, List<String> bestandsnamen) {
-    extractieTaakRepository.deleteByProjectNaamAndBestandsnaamIn(
-        projectNaam, bestandsnamen);
-    tekstExtractieTaakRepository.deleteByProjectNaamAndBestandsnaamIn(
-        projectNaam, bestandsnamen);
-    bezwaarBestandRepository.deleteByProjectNaamAndBestandsnaamIn(
+    bezwaarDocumentRepository.deleteByProjectNaamAndBestandsnaamIn(
         projectNaam, bestandsnamen);
     int aantalVerwijderd = 0;
     for (String bestandsnaam : bestandsnamen) {
@@ -269,7 +233,7 @@ public class ProjectService {
   }
 
   /**
-   * Verwijdert een project, inclusief alle extractie-taken.
+   * Verwijdert een project, inclusief alle bijhorende data.
    *
    * @param naam Naam van het project
    * @return true als het project verwijderd is
@@ -278,9 +242,7 @@ public class ProjectService {
   public boolean verwijderProject(String naam) {
     kernbezwaarService.ruimAllesOpVoorProject(naam);
     consolidatieTaakRepository.deleteByProjectNaam(naam);
-    extractieTaakRepository.deleteByProjectNaam(naam);
-    tekstExtractieTaakRepository.deleteByProjectNaam(naam);
-    bezwaarBestandRepository.deleteByProjectNaam(naam);
+    bezwaarDocumentRepository.deleteByProjectNaam(naam);
     return projectPoort.verwijderProject(naam);
   }
 
