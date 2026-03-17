@@ -186,19 +186,31 @@ public class ProjectController {
         : ResponseEntity.notFound().build();
   }
 
-  private static String statusNaarString(BezwaarBestandStatus status) {
-    return switch (status) {
-      case TODO -> "todo";
-      case TEKST_EXTRACTIE_WACHTEND -> "tekst-extractie-wachtend";
-      case TEKST_EXTRACTIE_BEZIG -> "tekst-extractie-bezig";
-      case TEKST_EXTRACTIE_KLAAR -> "tekst-extractie-klaar";
-      case TEKST_EXTRACTIE_MISLUKT -> "tekst-extractie-mislukt";
-      case TEKST_EXTRACTIE_OCR_NIET_BESCHIKBAAR -> "tekst-extractie-ocr-niet-beschikbaar";
-      case BEZWAAR_EXTRACTIE_WACHTEND -> "bezwaar-extractie-wachtend";
-      case BEZWAAR_EXTRACTIE_BEZIG -> "bezwaar-extractie-bezig";
-      case BEZWAAR_EXTRACTIE_KLAAR -> "bezwaar-extractie-klaar";
-      case BEZWAAR_EXTRACTIE_FOUT -> "bezwaar-extractie-fout";
-      case NIET_ONDERSTEUND -> "niet ondersteund";
+  /**
+   * Leidt een gecombineerde status-string af uit de tekst-extractie en bezwaar-extractie
+   * statussen. De bezwaar-extractie status heeft voorrang als die actief is (niet GEEN).
+   */
+  private static String statusNaarString(BezwaarBestand b) {
+    var bezwaarStatus = b.bezwaarExtractieStatus();
+    var tekstStatus = b.tekstExtractieStatus();
+
+    // Bezwaar-extractie status heeft voorrang als die actief is
+    if (!"GEEN".equals(bezwaarStatus)) {
+      return switch (bezwaarStatus) {
+        case "BEZIG" -> "bezwaar-extractie-bezig";
+        case "KLAAR" -> "bezwaar-extractie-klaar";
+        case "FOUT" -> "bezwaar-extractie-fout";
+        default -> "bezwaar-extractie-wachtend";
+      };
+    }
+
+    return switch (tekstStatus) {
+      case "GEEN" -> "todo";
+      case "BEZIG" -> "tekst-extractie-bezig";
+      case "KLAAR" -> "tekst-extractie-klaar";
+      case "FOUT" -> "tekst-extractie-mislukt";
+      case "NIET_ONDERSTEUND" -> "niet ondersteund";
+      default -> "todo";
     };
   }
 
@@ -216,11 +228,9 @@ public class ProjectController {
 
     static BezwarenResponse van(List<BezwaarBestand> bezwaren) {
       return new BezwarenResponse(bezwaren.stream()
-          .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b.status()),
+          .map(b -> new BezwaarBestandDto(b.bestandsnaam(), statusNaarString(b),
               b.aantalWoorden(), b.aantalBezwaren(), b.heeftPassagesDieNietInTekstVoorkomen(),
-              b.extractieMethode(),
-              b.tekstExtractieAangemaaktOp(), b.tekstExtractieGestartOp(),
-              b.tekstExtractieTaakId(), b.tekstExtractieFoutmelding()))
+              b.extractieMethode(), b.foutmelding()))
           .toList());
     }
   }
@@ -228,9 +238,7 @@ public class ProjectController {
   /** DTO voor een enkel bezwaarbestand in de response. */
   record BezwaarBestandDto(String bestandsnaam, String status, Integer aantalWoorden,
       Integer aantalBezwaren, boolean heeftPassagesDieNietInTekstVoorkomen,
-      String extractieMethode,
-      String tekstExtractieAangemaaktOp, String tekstExtractieGestartOp,
-      Long tekstExtractieTaakId, String tekstExtractieFoutmelding) {}
+      String extractieMethode, String foutmelding) {}
 
   /** Response DTO voor upload-resultaat. */
   record UploadResponse(List<String> geupload, List<UploadFoutDto> fouten) {}

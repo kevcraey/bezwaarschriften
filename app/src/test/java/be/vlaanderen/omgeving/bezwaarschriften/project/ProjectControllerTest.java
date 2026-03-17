@@ -95,8 +95,10 @@ class ProjectControllerTest {
   @Test
   void geeftBezwarenTerugVoorProject() throws Exception {
     when(projectService.geefBezwaren("windmolens")).thenReturn(List.of(
-        new BezwaarBestand("bezwaar-001.txt", BezwaarBestandStatus.TODO),
-        new BezwaarBestand("bijlage.pdf", BezwaarBestandStatus.NIET_ONDERSTEUND)
+        new BezwaarBestand("bezwaar-001.txt", "GEEN", "GEEN",
+            null, null, false, false, null, null),
+        new BezwaarBestand("bijlage.pdf", "NIET_ONDERSTEUND", "GEEN",
+            null, null, false, false, null, null)
     ));
 
     mockMvc.perform(get("/api/v1/projects/windmolens/bezwaren"))
@@ -154,15 +156,15 @@ class ProjectControllerTest {
 
   @Test
   void geeftTekstExtractieFoutmeldingMeeInResponse() throws Exception {
-    var bezwaar = new BezwaarBestand("bezwaar-001.pdf", BezwaarBestandStatus.TEKST_EXTRACTIE_MISLUKT,
-        null, null, false, false, null, null, null, null,
+    var bezwaar = new BezwaarBestand("bezwaar-001.pdf", "FOUT", "GEEN",
+        null, null, false, false, null,
         "Te weinig woorden: 28 (minimum 40)");
     when(projectService.geefBezwaren("windmolens")).thenReturn(List.of(bezwaar));
 
     mockMvc.perform(get("/api/v1/projects/windmolens/bezwaren"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.bezwaren[0].status").value("tekst-extractie-mislukt"))
-        .andExpect(jsonPath("$.bezwaren[0].tekstExtractieFoutmelding")
+        .andExpect(jsonPath("$.bezwaren[0].foutmelding")
             .value("Te weinig woorden: 28 (minimum 40)"));
   }
 
