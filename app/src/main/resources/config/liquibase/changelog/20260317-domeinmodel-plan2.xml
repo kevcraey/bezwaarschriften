@@ -75,4 +75,41 @@
     <dropColumn tableName="consolidatie_taak" columnName="bestandsnaam"/>
   </changeSet>
 
+  <!-- 9. Hernoem FK constraints na tabel-renames passage_groep → bezwaar_groep -->
+  <changeSet id="20260317-p2-09" author="bezwaarschriften">
+    <comment>Hernoem FK constraint fk_passage_groep_clustering_taak naar fk_bezwaar_groep_clustering_taak</comment>
+    <dropForeignKeyConstraint baseTableName="bezwaar_groep" constraintName="fk_passage_groep_clustering_taak"/>
+    <addForeignKeyConstraint baseTableName="bezwaar_groep" baseColumnNames="clustering_taak_id"
+        referencedTableName="clustering_taak" referencedColumnNames="id"
+        constraintName="fk_bezwaar_groep_clustering_taak"
+        onDelete="CASCADE"/>
+  </changeSet>
+
+  <changeSet id="20260317-p2-10" author="bezwaarschriften">
+    <comment>Hernoem FK constraint fk_passage_groep_lid_groep naar fk_bezwaar_groep_lid_groep</comment>
+    <dropForeignKeyConstraint baseTableName="bezwaar_groep_lid" constraintName="fk_passage_groep_lid_groep"/>
+    <addForeignKeyConstraint baseTableName="bezwaar_groep_lid" baseColumnNames="bezwaar_groep_id"
+        referencedTableName="bezwaar_groep" referencedColumnNames="id"
+        constraintName="fk_bezwaar_groep_lid_groep"
+        onDelete="CASCADE"/>
+  </changeSet>
+
+  <changeSet id="20260317-p2-11" author="bezwaarschriften">
+    <comment>Hernoem FK constraint fk_passage_groep_lid_bezwaar naar fk_bezwaar_groep_lid_bezwaar</comment>
+    <dropForeignKeyConstraint baseTableName="bezwaar_groep_lid" constraintName="fk_passage_groep_lid_bezwaar"/>
+    <addForeignKeyConstraint baseTableName="bezwaar_groep_lid" baseColumnNames="bezwaar_id"
+        referencedTableName="individueel_bezwaar" referencedColumnNames="id"
+        constraintName="fk_bezwaar_groep_lid_bezwaar"
+        onDelete="CASCADE"/>
+  </changeSet>
+
+  <changeSet id="20260317-p2-12" author="bezwaarschriften">
+    <comment>Hernoem FK constraint fk_kernbezwaar_ref_passage_groep naar fk_kernbezwaar_ref_bezwaar_groep</comment>
+    <dropForeignKeyConstraint baseTableName="kernbezwaar_referentie" constraintName="fk_kernbezwaar_ref_passage_groep"/>
+    <addForeignKeyConstraint baseTableName="kernbezwaar_referentie" baseColumnNames="bezwaar_groep_id"
+        referencedTableName="bezwaar_groep" referencedColumnNames="id"
+        constraintName="fk_kernbezwaar_ref_bezwaar_groep"
+        onDelete="CASCADE"/>
+  </changeSet>
+
 </databaseChangeLog>

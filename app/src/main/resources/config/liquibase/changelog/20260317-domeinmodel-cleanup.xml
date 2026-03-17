@@ -182,21 +182,33 @@
   <changeSet id="20260317-12" author="bezwaarschriften">
     <comment>Verwijder extractie_passage tabel</comment>
     <dropTable tableName="extractie_passage" cascadeConstraints="true"/>
+    <rollback>
+      <comment>One-way migratie — handmatig herstel vereist</comment>
+    </rollback>
   </changeSet>
 
   <changeSet id="20260317-13" author="bezwaarschriften">
     <comment>Verwijder extractie_taak tabel</comment>
     <dropTable tableName="extractie_taak" cascadeConstraints="true"/>
+    <rollback>
+      <comment>One-way migratie — handmatig herstel vereist</comment>
+    </rollback>
   </changeSet>
 
   <changeSet id="20260317-14" author="bezwaarschriften">
     <comment>Verwijder tekst_extractie_taak tabel</comment>
     <dropTable tableName="tekst_extractie_taak" cascadeConstraints="true"/>
+    <rollback>
+      <comment>One-way migratie — handmatig herstel vereist</comment>
+    </rollback>
   </changeSet>
 
   <changeSet id="20260317-15" author="bezwaarschriften">
     <comment>Verwijder bezwaar_bestand tabel</comment>
     <dropTable tableName="bezwaar_bestand" cascadeConstraints="true"/>
+    <rollback>
+      <comment>One-way migratie — handmatig herstel vereist</comment>
+    </rollback>
   </changeSet>
 
 </databaseChangeLog>
