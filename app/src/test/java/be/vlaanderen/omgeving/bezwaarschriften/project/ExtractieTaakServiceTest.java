@@ -359,12 +359,12 @@ class ExtractieTaakServiceTest {
     assertThat(detail.passageGevonden()).isTrue();
 
     var bezwaarCaptor = ArgumentCaptor.forClass(IndividueelBezwaar.class);
-    verify(bezwaarRepository, times(2)).save(bezwaarCaptor.capture());
-    assertThat(bezwaarCaptor.getAllValues().get(0).isManueel()).isTrue();
-    assertThat(bezwaarCaptor.getAllValues().get(0).getDocumentId()).isEqualTo(1L);
-    assertThat(bezwaarCaptor.getAllValues().get(0).getPassageTekst())
-        .isEqualTo("volledige documenttekst");
-    assertThat(bezwaarCaptor.getAllValues().get(1).getEmbeddingPassage()).isNotNull();
+    verify(bezwaarRepository).save(bezwaarCaptor.capture());
+    var opgeslagen = bezwaarCaptor.getValue();
+    assertThat(opgeslagen.isManueel()).isTrue();
+    assertThat(opgeslagen.getDocumentId()).isEqualTo(1L);
+    assertThat(opgeslagen.getPassageTekst()).isEqualTo("volledige documenttekst");
+    assertThat(opgeslagen.getEmbeddingPassage()).isNotNull();
 
     assertThat(doc.isHeeftManueel()).isTrue();
     verify(notificatie).taakGewijzigd(any(ExtractieTaakDto.class));

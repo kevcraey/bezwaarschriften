@@ -145,7 +145,7 @@ public class BezwaarDocument {
     return versie;
   }
 
-  public void setVersie(int versie) {
+  protected void setVersie(int versie) {
     this.versie = versie;
   }
 

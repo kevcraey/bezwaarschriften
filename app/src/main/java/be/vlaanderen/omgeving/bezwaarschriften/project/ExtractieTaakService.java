@@ -337,12 +337,10 @@ public class ExtractieTaakService {
     documentRepository.save(doc);
     notificatie.taakGewijzigd(ExtractieTaakDto.van(doc));
 
-    var opgeslagen = bezwaarRepository.save(bezwaarEntiteit);
-
     var embeddings = embeddingPoort.genereerEmbeddings(List.of(passageTekst, samenvatting));
-    opgeslagen.setEmbeddingPassage(embeddings.get(0));
-    opgeslagen.setEmbeddingSamenvatting(embeddings.get(1));
-    bezwaarRepository.save(opgeslagen);
+    bezwaarEntiteit.setEmbeddingPassage(embeddings.get(0));
+    bezwaarEntiteit.setEmbeddingSamenvatting(embeddings.get(1));
+    var opgeslagen = bezwaarRepository.save(bezwaarEntiteit);
 
     return new ExtractieDetailDto.BezwaarDetail(
         opgeslagen.getId(), samenvatting, passageTekst, true, true);

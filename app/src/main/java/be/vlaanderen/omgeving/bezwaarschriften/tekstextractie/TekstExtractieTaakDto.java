@@ -1,7 +1,6 @@
 package be.vlaanderen.omgeving.bezwaarschriften.tekstextractie;
 
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
-import be.vlaanderen.omgeving.bezwaarschriften.project.TekstExtractieStatus;
 import java.time.Instant;
 
 /**

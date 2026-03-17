@@ -588,7 +588,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
             btn.setAttribute('error', '');
             btn.setAttribute('ghost', '');
             btn.setAttribute('label', 'Bestand verwijderen');
-            btn.addEventListener('vl-click', (e) => {
+            btn.addEventListener('click', (e) => {
               e.stopPropagation();
               this.dispatchEvent(new CustomEvent('verwijder-bezwaar', {
                 detail: {bestandsnaam: rij.bestandsnaam},
@@ -707,7 +707,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     verwijderKnop.setAttribute('error', '');
     verwijderKnop.setAttribute('ghost', '');
     verwijderKnop.setAttribute('label', 'Bezwaar verwijderen');
-    verwijderKnop.addEventListener('vl-click', () => {
+    verwijderKnop.addEventListener('click', () => {
       if (!bezwaar.id) return;
       const actieveTab = isManueelTab ? 'manueel' : 'automatisch';
       this._vraagBevestigingVerwijder(projectNaam, bestandsnaam, bezwaar.id, actieveTab);
@@ -1048,7 +1048,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
         taakData.verwerkingGestartOp && taakData.afgerondOp) {
       const verwerkMs = new Date(taakData.afgerondOp).getTime() -
           new Date(taakData.verwerkingGestartOp).getTime();
-      return `Bezwaar-extractie klaar (${this._formatTijdLeesbaar(verwerkMs)})`;
+      return `Bezwaar-extractie klaar (${this._formatTijd(verwerkMs)})`;
     }
 
     return weergave.label;
@@ -1068,9 +1068,6 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     return `${seconden}s`;
   }
 
-  _formatTijdLeesbaar(ms) {
-    return this._formatTijd(ms);
-  }
 
   _configureerSelecteerAlles() {
     const innerTable = this._geefInnerTable();
