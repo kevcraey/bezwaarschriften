@@ -26,9 +26,8 @@ import be.vlaanderen.omgeving.bezwaarschriften.clustering.DimensieReductiePoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageDeduplicatieService.DeduplicatieGroep;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageDeduplicatieService.DeduplicatieLid;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.util.List;
@@ -58,10 +57,7 @@ class KernbezwaarServiceTest {
   private IndividueelBezwaarRepository bezwaarRepository;
 
   @Mock
-  private ExtractiePassageRepository passageRepository;
-
-  @Mock
-  private ExtractieTaakRepository taakRepository;
+  private BezwaarDocumentRepository documentRepository;
 
   @Mock
   private KernbezwaarAntwoordRepository antwoordRepository;
@@ -127,9 +123,17 @@ class KernbezwaarServiceTest {
               .map(b -> new DeduplicatieGroep(
                   b.getSamenvatting(), b.getSamenvatting(), b,
                   List.of(new DeduplicatieLid(b.getId(),
-                      b.getBestandsnaam() != null ? b.getBestandsnaam() : "onbekend"))))
+                      "onbekend"))))
               .toList();
         });
+
+    // Standaard: documentRepository geeft een document terug voor bestandsnaam-lookup
+    var doc = new BezwaarDocument();
+    doc.setId(10L);
+    doc.setProjectNaam("windmolens");
+    doc.setBestandsnaam("bestand.pdf");
+    lenient().when(documentRepository.findByProjectNaam(any()))
+        .thenReturn(List.of(doc));
 
     // Standaard: passageGroepRepository.save geeft entiteit met incrementerend ID terug
     lenient().when(passageGroepRepository.save(any())).thenAnswer(inv -> {
@@ -144,7 +148,7 @@ class KernbezwaarServiceTest {
   private KernbezwaarService maakService(CentroidMatchingService cms) {
     return new KernbezwaarService(
         embeddingPoort, clusteringPoort,
-        bezwaarRepository, passageRepository, taakRepository,
+        bezwaarRepository, documentRepository,
         antwoordRepository,
         kernbezwaarRepository, referentieRepository,
         clusteringTaakService, clusteringTaakRepository,
@@ -157,14 +161,11 @@ class KernbezwaarServiceTest {
   void clusterProjectClustertBezwarenSuccesvol() {
     // Arrange: 2 bezwaren in hetzelfde project, zelfde taak
     var bezwaar1 = maakBezwaar(1L, 10L, 1, "samenvatting geluid 1");
+    bezwaar1.setPassageTekst("originele tekst passage 1");
     var bezwaar2 = maakBezwaar(2L, 10L, 2, "samenvatting geluid 2");
+    bezwaar2.setPassageTekst("originele tekst passage 2");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-
-    // Passages: originele tekst voor elke passage
-    var passage1 = maakPassage(10L, 1, "originele tekst passage 1");
-    var passage2 = maakPassage(10L, 2, "originele tekst passage 2");
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of(passage1, passage2));
 
     // Embeddings: retourneer 2 vectoren
     float[] emb1 = {1.0f, 0.0f, 0.0f};
@@ -206,13 +207,11 @@ class KernbezwaarServiceTest {
   void noiseItemsWordenGebundeldOnderNietGeclusterdKernbezwaar() {
     // Arrange: 2 bezwaren die als noise worden geclassificeerd
     var bezwaar1 = maakBezwaar(5L, 20L, 1, "uniek bezwaar 1");
+    bezwaar1.setPassageTekst("originele noise tekst 1");
     var bezwaar2 = maakBezwaar(6L, 20L, 2, "uniek bezwaar 2");
+    bezwaar2.setPassageTekst("originele noise tekst 2");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-
-    var passage1 = maakPassage(20L, 1, "originele noise tekst 1");
-    var passage2 = maakPassage(20L, 2, "originele noise tekst 2");
-    when(passageRepository.findByTaakId(20L)).thenReturn(List.of(passage1, passage2));
 
     float[] emb1 = {0.5f, 0.5f};
     float[] emb2 = {0.4f, 0.6f};
@@ -306,7 +305,7 @@ class KernbezwaarServiceTest {
         .thenReturn(List.of(bezwaar));
 
     // Geen passages voor dit taakId
-    when(passageRepository.findByTaakId(30L)).thenReturn(List.of());
+
 
     float[] emb = {1.0f};
     when(embeddingPoort.genereerEmbeddings(anyList())).thenReturn(List.of(emb));
@@ -347,7 +346,7 @@ class KernbezwaarServiceTest {
     var bezwaar = maakBezwaar(1L, 10L, 1, "bezwaar");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     float[] emb = {1.0f};
@@ -365,11 +364,9 @@ class KernbezwaarServiceTest {
     // Arrange: 1 bezwaar
     var bezwaar = maakBezwaarMetEmbedding(1L, 10L, 1, "geluidshinder",
         new float[]{1.0f, 0.0f});
+    bezwaar.setPassageTekst("originele geluidstekst");
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar));
-
-    var passage = maakPassage(10L, 1, "originele geluidstekst");
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of(passage));
 
 
     // Clustering: noise item
@@ -452,7 +449,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(bezwaren);
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // UMAP reduceert naar lagere dimensie
@@ -506,7 +503,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // UMAP reduceert van 3D naar 2D (enkel voor HDBSCAN clustering)
@@ -553,7 +550,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     var resultaat = new ClusteringResultaat(List.of(), List.of(1L, 2L));
@@ -593,7 +590,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     var resultaat = new ClusteringResultaat(List.of(), List.of(1L, 2L));
@@ -636,7 +633,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // UMAP reduceert naar 2D
@@ -691,7 +688,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("test"))
         .thenReturn(List.of(b1, b2));
-    when(passageRepository.findByTaakId(100L)).thenReturn(List.of());
+
 
 
     var cluster = new Cluster(0, List.of(1L, 2L), samenvattingEmb);
@@ -735,7 +732,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // 1 cluster met alle 3
@@ -777,7 +774,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2));
-    when(passageRepository.findByTaakId(20L)).thenReturn(List.of());
+
 
 
     // Clustering: geen clusters, 2 noise items
@@ -917,7 +914,7 @@ class KernbezwaarServiceTest {
 
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar));
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // 1 cluster met 1 bezwaar
@@ -976,7 +973,7 @@ class KernbezwaarServiceTest {
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
 
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // ClusteringTaak met deduplicatieVoorClustering = true (modus A)
@@ -1048,7 +1045,7 @@ class KernbezwaarServiceTest {
     when(bezwaarRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(bezwaar1, bezwaar2, bezwaar3));
 
-    when(passageRepository.findByTaakId(10L)).thenReturn(List.of());
+
 
 
     // ClusteringTaak met deduplicatieVoorClustering = false (modus B)
@@ -1078,7 +1075,7 @@ class KernbezwaarServiceTest {
               .map(b -> new DeduplicatieGroep(
                   b.getSamenvatting(), b.getSamenvatting(), b,
                   List.of(new DeduplicatieLid(b.getId(),
-                      b.getBestandsnaam() != null ? b.getBestandsnaam() : "onbekend"))))
+                      "onbekend"))))
               .toList();
         });
 
@@ -1193,24 +1190,13 @@ class KernbezwaarServiceTest {
     return b;
   }
 
-  private IndividueelBezwaar maakBezwaar(Long id, Long taakId,
+  private IndividueelBezwaar maakBezwaar(Long id, Long documentId,
       int passageNr, String samenvatting) {
     var b = new IndividueelBezwaar();
     b.setId(id);
-    b.setTaakId(taakId);
-    b.setPassageNr(passageNr);
+    b.setDocumentId(documentId);
     b.setSamenvatting(samenvatting);
-    b.setBestandsnaam("bestand.pdf");
     return b;
-  }
-
-  private ExtractiePassageEntiteit maakPassage(Long taakId, int passageNr,
-      String tekst) {
-    var p = new ExtractiePassageEntiteit();
-    p.setTaakId(taakId);
-    p.setPassageNr(passageNr);
-    p.setTekst(tekst);
-    return p;
   }
 
   private PassageGroepEntiteit maakPassageGroep(Long id, String passage,

@@ -22,7 +22,7 @@ public class PassageDeduplicatieService {
 
   public List<DeduplicatieGroep> groepeer(
       List<IndividueelBezwaar> bezwaren,
-      Map<Long, Map<Integer, String>> passageLookup) {
+      Map<Long, String> bestandsnaamLookup) {
 
     if (bezwaren.isEmpty()) {
       return List.of();
@@ -31,9 +31,10 @@ public class PassageDeduplicatieService {
     var groepen = new ArrayList<GroepBouwer>();
 
     for (var bezwaar : bezwaren) {
-      var passageTekst = geefPassageTekst(bezwaar, passageLookup);
+      var passageTekst = geefPassageTekst(bezwaar);
       var bigramInfo = berekenBigramInfo(passageTekst);
-      var bestandsnaam = bezwaar.getBestandsnaam();
+      var bestandsnaam = bestandsnaamLookup.getOrDefault(
+          bezwaar.getDocumentId(), "onbekend");
       boolean gevonden = false;
 
       for (var groep : groepen) {
@@ -87,14 +88,10 @@ public class PassageDeduplicatieService {
 
   private record BigramInfo(String genormaliseerd, Map<String, Integer> bigrammen, int lengte) {}
 
-  private String geefPassageTekst(
-      IndividueelBezwaar bezwaar, Map<Long, Map<Integer, String>> passageLookup) {
-    var taakPassages = passageLookup.get(bezwaar.getTaakId());
-    if (taakPassages != null) {
-      var tekst = taakPassages.get(bezwaar.getPassageNr());
-      if (tekst != null) {
-        return tekst;
-      }
+  private String geefPassageTekst(IndividueelBezwaar bezwaar) {
+    var tekst = bezwaar.getPassageTekst();
+    if (tekst != null && !tekst.isBlank()) {
+      return tekst;
     }
     return bezwaar.getSamenvatting();
   }

@@ -37,8 +37,7 @@ class TaakWebSocketHandlerTest {
 
     var taak = new ExtractieTaakDto(
         1L, "windmolens", "bezwaar-001.txt", "bezwaar-extractie-bezig",
-        1, "2026-02-28T10:00:00Z", "2026-02-28T10:01:00Z",
-        null, null, null, false, false, null);
+        null, null, false, false);
 
     handler.taakGewijzigd(taak);
 
@@ -57,9 +56,8 @@ class TaakWebSocketHandlerTest {
     handler.afterConnectionClosed(session, null);
 
     var taak = new ExtractieTaakDto(
-        2L, "windmolens", "bezwaar-002.txt", "klaar",
-        1, "2026-02-28T10:00:00Z", "2026-02-28T10:01:00Z",
-        500, 7, null, false, false, "2026-02-28T10:03:00Z");
+        2L, "windmolens", "bezwaar-002.txt", "bezwaar-extractie-klaar",
+        500, null, false, false);
 
     handler.taakGewijzigd(taak);
 
@@ -95,7 +93,7 @@ class TaakWebSocketHandlerTest {
 
     var taak = new TekstExtractieTaakDto(
         1L, "windmolens", "bezwaar-001.pdf", "tekst-extractie-wachtend",
-        "2026-03-11T10:00:00Z", null, null);
+        null);
 
     handler.tekstExtractieTaakGewijzigd(taak);
 

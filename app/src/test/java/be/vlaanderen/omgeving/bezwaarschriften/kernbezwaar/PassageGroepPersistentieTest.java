@@ -3,9 +3,8 @@ package be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import be.vlaanderen.omgeving.bezwaarschriften.BaseBezwaarschriftenIntegrationTest;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaak;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakStatus;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.time.Instant;
@@ -33,7 +32,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   private ClusteringTaakRepository clusteringTaakRepository;
 
   @Autowired
-  private ExtractieTaakRepository extractieTaakRepository;
+  private BezwaarDocumentRepository documentRepository;
 
   @Autowired
   private IndividueelBezwaarRepository bezwaarRepository;
@@ -52,7 +51,7 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     kernbezwaarRepository.deleteAll();
     clusteringTaakRepository.deleteAll();
     bezwaarRepository.deleteAll();
-    extractieTaakRepository.deleteAll();
+    documentRepository.deleteAll();
   }
 
   @Test
@@ -81,11 +80,11 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   @DisplayName("Slaat PassageGroepLid op en vindt terug via passageGroepId")
   void slaatPassageGroepLidOpEnVindtTerugViaPassageGroepId() {
     var clusteringTaak = maakClusteringTaak("testproject");
-    var extractieTaak = maakExtractieTaak("testproject", "doc-a.pdf");
+    var document = maakDocument("testproject", "doc-a.pdf");
     var groep = maakPassageGroep(clusteringTaak.getId(), "Geluidshinder passage",
         "Geluidshinder", "VERGELIJKBAAR");
 
-    final var bezwaar = maakBezwaar(extractieTaak.getId(), "Bezwaar over geluid");
+    final var bezwaar = maakBezwaar(document.getId(), "Bezwaar over geluid");
     var lid = new PassageGroepLidEntiteit();
     lid.setPassageGroepId(groep.getId());
     lid.setBezwaarId(bezwaar.getId());
@@ -102,9 +101,9 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   @DisplayName("findByPassageGroepIdIn retourneert leden van meerdere groepen")
   void findByPassageGroepIdInRetourneertLedenVanMeerdereGroepen() {
     var clusteringTaak = maakClusteringTaak("testproject");
-    var extractieTaak = maakExtractieTaak("testproject", "doc-a.pdf");
-    var bezwaar1 = maakBezwaar(extractieTaak.getId(), "Bezwaar 1");
-    var bezwaar2 = maakBezwaar(extractieTaak.getId(), "Bezwaar 2");
+    var document = maakDocument("testproject", "doc-a.pdf");
+    var bezwaar1 = maakBezwaar(document.getId(), "Bezwaar 1");
+    var bezwaar2 = maakBezwaar(document.getId(), "Bezwaar 2");
 
     var groep1 = maakPassageGroep(clusteringTaak.getId(), "Passage 1", "Samenvatting 1",
         "IDENTIEK");
@@ -123,8 +122,8 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
   @DisplayName("Cascade delete: verwijdering van clustering_taak verwijdert passage_groepen")
   void cascadeDeleteVerwijdertPassageGroepenBijClusteringTaakVerwijdering() {
     var clusteringTaak = maakClusteringTaak("testproject");
-    var extractieTaak = maakExtractieTaak("testproject", "doc-a.pdf");
-    var bezwaar = maakBezwaar(extractieTaak.getId(), "Bezwaar");
+    var document = maakDocument("testproject", "doc-a.pdf");
+    var bezwaar = maakBezwaar(document.getId(), "Bezwaar");
 
     var groep = maakPassageGroep(clusteringTaak.getId(), "Passage", "Samenvatting", "IDENTIEK");
     maakPassageGroepLid(groep.getId(), bezwaar.getId(), "doc-a.pdf");
@@ -209,23 +208,16 @@ class PassageGroepPersistentieTest extends BaseBezwaarschriftenIntegrationTest {
     return clusteringTaakRepository.save(taak);
   }
 
-  private ExtractieTaak maakExtractieTaak(String projectNaam, String bestandsnaam) {
-    var taak = new ExtractieTaak();
-    taak.setProjectNaam(projectNaam);
-    taak.setBestandsnaam(bestandsnaam);
-    taak.setStatus(ExtractieTaakStatus.KLAAR);
-    taak.setAantalPogingen(1);
-    taak.setMaxPogingen(3);
-    taak.setAangemaaktOp(Instant.now());
-    return extractieTaakRepository.save(taak);
+  private BezwaarDocument maakDocument(String projectNaam, String bestandsnaam) {
+    var doc = new BezwaarDocument();
+    doc.setProjectNaam(projectNaam);
+    doc.setBestandsnaam(bestandsnaam);
+    return documentRepository.save(doc);
   }
 
-  private IndividueelBezwaar maakBezwaar(Long taakId, String samenvatting) {
+  private IndividueelBezwaar maakBezwaar(Long documentId, String samenvatting) {
     var bezwaar = new IndividueelBezwaar();
-    bezwaar.setTaakId(taakId);
-    bezwaar.setProjectNaam("testproject");
-    bezwaar.setBestandsnaam("test.txt");
-    bezwaar.setPassageNr(1);
+    bezwaar.setDocumentId(documentId);
     bezwaar.setSamenvatting(samenvatting);
     return bezwaarRepository.save(bezwaar);
   }

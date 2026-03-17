@@ -8,9 +8,8 @@ import be.vlaanderen.omgeving.bezwaarschriften.clustering.ClusteringPoort.Cluste
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.DimensieReductiePoort;
 import be.vlaanderen.omgeving.bezwaarschriften.clustering.EmbeddingPoort;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.PassageDeduplicatieService.DeduplicatieGroep;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageEntiteit;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractiePassageRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.project.ExtractieTaakRepository;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
+import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaarRepository;
 import java.time.Instant;
@@ -38,8 +37,7 @@ public class KernbezwaarService {
   private final EmbeddingPoort embeddingPoort;
   private final ClusteringPoort clusteringPoort;
   private final IndividueelBezwaarRepository bezwaarRepository;
-  private final ExtractiePassageRepository passageRepository;
-  private final ExtractieTaakRepository taakRepository;
+  private final BezwaarDocumentRepository documentRepository;
   private final KernbezwaarAntwoordRepository antwoordRepository;
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarReferentieRepository referentieRepository;
@@ -59,8 +57,7 @@ public class KernbezwaarService {
   public KernbezwaarService(EmbeddingPoort embeddingPoort,
       ClusteringPoort clusteringPoort,
       IndividueelBezwaarRepository bezwaarRepository,
-      ExtractiePassageRepository passageRepository,
-      ExtractieTaakRepository taakRepository,
+      BezwaarDocumentRepository documentRepository,
       KernbezwaarAntwoordRepository antwoordRepository,
       KernbezwaarRepository kernbezwaarRepository,
       KernbezwaarReferentieRepository referentieRepository,
@@ -76,8 +73,7 @@ public class KernbezwaarService {
     this.embeddingPoort = embeddingPoort;
     this.clusteringPoort = clusteringPoort;
     this.bezwaarRepository = bezwaarRepository;
-    this.passageRepository = passageRepository;
-    this.taakRepository = taakRepository;
+    this.documentRepository = documentRepository;
     this.antwoordRepository = antwoordRepository;
     this.kernbezwaarRepository = kernbezwaarRepository;
     this.referentieRepository = referentieRepository;
@@ -104,12 +100,8 @@ public class KernbezwaarService {
   public void clusterProject(String projectNaam, Long taakId) {
     var bezwaren = bezwaarRepository.findByProjectNaam(projectNaam);
 
-    // Bouw lookups voor originele passage-teksten en bestandsnamen
-    var taakIds = bezwaren.stream()
-        .map(IndividueelBezwaar::getTaakId)
-        .distinct()
-        .toList();
-    final var passageLookup = bouwPassageLookup(taakIds);
+    // Bouw lookup: documentId → bestandsnaam
+    final var bestandsnaamLookup = bouwBestandsnaamLookup(projectNaam);
 
     // Verwijder bestaande kernbezwaar-data in eigen transactie
     transactionTemplate.executeWithoutResult(status ->
@@ -121,7 +113,7 @@ public class KernbezwaarService {
         .toList();
     if (!zonderEmbedding.isEmpty()) {
       var passageTeksten = zonderEmbedding.stream()
-          .map(b -> geefPassageTekst(b, passageLookup))
+          .map(this::geefPassageTekst)
           .toList();
       var samenvattingen = zonderEmbedding.stream()
           .map(IndividueelBezwaar::getSamenvatting)
@@ -151,9 +143,9 @@ public class KernbezwaarService {
     }
 
     if (deduplicatieVoor) {
-      clusterMetDeduplicatieVooraf(projectNaam, taakId, bezwaren, passageLookup);
+      clusterMetDeduplicatieVooraf(projectNaam, taakId, bezwaren, bestandsnaamLookup);
     } else {
-      clusterMetDeduplicatieAchteraf(projectNaam, taakId, bezwaren, passageLookup);
+      clusterMetDeduplicatieAchteraf(projectNaam, taakId, bezwaren, bestandsnaamLookup);
     }
   }
 
@@ -163,10 +155,10 @@ public class KernbezwaarService {
    */
   private void clusterMetDeduplicatieVooraf(String projectNaam, Long taakId,
       List<IndividueelBezwaar> bezwaren,
-      Map<Long, Map<Integer, String>> passageLookup) {
+      Map<Long, String> bestandsnaamLookup) {
 
     // Groepeer bezwaren op passage-gelijkenis
-    var deduplicatieGroepen = deduplicatieService.groepeer(bezwaren, passageLookup);
+    var deduplicatieGroepen = deduplicatieService.groepeer(bezwaren, bestandsnaamLookup);
 
     // HDBSCAN ontvangt alleen de representatieve bezwaren (1 per groep)
     var representatieven = deduplicatieGroepen.stream()
@@ -294,7 +286,7 @@ public class KernbezwaarService {
    */
   private void clusterMetDeduplicatieAchteraf(String projectNaam, Long taakId,
       List<IndividueelBezwaar> bezwaren,
-      Map<Long, Map<Integer, String>> passageLookup) {
+      Map<Long, String> bestandsnaamLookup) {
 
     // HDBSCAN-clustering op alle bezwaren (bestaand gedrag)
     var origineleInvoer = bezwaren.stream()
@@ -378,7 +370,7 @@ public class KernbezwaarService {
 
         // Groepeer bezwaren in dit cluster op passage-gelijkenis
         var deduplicatieGroepen = deduplicatieService.groepeer(
-            clusterBezwaren, passageLookup);
+            clusterBezwaren, bestandsnaamLookup);
 
         var passageGroepIds = persisteerPassageGroepen(
             taakId, projectNaam, deduplicatieGroepen, scores);
@@ -393,7 +385,7 @@ public class KernbezwaarService {
             .map(bezwaarById::get)
             .toList();
         var deduplicatieGroepen = deduplicatieService.groepeer(
-            noiseBezwaren, passageLookup);
+            noiseBezwaren, bestandsnaamLookup);
         var passageGroepIds = persisteerPassageGroepen(
             taakId, projectNaam, deduplicatieGroepen, Map.of());
         slaKernbezwaarOp(projectNaam, "Niet-geclusterde bezwaren",
@@ -777,29 +769,17 @@ public class KernbezwaarService {
     return resultaat;
   }
 
-  private String geefPassageTekst(IndividueelBezwaar bezwaar,
-      Map<Long, Map<Integer, String>> passageLookup) {
-    var taakPassages = passageLookup.get(bezwaar.getTaakId());
-    if (taakPassages != null) {
-      var tekst = taakPassages.get(bezwaar.getPassageNr());
-      if (tekst != null) {
-        return tekst;
-      }
+  private String geefPassageTekst(IndividueelBezwaar bezwaar) {
+    var tekst = bezwaar.getPassageTekst();
+    if (tekst != null && !tekst.isBlank()) {
+      return tekst;
     }
     return bezwaar.getSamenvatting();
   }
 
-  private Map<Long, Map<Integer, String>> bouwPassageLookup(List<Long> taakIds) {
-    var lookup = new HashMap<Long, Map<Integer, String>>();
-    for (var taakId : taakIds) {
-      var passages = passageRepository.findByTaakId(taakId);
-      var passageMap = passages.stream()
-          .collect(Collectors.toMap(
-              ExtractiePassageEntiteit::getPassageNr,
-              ExtractiePassageEntiteit::getTekst));
-      lookup.put(taakId, passageMap);
-    }
-    return lookup;
+  private Map<Long, String> bouwBestandsnaamLookup(String projectNaam) {
+    return documentRepository.findByProjectNaam(projectNaam).stream()
+        .collect(Collectors.toMap(BezwaarDocument::getId, BezwaarDocument::getBestandsnaam));
   }
 
 }
