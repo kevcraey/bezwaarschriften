@@ -305,7 +305,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
     const sluitKnop = this.shadowRoot.querySelector('#extractie-side-sheet-sluit');
     const sideSheet = this.shadowRoot.querySelector('#extractie-side-sheet');
     if (sluitKnop && sideSheet) {
-      sluitKnop.addEventListener('vl-click', () => {
+      sluitKnop.addEventListener('click', () => {
         sideSheet.close();
         this.classList.remove('side-sheet-open');
       });
@@ -569,7 +569,7 @@ export class BezwaarschriftenBezwarenTabel extends BaseHTMLElement {
               zoekBtn.setAttribute('icon', 'search');
               zoekBtn.setAttribute('ghost', '');
               zoekBtn.setAttribute('label', 'Extractie-details bekijken');
-              zoekBtn.addEventListener('vl-click', (e) => {
+              zoekBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.dispatchEvent(new CustomEvent('toon-extractie-detail', {
                   detail: {bestandsnaam: rij.bestandsnaam},
