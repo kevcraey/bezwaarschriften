@@ -6,6 +6,7 @@ import be.vlaanderen.omgeving.bezwaarschriften.tekstextractie.TekstExtractieServ
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -78,8 +79,21 @@ public class ProjectService {
    */
   public List<BezwaarBestand> geefBezwaren(String projectNaam) {
     var bestandsnamen = projectPoort.geefBestandsnamen(projectNaam);
-    var documenten = bezwaarDocumentRepository.findByProjectNaam(projectNaam)
-        .stream().collect(Collectors.toMap(BezwaarDocument::getBestandsnaam, d -> d));
+    var documentenLijst = bezwaarDocumentRepository.findByProjectNaam(projectNaam);
+    var documenten = documentenLijst.stream()
+        .collect(Collectors.toMap(BezwaarDocument::getBestandsnaam, d -> d));
+
+    // Batch-query: haal bezwaar-aantallen per document op in één keer
+    var documentIds = documentenLijst.stream()
+        .map(BezwaarDocument::getId)
+        .filter(id -> id != null)
+        .toList();
+    var aantalBezwarenPerDocument = new HashMap<Long, Integer>();
+    if (!documentIds.isEmpty()) {
+      bezwaarRepository.countByDocumentIdIn(documentIds)
+          .forEach(row -> aantalBezwarenPerDocument.put(
+              (Long) row[0], ((Number) row[1]).intValue()));
+    }
 
     return bestandsnamen.stream()
         .map(naam -> {
@@ -92,7 +106,7 @@ public class ProjectService {
             return new BezwaarBestand(naam, "GEEN", "GEEN",
                 null, null, false, false, null, null);
           }
-          var aantalBezwaren = bezwaarRepository.countByDocumentId(doc.getId());
+          var aantalBezwaren = aantalBezwarenPerDocument.getOrDefault(doc.getId(), 0);
           return new BezwaarBestand(naam,
               doc.getTekstExtractieStatus().name(),
               doc.getBezwaarExtractieStatus().name(),

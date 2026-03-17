@@ -120,7 +120,8 @@ class ProjectServiceTest {
     doc.setId(1L);
     when(bezwaarDocumentRepository.findByProjectNaam("windmolens"))
         .thenReturn(List.of(doc));
-    when(bezwaarRepository.countByDocumentId(1L)).thenReturn(3);
+    when(bezwaarRepository.countByDocumentIdIn(List.of(1L)))
+        .thenReturn(List.of(new Object[]{1L, 3L}));
 
     var bezwaren = service.geefBezwaren("windmolens");
 
