@@ -626,12 +626,10 @@ public class KernbezwaarService {
    */
   private List<Long> vindBezwaarIdsVoorBestandsnamen(String projectNaam,
       List<String> bestandsnamen) {
-    return bestandsnamen.stream()
-        .flatMap(naam -> documentRepository
-            .findByProjectNaamAndBestandsnaam(projectNaam, naam).stream())
-        .flatMap(doc -> bezwaarRepository.findByDocumentId(doc.getId()).stream())
-        .map(IndividueelBezwaar::getId)
-        .toList();
+    if (bestandsnamen.isEmpty()) {
+      return List.of();
+    }
+    return bezwaarRepository.findIdsByProjectNaamAndBestandsnamen(projectNaam, bestandsnamen);
   }
 
   /**
