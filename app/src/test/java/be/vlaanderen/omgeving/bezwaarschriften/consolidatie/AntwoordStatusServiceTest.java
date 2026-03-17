@@ -4,13 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLid;
+import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarAntwoordRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarReferentieEntiteit;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarReferentieRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.KernbezwaarRepository;
-import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLid;
-import be.vlaanderen.omgeving.bezwaarschriften.kernbezwaar.BezwaarGroepLidRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocument;
 import be.vlaanderen.omgeving.bezwaarschriften.project.BezwaarDocumentRepository;
 import be.vlaanderen.omgeving.bezwaarschriften.project.IndividueelBezwaar;
