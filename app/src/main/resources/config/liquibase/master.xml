@@ -27,5 +27,6 @@
   <include file="config/liquibase/changelog/20260314-pseudonimisering-chunk.xml"/>
   <include file="config/liquibase/changelog/20260316-bezwaar-document-kolommen.xml"/>
   <include file="config/liquibase/changelog/20260317-domeinmodel-cleanup.xml"/>
+  <include file="config/liquibase/changelog/20260317-domeinmodel-plan2.xml"/>
 
 </databaseChangeLog>

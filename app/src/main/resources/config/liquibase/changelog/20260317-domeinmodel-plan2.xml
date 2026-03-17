@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+  <!-- 1. Hernoem passage_groep naar bezwaar_groep -->
+  <changeSet id="20260317-p2-01" author="bezwaarschriften">
+    <comment>Hernoem tabel passage_groep naar bezwaar_groep</comment>
+    <renameTable oldTableName="passage_groep" newTableName="bezwaar_groep"/>
+  </changeSet>
+
+  <!-- 2. Hernoem passage_groep_lid naar bezwaar_groep_lid -->
+  <changeSet id="20260317-p2-02" author="bezwaarschriften">
+    <comment>Hernoem tabel passage_groep_lid naar bezwaar_groep_lid</comment>
+    <renameTable oldTableName="passage_groep_lid" newTableName="bezwaar_groep_lid"/>
+  </changeSet>
+
+  <!-- 3. Verwijder bestandsnaam kolom van bezwaar_groep_lid (nu afleidbaar via bezwaar -> document) -->
+  <changeSet id="20260317-p2-03" author="bezwaarschriften">
+    <comment>Verwijder bestandsnaam kolom van bezwaar_groep_lid (afleidbaar via bezwaar -> document)</comment>
+    <dropColumn tableName="bezwaar_groep_lid" columnName="bestandsnaam"/>
+  </changeSet>
+
+  <!-- 4. Hernoem passage_groep_id naar bezwaar_groep_id op bezwaar_groep_lid -->
+  <changeSet id="20260317-p2-04" author="bezwaarschriften">
+    <comment>Hernoem passage_groep_id naar bezwaar_groep_id op bezwaar_groep_lid</comment>
+    <renameColumn tableName="bezwaar_groep_lid"
+        oldColumnName="passage_groep_id" newColumnName="bezwaar_groep_id"
+        columnDataType="bigint"/>
+  </changeSet>
+
+  <!-- 5. Hernoem passage_groep_id naar bezwaar_groep_id op kernbezwaar_referentie -->
+  <changeSet id="20260317-p2-05" author="bezwaarschriften">
+    <comment>Hernoem passage_groep_id naar bezwaar_groep_id op kernbezwaar_referentie</comment>
+    <renameColumn tableName="kernbezwaar_referentie"
+        oldColumnName="passage_groep_id" newColumnName="bezwaar_groep_id"
+        columnDataType="bigint"/>
+  </changeSet>
+
+  <!-- 6. Voeg document_id toe aan consolidatie_taak -->
+  <changeSet id="20260317-p2-06" author="bezwaarschriften">
+    <comment>Voeg document_id toe aan consolidatie_taak</comment>
+    <addColumn tableName="consolidatie_taak">
+      <column name="document_id" type="bigint"/>
+    </addColumn>
+  </changeSet>
+
+  <!-- 7. Backfill document_id op consolidatie_taak (PostgreSQL only) -->
+  <changeSet id="20260317-p2-07" author="bezwaarschriften">
+    <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
+    <comment>Backfill document_id op consolidatie_taak vanuit bezwaar_document</comment>
+    <sql>
+      UPDATE consolidatie_taak ct
+      SET document_id = bd.id
+      FROM bezwaar_document bd
+      WHERE ct.project_naam = bd.project_naam AND ct.bestandsnaam = bd.bestandsnaam
+    </sql>
+  </changeSet>
+
+  <!-- 8. FK + NOT NULL op document_id, drop project_naam en bestandsnaam -->
+  <changeSet id="20260317-p2-08" author="bezwaarschriften">
+    <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
+    <comment>NOT NULL + FK op document_id, verwijder project_naam en bestandsnaam</comment>
+    <addNotNullConstraint tableName="consolidatie_taak"
+        columnName="document_id" columnDataType="bigint"/>
+    <addForeignKeyConstraint baseTableName="consolidatie_taak"
+        baseColumnNames="document_id"
+        referencedTableName="bezwaar_document"
+        referencedColumnNames="id"
+        constraintName="fk_consolidatie_taak_document"
+        onDelete="CASCADE"/>
+    <dropColumn tableName="consolidatie_taak" columnName="project_naam"/>
+    <dropColumn tableName="consolidatie_taak" columnName="bestandsnaam"/>
+  </changeSet>
+
+</databaseChangeLog>
