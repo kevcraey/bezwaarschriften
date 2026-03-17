@@ -5,11 +5,11 @@ import java.lang.invoke.MethodHandles;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import javax.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Beheert de levenscyclus van clustering-taken: indienen, statusupdates,
@@ -187,6 +187,28 @@ public class ClusteringTaakService {
     LOGGER.info("Clustering-taak {} geannuleerd en verwijderd: project='{}'",
         taak.getId(), taak.getProjectNaam());
     return true;
+  }
+
+  /**
+   * Controleert of een taak de deduplicatie-voor-clustering modus heeft ingesteld.
+   *
+   * @param taakId ID van de taak
+   * @return true als deduplicatie voor clustering is ingesteld, false anders
+   */
+  public boolean isDeduplicatieVoorClustering(Long taakId) {
+    return taakRepository.findById(taakId)
+        .map(ClusteringTaak::isDeduplicatieVoorClustering)
+        .orElse(false);
+  }
+
+  /**
+   * Verwijdert de clustering-taak voor een project.
+   *
+   * @param projectNaam naam van het project
+   */
+  @Transactional
+  public void verwijderTaakVoorProject(String projectNaam) {
+    taakRepository.deleteByProjectNaam(projectNaam);
   }
 
   /**

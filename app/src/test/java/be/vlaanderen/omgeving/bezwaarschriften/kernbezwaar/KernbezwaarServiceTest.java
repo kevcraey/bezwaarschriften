@@ -72,9 +72,6 @@ class KernbezwaarServiceTest {
   private ClusteringTaakService clusteringTaakService;
 
   @Mock
-  private ClusteringTaakRepository clusteringTaakRepository;
-
-  @Mock
   private PlatformTransactionManager transactionManager;
 
   @Mock
@@ -109,11 +106,8 @@ class KernbezwaarServiceTest {
     passageGroepIdCounter.set(1000L);
 
     // Standaard: clustering-taak zonder deduplicatie (modus B)
-    var standaardTaak = new ClusteringTaak();
-    standaardTaak.setId(TEST_TAAK_ID);
-    standaardTaak.setDeduplicatieVoorClustering(false);
-    lenient().when(clusteringTaakRepository.findById(TEST_TAAK_ID))
-        .thenReturn(Optional.of(standaardTaak));
+    lenient().when(clusteringTaakService.isDeduplicatieVoorClustering(TEST_TAAK_ID))
+        .thenReturn(false);
 
     // Standaard: deduplicatieService geeft 1 groep per bezwaar terug
     lenient().when(deduplicatieService.groepeer(anyList(), anyMap()))
@@ -151,7 +145,7 @@ class KernbezwaarServiceTest {
         bezwaarRepository, documentRepository,
         antwoordRepository,
         kernbezwaarRepository, referentieRepository,
-        clusteringTaakService, clusteringTaakRepository,
+        clusteringTaakService,
         transactionManager, dimensieReductiePoort, clusteringConfig,
         cms, deduplicatieService, bezwaarGroepRepository,
         bezwaarGroepLidRepository);
@@ -436,7 +430,7 @@ class KernbezwaarServiceTest {
     service.ruimAllesOpVoorProject("windmolens");
 
     verify(kernbezwaarRepository).deleteByProjectNaam("windmolens");
-    verify(clusteringTaakRepository).deleteByProjectNaam("windmolens");
+    verify(clusteringTaakService).verwijderTaakVoorProject("windmolens");
   }
 
   @Test
@@ -983,11 +977,8 @@ class KernbezwaarServiceTest {
 
 
     // ClusteringTaak met deduplicatieVoorClustering = true (modus A)
-    var clusteringTaak = new ClusteringTaak();
-    clusteringTaak.setId(42L);
-    clusteringTaak.setDeduplicatieVoorClustering(true);
-    when(clusteringTaakRepository.findById(42L))
-        .thenReturn(Optional.of(clusteringTaak));
+    when(clusteringTaakService.isDeduplicatieVoorClustering(42L))
+        .thenReturn(true);
 
     // DeduplicatieService groepeert bezwaar1+2 samen, bezwaar3 apart
     when(deduplicatieService.groepeer(anyList(), anyMap()))
@@ -1055,11 +1046,8 @@ class KernbezwaarServiceTest {
 
 
     // ClusteringTaak met deduplicatieVoorClustering = false (modus B)
-    var clusteringTaak = new ClusteringTaak();
-    clusteringTaak.setId(42L);
-    clusteringTaak.setDeduplicatieVoorClustering(false);
-    when(clusteringTaakRepository.findById(42L))
-        .thenReturn(Optional.of(clusteringTaak));
+    when(clusteringTaakService.isDeduplicatieVoorClustering(42L))
+        .thenReturn(false);
 
     // DeduplicatieService wordt NA clustering aangeroepen per cluster
     // Groepeer bezwaar1+2 samen, bezwaar3 apart

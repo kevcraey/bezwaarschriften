@@ -42,7 +42,6 @@ public class KernbezwaarService {
   private final KernbezwaarRepository kernbezwaarRepository;
   private final KernbezwaarReferentieRepository referentieRepository;
   private final ClusteringTaakService clusteringTaakService;
-  private final ClusteringTaakRepository clusteringTaakRepository;
   private final TransactionTemplate transactionTemplate;
   private final DimensieReductiePoort dimensieReductiePoort;
   private final ClusteringConfig clusteringConfig;
@@ -62,7 +61,6 @@ public class KernbezwaarService {
       KernbezwaarRepository kernbezwaarRepository,
       KernbezwaarReferentieRepository referentieRepository,
       ClusteringTaakService clusteringTaakService,
-      ClusteringTaakRepository clusteringTaakRepository,
       PlatformTransactionManager transactionManager,
       DimensieReductiePoort dimensieReductiePoort,
       ClusteringConfig clusteringConfig,
@@ -78,7 +76,6 @@ public class KernbezwaarService {
     this.kernbezwaarRepository = kernbezwaarRepository;
     this.referentieRepository = referentieRepository;
     this.clusteringTaakService = clusteringTaakService;
-    this.clusteringTaakRepository = clusteringTaakRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.dimensieReductiePoort = dimensieReductiePoort;
     this.clusteringConfig = clusteringConfig;
@@ -137,9 +134,7 @@ public class KernbezwaarService {
     // Bepaal deduplicatiemodus op basis van ClusteringTaak-instelling
     boolean deduplicatieVoor = false;
     if (taakId != null) {
-      deduplicatieVoor = clusteringTaakRepository.findById(taakId)
-          .map(ClusteringTaak::isDeduplicatieVoorClustering)
-          .orElse(false);
+      deduplicatieVoor = clusteringTaakService.isDeduplicatieVoorClustering(taakId);
     }
 
     if (deduplicatieVoor) {
@@ -616,7 +611,7 @@ public class KernbezwaarService {
     kernbezwaarRepository.deleteZonderReferenties(projectNaam);
     // Als er geen kernbezwaren meer over zijn, ruim ook de clustering-taak op
     if (kernbezwaarRepository.countByProjectNaam(projectNaam) == 0) {
-      clusteringTaakRepository.deleteByProjectNaam(projectNaam);
+      clusteringTaakService.verwijderTaakVoorProject(projectNaam);
     }
   }
 
@@ -654,7 +649,7 @@ public class KernbezwaarService {
    */
   public void ruimAllesOpVoorProject(String projectNaam) {
     kernbezwaarRepository.deleteByProjectNaam(projectNaam);
-    clusteringTaakRepository.deleteByProjectNaam(projectNaam);
+    clusteringTaakService.verwijderTaakVoorProject(projectNaam);
   }
 
   float[] berekenCentroid(List<float[]> embeddings) {
