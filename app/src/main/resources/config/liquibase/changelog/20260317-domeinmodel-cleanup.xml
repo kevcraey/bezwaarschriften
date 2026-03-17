@@ -123,12 +123,14 @@
         baseColumnNames="document_id"
         referencedTableName="bezwaar_document"
         referencedColumnNames="id"
-        constraintName="fk_bezwaar_document"/>
+        constraintName="fk_bezwaar_document"
+        onDelete="CASCADE"/>
   </changeSet>
 
   <!-- 7. Verwijder oude kolommen van individueel_bezwaar -->
   <changeSet id="20260317-08" author="bezwaarschriften">
     <comment>Verwijder oude kolommen: taak_id, passage_nr, project_naam, bestandsnaam</comment>
+    <dropForeignKeyConstraint baseTableName="individueel_bezwaar" constraintName="fk_geextraheerd_bezwaar_taak"/>
     <dropIndex tableName="individueel_bezwaar" indexName="idx_bezwaar_project_bestand"/>
     <dropColumn tableName="individueel_bezwaar" columnName="taak_id"/>
     <dropColumn tableName="individueel_bezwaar" columnName="passage_nr"/>
@@ -139,25 +141,62 @@
     </createIndex>
   </changeSet>
 
-  <!-- 8. Verwijder oude tabellen -->
+  <!-- 8. Migreer pseudonimisering_chunk van taak_id naar document_id -->
   <changeSet id="20260317-09" author="bezwaarschriften">
-    <comment>Verwijder extractie_passage tabel</comment>
-    <dropTable tableName="extractie_passage"/>
+    <comment>Voeg document_id toe aan pseudonimisering_chunk</comment>
+    <addColumn tableName="pseudonimisering_chunk">
+      <column name="document_id" type="bigint"/>
+    </addColumn>
   </changeSet>
 
   <changeSet id="20260317-10" author="bezwaarschriften">
-    <comment>Verwijder extractie_taak tabel</comment>
-    <dropTable tableName="extractie_taak"/>
+    <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
+    <comment>Backfill document_id op pseudonimisering_chunk via tekst_extractie_taak → bezwaar_document</comment>
+    <sql>
+      UPDATE pseudonimisering_chunk pc
+      SET document_id = bd.id
+      FROM tekst_extractie_taak te
+      JOIN bezwaar_document bd ON bd.project_naam = te.project_naam AND bd.bestandsnaam = te.bestandsnaam
+      WHERE pc.taak_id = te.id
+    </sql>
   </changeSet>
 
   <changeSet id="20260317-11" author="bezwaarschriften">
-    <comment>Verwijder tekst_extractie_taak tabel</comment>
-    <dropTable tableName="tekst_extractie_taak"/>
+    <comment>Drop FK en taak_id kolom van pseudonimisering_chunk, voeg FK naar bezwaar_document toe</comment>
+    <dropForeignKeyConstraint baseTableName="pseudonimisering_chunk" constraintName="fk_pseudonimisering_chunk_taak"/>
+    <dropUniqueConstraint tableName="pseudonimisering_chunk" constraintName="uq_pseudonimisering_chunk_taak_volgnummer"/>
+    <dropColumn tableName="pseudonimisering_chunk" columnName="taak_id"/>
+    <addNotNullConstraint tableName="pseudonimisering_chunk" columnName="document_id" columnDataType="bigint"/>
+    <addForeignKeyConstraint baseTableName="pseudonimisering_chunk"
+        baseColumnNames="document_id"
+        referencedTableName="bezwaar_document"
+        referencedColumnNames="id"
+        constraintName="fk_pseudonimisering_chunk_document"
+        onDelete="CASCADE"/>
+    <addUniqueConstraint tableName="pseudonimisering_chunk"
+        columnNames="document_id, volgnummer"
+        constraintName="uq_pseudonimisering_chunk_document_volgnummer"/>
   </changeSet>
 
+  <!-- 9. Verwijder oude tabellen -->
   <changeSet id="20260317-12" author="bezwaarschriften">
+    <comment>Verwijder extractie_passage tabel</comment>
+    <dropTable tableName="extractie_passage" cascadeConstraints="true"/>
+  </changeSet>
+
+  <changeSet id="20260317-13" author="bezwaarschriften">
+    <comment>Verwijder extractie_taak tabel</comment>
+    <dropTable tableName="extractie_taak" cascadeConstraints="true"/>
+  </changeSet>
+
+  <changeSet id="20260317-14" author="bezwaarschriften">
+    <comment>Verwijder tekst_extractie_taak tabel</comment>
+    <dropTable tableName="tekst_extractie_taak" cascadeConstraints="true"/>
+  </changeSet>
+
+  <changeSet id="20260317-15" author="bezwaarschriften">
     <comment>Verwijder bezwaar_bestand tabel</comment>
-    <dropTable tableName="bezwaar_bestand"/>
+    <dropTable tableName="bezwaar_bestand" cascadeConstraints="true"/>
   </changeSet>
 
 </databaseChangeLog>
