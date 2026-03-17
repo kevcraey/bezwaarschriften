@@ -21,8 +21,8 @@
 | Create | `app/src/main/java/.../project/BezwaarDocumentRepository.java` | Repository |
 | Create | `app/src/main/java/.../project/TekstExtractieStatus.java` | Enum |
 | Create | `app/src/main/java/.../project/BezwaarExtractieStatus.java` | Enum |
-| Modify | `app/src/main/java/.../project/GeextraheerdBezwaarEntiteit.java` | +documentId, +passageTekst, -taakId, -projectNaam, -bestandsnaam, -passageNr |
-| Modify | `app/src/main/java/.../project/GeextraheerdBezwaarRepository.java` | Queries via documentId |
+| Rename | `GeextraheerdBezwaarEntiteit.java` → `IndividueelBezwaar.java` | +documentId, +passageTekst, -taakId, -projectNaam, -bestandsnaam, -passageNr |
+| Rename | `GeextraheerdBezwaarRepository.java` → `IndividueelBezwaarRepository.java` | Queries via documentId |
 | Modify | `app/src/main/java/.../project/ExtractieTaakService.java` | Herschreven rond BezwaarDocument |
 | Modify | `app/src/main/java/.../tekstextractie/TekstExtractieService.java` | Herschreven rond BezwaarDocument |
 | Modify | `app/src/main/java/.../project/ProjectService.java` | Query BezwaarDocument i.p.v. compositie |
@@ -135,81 +135,87 @@
     </sql>
   </changeSet>
 
-  <!-- 3. Voeg document_id en passage_tekst toe aan geextraheerd_bezwaar -->
+  <!-- 3. Hernoem geextraheerd_bezwaar → individueel_bezwaar -->
   <changeSet id="20260317-03" author="bezwaarschriften">
-    <comment>Voeg document_id en passage_tekst toe aan geextraheerd_bezwaar</comment>
-    <addColumn tableName="geextraheerd_bezwaar">
+    <comment>Hernoem tabel geextraheerd_bezwaar naar individueel_bezwaar</comment>
+    <renameTable oldTableName="geextraheerd_bezwaar" newTableName="individueel_bezwaar"/>
+  </changeSet>
+
+  <!-- 4. Voeg document_id en passage_tekst toe aan individueel_bezwaar -->
+  <changeSet id="20260317-04" author="bezwaarschriften">
+    <comment>Voeg document_id en passage_tekst toe aan individueel_bezwaar</comment>
+    <addColumn tableName="individueel_bezwaar">
       <column name="document_id" type="bigint"/>
       <column name="passage_tekst" type="text"/>
     </addColumn>
   </changeSet>
 
-  <!-- 4. Backfill document_id en passage_tekst (PostgreSQL only) -->
-  <changeSet id="20260317-04" author="bezwaarschriften">
+  <!-- 5. Backfill document_id en passage_tekst (PostgreSQL only) -->
+  <changeSet id="20260317-05" author="bezwaarschriften">
     <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
     <comment>Backfill document_id vanuit project_naam+bestandsnaam</comment>
     <sql>
-      UPDATE geextraheerd_bezwaar gb
+      UPDATE individueel_bezwaar ib
       SET document_id = bd.id
       FROM bezwaar_document bd
-      WHERE gb.project_naam = bd.project_naam AND gb.bestandsnaam = bd.bestandsnaam
+      WHERE ib.project_naam = bd.project_naam AND ib.bestandsnaam = bd.bestandsnaam
     </sql>
   </changeSet>
 
-  <changeSet id="20260317-05" author="bezwaarschriften">
+  <changeSet id="20260317-06" author="bezwaarschriften">
     <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
     <comment>Backfill passage_tekst vanuit extractie_passage</comment>
     <sql>
-      UPDATE geextraheerd_bezwaar gb
+      UPDATE individueel_bezwaar ib
       SET passage_tekst = ep.tekst
       FROM extractie_passage ep
-      WHERE ep.taak_id = gb.taak_id AND ep.passage_nr = gb.passage_nr
+      WHERE ep.taak_id = ib.taak_id AND ep.passage_nr = ib.passage_nr
     </sql>
   </changeSet>
 
-  <!-- 5. NOT NULL constraints na backfill -->
-  <changeSet id="20260317-06" author="bezwaarschriften">
+  <!-- 6. NOT NULL constraints na backfill -->
+  <changeSet id="20260317-07" author="bezwaarschriften">
     <preConditions onFail="MARK_RAN"><dbms type="postgresql"/></preConditions>
-    <comment>NOT NULL constraint op document_id</comment>
-    <addNotNullConstraint tableName="geextraheerd_bezwaar"
+    <comment>NOT NULL constraint op document_id + FK</comment>
+    <addNotNullConstraint tableName="individueel_bezwaar"
         columnName="document_id" columnDataType="bigint"/>
-    <addForeignKeyConstraint baseTableName="geextraheerd_bezwaar"
+    <addForeignKeyConstraint baseTableName="individueel_bezwaar"
         baseColumnNames="document_id"
         referencedTableName="bezwaar_document"
         referencedColumnNames="id"
         constraintName="fk_bezwaar_document"/>
   </changeSet>
 
-  <!-- 6. Verwijder oude kolommen van geextraheerd_bezwaar -->
-  <changeSet id="20260317-07" author="bezwaarschriften">
+  <!-- 7. Verwijder oude kolommen van individueel_bezwaar -->
+  <changeSet id="20260317-08" author="bezwaarschriften">
     <comment>Verwijder oude kolommen: taak_id, passage_nr, project_naam, bestandsnaam</comment>
-    <dropIndex tableName="geextraheerd_bezwaar" indexName="idx_bezwaar_project_bestand"/>
-    <dropColumn tableName="geextraheerd_bezwaar" columnName="taak_id"/>
-    <dropColumn tableName="geextraheerd_bezwaar" columnName="passage_nr"/>
-    <dropColumn tableName="geextraheerd_bezwaar" columnName="project_naam"/>
-    <dropColumn tableName="geextraheerd_bezwaar" columnName="bestandsnaam"/>
-    <createIndex tableName="geextraheerd_bezwaar" indexName="idx_bezwaar_document">
+    <dropIndex tableName="individueel_bezwaar" indexName="idx_bezwaar_project_bestand"/>
+    <dropColumn tableName="individueel_bezwaar" columnName="taak_id"/>
+    <dropColumn tableName="individueel_bezwaar" columnName="passage_nr"/>
+    <dropColumn tableName="individueel_bezwaar" columnName="project_naam"/>
+    <dropColumn tableName="individueel_bezwaar" columnName="bestandsnaam"/>
+    <createIndex tableName="individueel_bezwaar" indexName="idx_individueel_bezwaar_document">
       <column name="document_id"/>
     </createIndex>
   </changeSet>
 
-  <!-- 7. Verwijder oude tabellen -->
-  <changeSet id="20260317-08" author="bezwaarschriften">
+  <!-- 8. Verwijder oude tabellen -->
+  <changeSet id="20260317-09" author="bezwaarschriften">
     <comment>Verwijder extractie_passage tabel</comment>
     <dropTable tableName="extractie_passage"/>
   </changeSet>
 
-  <changeSet id="20260317-09" author="bezwaarschriften">
+  <changeSet id="20260317-10" author="bezwaarschriften">
     <comment>Verwijder extractie_taak tabel</comment>
     <dropTable tableName="extractie_taak"/>
   </changeSet>
 
-  <changeSet id="20260317-10" author="bezwaarschriften">
+  <changeSet id="20260317-11" author="bezwaarschriften">
     <comment>Verwijder tekst_extractie_taak tabel</comment>
     <dropTable tableName="tekst_extractie_taak"/>
   </changeSet>
 
-  <changeSet id="20260317-11" author="bezwaarschriften">
+  <changeSet id="20260317-12" author="bezwaarschriften">
     <comment>Verwijder bezwaar_bestand tabel</comment>
     <dropTable tableName="bezwaar_bestand"/>
   </changeSet>
@@ -359,15 +365,15 @@ git commit -m "feat: BezwaarDocument entiteit + twee status-enums + repository"
 
 ---
 
-## Task 3: GeextraheerdBezwaarEntiteit herschrijven
+## Task 3: GeextraheerdBezwaarEntiteit hernoemen naar IndividueelBezwaar
 
 **Files:**
-- Modify: `app/src/main/java/.../project/GeextraheerdBezwaarEntiteit.java`
-- Modify: `app/src/main/java/.../project/GeextraheerdBezwaarRepository.java`
+- Rename: `GeextraheerdBezwaarEntiteit.java` → `IndividueelBezwaar.java`
+- Rename: `GeextraheerdBezwaarRepository.java` → `IndividueelBezwaarRepository.java`
 
-- [ ] **Step 1: Herschrijf GeextraheerdBezwaarEntiteit**
+- [ ] **Step 1: Hernoem en herschrijf de entiteit**
 
-Vervang alle velden. De entiteit krijgt:
+Hernoem het bestand, hernoem de class, en wijzig de tabelnaam naar `individueel_bezwaar`. De entiteit krijgt:
 - `documentId` (FK → BezwaarDocument) — vervangt `taakId`, `projectNaam`, `bestandsnaam`
 - `passageTekst` — geabsorbeerd vanuit ExtractiePassageEntiteit
 - Verwijder: `taakId`, `passageNr`, `projectNaam`, `bestandsnaam`
@@ -375,8 +381,8 @@ Vervang alle velden. De entiteit krijgt:
 
 ```java
 @Entity
-@Table(name = "geextraheerd_bezwaar")
-public class GeextraheerdBezwaarEntiteit {
+@Table(name = "individueel_bezwaar")
+public class IndividueelBezwaar {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -407,36 +413,45 @@ public class GeextraheerdBezwaarEntiteit {
 }
 ```
 
-- [ ] **Step 2: Herschrijf GeextraheerdBezwaarRepository**
+- [ ] **Step 2: Hernoem en herschrijf de repository**
 
 ```java
-public interface GeextraheerdBezwaarRepository
-    extends JpaRepository<GeextraheerdBezwaarEntiteit, Long> {
+public interface IndividueelBezwaarRepository
+    extends JpaRepository<IndividueelBezwaar, Long> {
 
-  List<GeextraheerdBezwaarEntiteit> findByDocumentId(Long documentId);
+  List<IndividueelBezwaar> findByDocumentId(Long documentId);
 
   int countByDocumentId(Long documentId);
 
   void deleteByDocumentId(Long documentId);
 
-  @Query("SELECT b FROM GeextraheerdBezwaarEntiteit b " +
+  @Query("SELECT b FROM IndividueelBezwaar b " +
          "JOIN BezwaarDocument d ON b.documentId = d.id " +
          "WHERE d.projectNaam = :projectNaam")
-  List<GeextraheerdBezwaarEntiteit> findByProjectNaam(@Param("projectNaam") String projectNaam);
+  List<IndividueelBezwaar> findByProjectNaam(@Param("projectNaam") String projectNaam);
 
-  @Query("SELECT COUNT(b) FROM GeextraheerdBezwaarEntiteit b " +
+  @Query("SELECT COUNT(b) FROM IndividueelBezwaar b " +
          "JOIN BezwaarDocument d ON b.documentId = d.id " +
          "WHERE d.projectNaam = :projectNaam")
   int countByProjectNaam(@Param("projectNaam") String projectNaam);
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Fix alle referenties in de codebase**
+
+Zoek en vervang alle imports en referenties:
+- `GeextraheerdBezwaarEntiteit` → `IndividueelBezwaar`
+- `GeextraheerdBezwaarRepository` → `IndividueelBezwaarRepository`
+- `geextraheerdBezwaarRepository` → `individueelBezwaarRepository` (variabele-namen)
+- `bezwaarRepository` variabelen die naar `GeextraheerdBezwaarRepository` verwezen → type aanpassen
+
+Dit raakt: ExtractieTaakService, KernbezwaarService, PassageDeduplicatieService, ProjectService, controllers, tests.
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add app/src/main/java/be/vlaanderen/omgeving/bezwaarschriften/project/GeextraheerdBezwaarEntiteit.java \
-       app/src/main/java/be/vlaanderen/omgeving/bezwaarschriften/project/GeextraheerdBezwaarRepository.java
-git commit -m "refactor: GeextraheerdBezwaarEntiteit → documentId + passageTekst, weg met taakId"
+git add -A
+git commit -m "refactor: GeextraheerdBezwaarEntiteit hernoemd naar IndividueelBezwaar"
 ```
 
 ---
@@ -457,6 +472,7 @@ De constructor krijgt `BezwaarDocumentRepository` i.p.v. `ExtractieTaakRepositor
 - Voor elk bestand: zoek of maak BezwaarDocument
 - Business rule: `tekstExtractieStatus` moet `KLAAR` zijn
 - Zet `bezwaarExtractieStatus = BEZIG`, `foutmelding = null`
+- Wis eerst `passage_groep_lid` records die verwijzen naar de oude bezwaren (FK constraint)
 - Wis oude bezwaren via `bezwaarRepository.deleteByDocumentId(doc.id)`
 - Retourneer DTOs
 
@@ -527,7 +543,7 @@ De service werkt nu met BezwaarDocument i.p.v. TekstExtractieTaak:
 **`indienen(projectNaam, bestandsnaam)`:**
 - Zoek of maak BezwaarDocument
 - Zet `tekstExtractieStatus = BEZIG`, `foutmelding = null`
-- Business rule 2: als tekst-extractie opnieuw → `bezwaarExtractieStatus = GEEN` + bezwaren wissen
+- Business rule 2: als tekst-extractie opnieuw → `bezwaarExtractieStatus = GEEN` + `passage_groep_lid` records wissen + bezwaren wissen
 
 **`pakOpVoorVerwerking()`:**
 - Query `bezwaarDocumentRepository.findByTekstExtractieStatus(BEZIG)`
