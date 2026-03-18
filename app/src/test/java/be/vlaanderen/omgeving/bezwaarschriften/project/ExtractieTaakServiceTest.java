@@ -125,6 +125,31 @@ class ExtractieTaakServiceTest {
   }
 
   @Test
+  void geefTakenBevatAantalBezwarenVoorKlaarDocument() {
+    var doc = maakDocument(1L, "windmolens", "bezwaar-001.txt",
+        TekstExtractieStatus.KLAAR, BezwaarExtractieStatus.KLAAR);
+    when(documentRepository.findByProjectNaam("windmolens")).thenReturn(List.of(doc));
+    when(bezwaarRepository.countByDocumentId(1L)).thenReturn(5);
+
+    var resultaat = service.geefTaken("windmolens");
+
+    assertThat(resultaat).hasSize(1);
+    assertThat(resultaat.get(0).aantalBezwaren()).isEqualTo(5);
+  }
+
+  @Test
+  void geefTakenGeeftNullVoorAantalBezwarenBijBezigDocument() {
+    var doc = maakDocument(1L, "windmolens", "bezwaar-001.txt",
+        TekstExtractieStatus.KLAAR, BezwaarExtractieStatus.BEZIG);
+    when(documentRepository.findByProjectNaam("windmolens")).thenReturn(List.of(doc));
+
+    var resultaat = service.geefTaken("windmolens");
+
+    assertThat(resultaat).hasSize(1);
+    assertThat(resultaat.get(0).aantalBezwaren()).isNull();
+  }
+
+  @Test
   void pakOpVoorVerwerkingGeeftDocumentenMetStatusBezig() {
     var doc = maakDocument(1L, "windmolens", "bezwaar-001.txt",
         TekstExtractieStatus.KLAAR, BezwaarExtractieStatus.BEZIG);

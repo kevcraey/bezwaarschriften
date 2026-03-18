@@ -177,6 +177,7 @@ export class BezwaarschriftenProjectSelectie extends BaseHTMLElement {
         ...b,
         bezwaarExtractieStatus: taak.bezwaarExtractieStatus,
         aantalWoorden: taak.aantalWoorden !== undefined ? taak.aantalWoorden : b.aantalWoorden,
+        aantalBezwaren: taak.aantalBezwaren != null ? taak.aantalBezwaren : b.aantalBezwaren,
         heeftPassagesDieNietInTekstVoorkomen:
             taak.heeftPassagesDieNietInTekstVoorkomen !== undefined ?
               taak.heeftPassagesDieNietInTekstVoorkomen : b.heeftPassagesDieNietInTekstVoorkomen,

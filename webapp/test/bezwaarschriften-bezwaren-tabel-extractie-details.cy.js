@@ -783,4 +783,31 @@ describe('bezwaarschriften-bezwaren-tabel extractie-details', () => {
         .find('#manueel-bezwaar-formulier')
         .should('not.exist');
   });
+
+  it('werkBijMetTaakUpdate met aantalBezwaren null overschrijft bestaande waarde niet', () => {
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.projectNaam = 'windmolens';
+          el.bezwaren = [
+            {bestandsnaam: 'bezwaar-001.txt', tekstExtractieStatus: 'KLAAR', bezwaarExtractieStatus: 'KLAAR', aantalBezwaren: 7, heeftPassagesDieNietInTekstVoorkomen: false},
+          ];
+        });
+
+    // Simuleer een _syncExtracties update met aantalBezwaren: null (zoals de /extracties endpoint retourneert)
+    cy.get('bezwaarschriften-bezwaren-tabel')
+        .its(0)
+        .then((el) => {
+          el.werkBijMetTaakUpdate({
+            bestandsnaam: 'bezwaar-001.txt',
+            bezwaarExtractieStatus: 'KLAAR',
+            aantalWoorden: 100,
+            aantalBezwaren: null,
+            heeftPassagesDieNietInTekstVoorkomen: false,
+          });
+          // Verifieer het datamodel direct: aantalBezwaren mag niet overschreven zijn met null
+          const bezwaar = el.__bronBezwaren.find((b) => b.bestandsnaam === 'bezwaar-001.txt');
+          expect(bezwaar.aantalBezwaren).to.equal(7);
+        });
+  });
 });

@@ -116,9 +116,16 @@ public class ExtractieTaakService {
    * @return lijst van taak-DTOs
    */
   public List<ExtractieTaakDto> geefTaken(String projectNaam) {
-    return documentRepository.findByProjectNaam(projectNaam).stream()
+    var documenten = documentRepository.findByProjectNaam(projectNaam).stream()
         .filter(doc -> doc.getBezwaarExtractieStatus() != BezwaarExtractieStatus.GEEN)
-        .map(ExtractieTaakDto::van)
+        .toList();
+    return documenten.stream()
+        .map(doc -> {
+          Integer aantalBezwaren = doc.getBezwaarExtractieStatus() == BezwaarExtractieStatus.KLAAR
+              ? bezwaarRepository.countByDocumentId(doc.getId())
+              : null;
+          return ExtractieTaakDto.van(doc, aantalBezwaren);
+        })
         .toList();
   }
 
